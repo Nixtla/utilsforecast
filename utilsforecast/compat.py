@@ -12,6 +12,7 @@ import pandas as pd
 try:
     from polars import DataFrame as pl_DataFrame
     from polars import Series as pl_Series
+    from polars import concat as pl_concat
 
     POLARS_INSTALLED = True
 except ImportError:
@@ -21,6 +22,8 @@ except ImportError:
 
     class pl_Series:  # type: ignore
         ...
+
+    pl_concat = None  # type: ignore
 
     POLARS_INSTALLED = False
 
