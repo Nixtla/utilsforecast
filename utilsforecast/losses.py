@@ -9,13 +9,13 @@ from typing import Optional, Union
 
 import numpy as np
 
-# %% ../nbs/losses.ipynb 7
+# %% ../nbs/losses.ipynb 6
 def _divide_no_nan(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Auxiliary funtion to handle divide by 0"""
     out_dtype = np.result_type(np.float32, a.dtype, b.dtype)
     return np.divide(a, b, out=np.zeros(a.shape, dtype=out_dtype), where=b != 0)
 
-# %% ../nbs/losses.ipynb 8
+# %% ../nbs/losses.ipynb 7
 def _metric_protections(
     y: np.ndarray, y_hat: np.ndarray, weights: Optional[np.ndarray] = None
 ) -> None:
@@ -23,12 +23,16 @@ def _metric_protections(
         return
     if np.sum(weights) <= 0:
         raise ValueError("Sum of weights must be positive")
+    if y.shape != y_hat.shape:
+        raise ValueError(
+            f"Wrong y_hat dimension. y_hat shape={y_hat.shape}, y shape={y.shape}"
+        )
     if weights.shape != y.shape:
         raise ValueError(
             f"Wrong weight dimension. weights shape={weights.shape}, y shape={y.shape}"
         )
 
-# %% ../nbs/losses.ipynb 12
+# %% ../nbs/losses.ipynb 11
 def mae(
     y: np.ndarray,
     y_hat: np.ndarray,
@@ -72,7 +76,7 @@ def mae(
         mae = np.nanmean(delta_y, axis=axis)
     return mae
 
-# %% ../nbs/losses.ipynb 16
+# %% ../nbs/losses.ipynb 15
 def mse(
     y: np.ndarray,
     y_hat: np.ndarray,
@@ -118,7 +122,7 @@ def mse(
 
     return mse
 
-# %% ../nbs/losses.ipynb 20
+# %% ../nbs/losses.ipynb 19
 def rmse(
     y: np.ndarray,
     y_hat: np.ndarray,
@@ -157,7 +161,7 @@ def rmse(
 
     return np.sqrt(mse(y, y_hat, weights, axis))
 
-# %% ../nbs/losses.ipynb 25
+# %% ../nbs/losses.ipynb 24
 def mape(
     y: np.ndarray,
     y_hat: np.ndarray,
@@ -201,7 +205,7 @@ def mape(
 
     return mape
 
-# %% ../nbs/losses.ipynb 28
+# %% ../nbs/losses.ipynb 27
 def smape(
     y: np.ndarray,
     y_hat: np.ndarray,
@@ -252,7 +256,7 @@ def smape(
 
     return smape
 
-# %% ../nbs/losses.ipynb 33
+# %% ../nbs/losses.ipynb 32
 def mase(
     y: np.ndarray,
     y_hat: np.ndarray,
@@ -307,7 +311,7 @@ def mase(
 
     return mase
 
-# %% ../nbs/losses.ipynb 37
+# %% ../nbs/losses.ipynb 36
 def rmae(
     y: np.ndarray,
     y_hat1: np.ndarray,
@@ -347,7 +351,7 @@ def rmae(
 
     return rmae
 
-# %% ../nbs/losses.ipynb 42
+# %% ../nbs/losses.ipynb 41
 def quantile_loss(
     y: np.ndarray,
     y_hat: np.ndarray,
@@ -396,7 +400,7 @@ def quantile_loss(
 
     return quantile_loss
 
-# %% ../nbs/losses.ipynb 46
+# %% ../nbs/losses.ipynb 45
 def mqloss(
     y: np.ndarray,
     y_hat: np.ndarray,
@@ -457,7 +461,7 @@ def mqloss(
 
     return mqloss
 
-# %% ../nbs/losses.ipynb 49
+# %% ../nbs/losses.ipynb 48
 def coverage(
     y: np.ndarray,
     y_hat_lo: np.ndarray,
@@ -486,7 +490,7 @@ def coverage(
     """
     return 100 * np.logical_and(y >= y_hat_lo, y <= y_hat_hi).mean()
 
-# %% ../nbs/losses.ipynb 52
+# %% ../nbs/losses.ipynb 51
 def calibration(
     y: np.ndarray,
     y_hat_hi: np.ndarray,
@@ -512,7 +516,7 @@ def calibration(
     """
     return (y <= y_hat_hi).mean()
 
-# %% ../nbs/losses.ipynb 55
+# %% ../nbs/losses.ipynb 54
 def scaled_crps(
     y: np.ndarray,
     y_hat: np.ndarray,
