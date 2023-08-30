@@ -3,7 +3,7 @@
 # %% auto 0
 __all__ = ['DataFrameProcessing']
 
-# %% ../nbs/processing.ipynb 3
+# %% ../nbs/processing.ipynb 2
 from typing import Union
 
 import numpy as np
@@ -12,7 +12,7 @@ import pandas as pd
 from .compat import DataFrame, pl_Series
 from .grouped_array import GroupedArray
 
-# %% ../nbs/processing.ipynb 4
+# %% ../nbs/processing.ipynb 3
 def _polars_categorical_to_numerical(serie: pl_Series) -> pl_Series:
     import polars as pl
 
@@ -30,7 +30,8 @@ def _id_to_numpy(serie: Union[pd.Series, pl_Series]) -> np.ndarray:
 def _counts_by_id(df: DataFrame, id_col: str) -> DataFrame:
     id_counts = df[id_col].value_counts()
     if isinstance(id_counts, pd.Series):
-        id_counts = id_counts.rename("counts").sort_index().reset_index()
+        id_counts = id_counts.sort_index().reset_index()
+        id_counts.columns = [id_col, "counts"]
     else:
         id_counts = id_counts.sort(id_col)
     return id_counts
@@ -67,7 +68,7 @@ def _compute_sort_idxs(df: DataFrame, idx: pd.MultiIndex) -> np.ndarray:
         sort_idxs = df.select(pl.arg_sort_by(idx.names).alias("idx"))["idx"].to_numpy()
     return sort_idxs
 
-# %% ../nbs/processing.ipynb 5
+# %% ../nbs/processing.ipynb 4
 class DataFrameProcessing:
     def __init__(
         self,
