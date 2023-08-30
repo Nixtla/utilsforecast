@@ -4,6 +4,8 @@
 __all__ = ['DataFrameProcessing']
 
 # %% ../nbs/processing.ipynb 3
+from typing import Union
+
 import numpy as np
 import pandas as pd
 
@@ -11,12 +13,18 @@ from .compat import DataFrame, pl_Series
 from .grouped_array import GroupedArray
 
 # %% ../nbs/processing.ipynb 4
-def _polars_serie_to_double(serie: pl_Series) -> pl_Series:
+def _polars_categorical_to_numerical(serie: pl_Series) -> pl_Series:
     import polars as pl
 
     if serie.dtype == pl.Categorical:
-        serie = serie.cast(pl.Utf8)
-    return serie.cast(pl.Float64)
+        serie = serie.cast(pl.Utf8).cast(pl.Float64)
+    return serie
+
+
+def _id_to_numpy(serie: Union[pd.Series, pl_Series]) -> np.ndarray:
+    if isinstance(serie, pl_Series):
+        serie = _polars_categorical_to_numerical(serie)
+    return serie.to_numpy()
 
 
 def _counts_by_id(df: DataFrame, id_col: str) -> DataFrame:
@@ -41,7 +49,12 @@ def _value_cols_to_numpy(
     else:
         import polars as pl
 
-        data = df[value_cols].select(pl.all().map(_polars_serie_to_double)).to_numpy()
+        try:
+            expr = pl.all().map_batches(_polars_categorical_to_numerical)
+        except AttributeError:
+            expr = pl.all().map(_polars_categorical_to_numerical)
+
+        data = df[value_cols].select(expr).to_numpy()
     return data
 
 
@@ -70,7 +83,7 @@ class DataFrameProcessing:
         times = df[self.time_col].to_numpy()
 
         # ids
-        uids = df[self.id_col].to_numpy()
+        uids = _id_to_numpy(df[self.id_col])
         id_counts = _counts_by_id(df, self.id_col)
         self.uids = id_counts[self.id_col]
 
