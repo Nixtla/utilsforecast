@@ -4,8 +4,6 @@
 __all__ = ['DataFrameProcessing']
 
 # %% ../nbs/processing.ipynb 3
-from typing import Union
-
 import numpy as np
 import pandas as pd
 
@@ -60,12 +58,10 @@ def _compute_sort_idxs(df: DataFrame, idx: pd.MultiIndex) -> np.ndarray:
 class DataFrameProcessing:
     def __init__(
         self,
-        freq: Union[str, int],
         id_col: str = "unique_id",
         time_col: str = "ds",
         target_col: str = "y",
     ):
-        self.freq = freq
         self.id_col = id_col
         self.time_col = time_col
         self.target_col = target_col
