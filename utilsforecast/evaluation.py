@@ -40,7 +40,7 @@ def evaluate(
         Forecasts to evaluate.
         Must have `id_col`, `time_col`, `target_col` and models' predictions.
     metrics : list of callable
-        Functions with arguments `y`, `y_hat`, and optionally `y_train`.
+        Functions with arguments `df`, `models`, `id_col`, `target_col` and optionally `train_df`.
     models : list of str, optional (default=None)
         Names of the models to evaluate.
         If `None` will use every column in the dataframe after removing id, time and target.

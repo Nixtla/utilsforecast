@@ -8,7 +8,6 @@ dependencies:
   - pandas
   - plotly
   - pip
-  - pyarrow
   - pip:
     - nbdev
     - polars

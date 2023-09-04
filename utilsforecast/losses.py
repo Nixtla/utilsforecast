@@ -262,7 +262,7 @@ def mase(
         Main frequency of the time series;
         Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
     train_df : pandas or polars DataFrame
-        Training dataframe with id and actual values.
+        Training dataframe with id and actual values. Must be sorted by time.
     id_col : str (default='unique_id')
         Column that identifies each serie.
     target_col : str (default='y')
@@ -461,6 +461,7 @@ def mqloss(
     [1] https://www.jstor.org/stable/2629907
     """
     res: Optional[DataFrame] = None
+    quantiles = np.asarray(quantiles)
     for model in models:
         error = (df[target_col].to_numpy() - df[model].to_numpy()).reshape(-1, 1)
         loss = np.maximum(error * quantiles, error * (quantiles - 1)).mean(axis=1)
@@ -471,6 +472,9 @@ def mqloss(
             result = result.groupby(df[id_col]).mean()
         if res is None:
             res = result
+            if isinstance(res, pd.DataFrame):
+                res.index.name = id_col
+                res = res.reset_index()
         else:
             if isinstance(res, pd.DataFrame):
                 res = pd.concat([res, result], axis=1)
@@ -517,6 +521,8 @@ def coverage(
                 df[f"{model}-lo-{level}"], df[f"{model}-hi-{level}"]
             )
         res = pd.DataFrame(out, columns=models).groupby(df[id_col]).mean()
+        res.index.name = id_col
+        res = res.reset_index()
     else:
 
         def gen_expr(model):
@@ -569,6 +575,8 @@ def calibration(
         for j, model in enumerate(models):
             out[:, j] = df[target_col].le(df[f"{model}-hi-{level}"])
         res = pd.DataFrame(out, columns=models).groupby(df[id_col]).mean()
+        res.index.name = id_col
+        res = res.reset_index()
     else:
 
         def gen_expr(model):
@@ -615,13 +623,17 @@ def scaled_crps(
     [1] https://proceedings.mlr.press/v139/rangapuram21a.html
     """
     eps = np.finfo(float).eps
+    quantiles = np.asarray(quantiles)
     loss = mqloss(df, models, quantiles, id_col, target_col)
-    if isinstance(df, pd.DataFrame):
+    if isinstance(loss, pd.DataFrame):
+        loss = loss.set_index(id_col)
+        assert isinstance(df, pd.DataFrame)
         norm = df[target_col].abs().groupby(df[id_col]).sum()
         sizes = df[id_col].value_counts()
         scales = sizes * (sizes + 1) / 2
-        assert isinstance(loss, pd.DataFrame)
         res = 2 * loss.mul(scales, axis=0).div(norm + eps, axis=0)
+        res.index.name = id_col
+        res = res.reset_index()
     else:
 
         def gen_expr(model):
