@@ -641,7 +641,11 @@ def scaled_crps(
                 2 * pl_col(model) * pl_col("counts") / (pl_col("norm") + eps)
             ).alias(model)
 
-        norm = df.group_by(id_col).agg(pl_col(target_col).abs().sum().alias("norm"))
+        try:
+            grouped_df = df.group_by(id_col)
+        except AttributeError:
+            grouped_df = df.groupby(id_col)
+        norm = grouped_df.agg(pl_col(target_col).abs().sum().alias("norm"))
         sizes = (
             df[id_col]
             .value_counts()
