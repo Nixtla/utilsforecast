@@ -408,7 +408,11 @@ def quantile_loss(
 
         def gen_expr(model):
             delta_y = pl_col(model).sub(pl_col(target_col)).abs()
-            return pl.max_horizontal([q * delta_y, (q - 1) * delta_y]).alias(model)
+            try:
+                col_max = pl.max_horizontal([q * delta_y, (q - 1) * delta_y])
+            except AttributeError:
+                col_max = pl.max([q * delta_y, (q - 1) * delta_y])
+            return col_max.alias(model)
 
         res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
