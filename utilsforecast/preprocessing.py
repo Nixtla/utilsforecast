@@ -69,16 +69,30 @@ def fill_gaps(
     filled_df : pandas DataFrame
         Dataframe with gaps filled.
     """
-    delta = np.timedelta64(1, freq) if isinstance(freq, str) else freq
-    times_by_id = df.groupby(id_col)[time_col].agg(["min", "max"])
-    starts = _determine_bound(start, freq, times_by_id, "min")
-    ends = _determine_bound(end, freq, times_by_id, "max") + delta
+    if isinstance(freq, str):
+        if freq == freq.upper():
+            # abbreviations like MS = 'Month Start', YS = 'Year Start'
+            delta_freq = freq[0]
+        else:
+            delta_freq = freq
+        delta = np.timedelta64(1, delta_freq)
+    else:
+        delta_freq = freq
+        delta = freq
+    times_by_id = df.groupby(id_col, observed=True)[time_col].agg(["min", "max"])
+    starts = _determine_bound(start, delta_freq, times_by_id, "min")
+    ends = _determine_bound(end, delta_freq, times_by_id, "max") + delta
     sizes = ((ends - starts) / delta).astype(np.int64)
-    times = np.concatenate(
-        [np.arange(start, end, delta) for start, end in zip(starts, ends)]
+    times = pd.Index(
+        np.concatenate(
+            [np.arange(start, end, delta) for start, end in zip(starts, ends)]
+        )
     )
     if isinstance(freq, str):
-        times = times.astype("datetime64[ns]", copy=False)
+        times = times.astype("datetime64[ns]")
+        was_truncated = starts[0] != np.datetime64(times_by_id.iloc[0, 0], "ns")
+        if was_truncated:
+            times += pd.tseries.frequencies.to_offset(freq)
     uids = np.repeat(times_by_id.index, sizes)
     idx = pd.MultiIndex.from_arrays([uids, times], names=[id_col, time_col])
     return df.set_index([id_col, time_col]).reindex(idx).reset_index()
