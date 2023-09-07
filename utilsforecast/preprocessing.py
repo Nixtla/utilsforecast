@@ -87,8 +87,8 @@ def fill_gaps(
         )
     )
     if isinstance(freq, str):
-        times = times.astype("datetime64[ns]")
-        first_time = np.datetime64(df[time_col].iloc[0])
+        times = times.astype("datetime64[ns]", copy=False)
+        first_time = np.datetime64(df.iloc[0][time_col])
         was_truncated = first_time != first_time.astype(f"datetime64[{freq}]")
         if was_truncated:
             times += offset
