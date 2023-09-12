@@ -29,7 +29,7 @@ class DataFrameProcessor:
         time_col: str = "ds",
         target_col: str = "y",
     ):
-        """Class to  extract a common structure from pandas and polars dataframes.
+        """Class to  extract common structures from pandas and polars dataframes.
 
         Parameters
         ----------
@@ -45,12 +45,12 @@ class DataFrameProcessor:
         self.target_col = target_col
 
     def _counts_by_id(self, df: DataFrame) -> DataFrame:
-        id_counts = df[self.id_col].value_counts()
-        if isinstance(id_counts, pd.Series):
-            id_counts = id_counts.sort_index().reset_index()
+        if isinstance(df, pd.DataFrame):
+            id_counts = df.groupby(self.id_col, observed=True).size()
+            id_counts = id_counts.reset_index()
             id_counts.columns = [self.id_col, "counts"]
         else:
-            id_counts = id_counts.sort(self.id_col)
+            id_counts = df[self.id_col].value_counts().sort(self.id_col)
         return id_counts
 
     def _value_cols_to_numpy(self, df: DataFrame) -> np.ndarray:
@@ -71,11 +71,21 @@ class DataFrameProcessor:
             data = df[value_cols].select(expr).to_numpy()
         return data
 
-    def _maybe_compute_sort_indices(
-        self, df: DataFrame, times: np.ndarray
-    ) -> Optional[np.ndarray]:
+    def maybe_compute_sort_indices(self, df: DataFrame) -> Optional[np.ndarray]:
+        """Compute indices that would sort dataframe
+
+        Parameters
+        ----------
+        df : pandas or polars DataFrame
+            Input dataframe with id, times and target values.
+
+        Returns
+        -------
+        numpy array or None
+            Array with indices to sort the dataframe or None if it's already sorted.
+        """
         if isinstance(df, pd.DataFrame):
-            idx = pd.MultiIndex.from_arrays([df[self.id_col].to_numpy(), times])
+            idx = pd.MultiIndex.from_arrays([df[self.id_col], df[self.time_col]])
         else:
             import polars as pl
 
@@ -114,9 +124,6 @@ class DataFrameProcessor:
         # validations
         validate_format(df, self.id_col, self.time_col, self.target_col)
 
-        # times
-        times = df[self.time_col].to_numpy()
-
         # ids
         id_counts = self._counts_by_id(df)
         uids = id_counts[self.id_col]
@@ -138,10 +145,10 @@ class DataFrameProcessor:
             data = data.reshape(-1, 1)
 
         # check if we need to sort
-        sort_idxs = self._maybe_compute_sort_indices(df, times)
+        sort_idxs = self.maybe_compute_sort_indices(df)
         if sort_idxs is not None:
             data = data[sort_idxs]
             last_idxs = sort_idxs[last_idxs]
         ga = GroupedArray(data, indptr)
-        times = times[last_idxs]
+        times = df[self.time_col].to_numpy()[last_idxs]
         return uids, times, ga, sort_idxs
