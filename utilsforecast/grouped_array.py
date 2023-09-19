@@ -7,6 +7,9 @@ __all__ = ['GroupedArray']
 from typing import Sequence, Tuple, Union
 
 import numpy as np
+import pandas as pd
+
+from .compat import DataFrame
 
 # %% ../nbs/grouped_array.ipynb 2
 def _append_one(
@@ -68,6 +71,24 @@ class GroupedArray:
 
     def __getitem__(self, idx: int) -> np.ndarray:
         return self.data[self.indptr[idx] : self.indptr[idx + 1]]
+
+    @classmethod
+    def from_sorted_df(
+        cls, df: DataFrame, id_col: str, target_col: str
+    ) -> "GroupedArray":
+        if isinstance(df, pd.DataFrame):
+            sizes = df.groupby(id_col, observed=True).size().values
+        else:
+            try:
+                group_sizes = df.group_by(id_col, maintain_order=True).count()
+            except AttributeError:
+                group_sizes = df.groupby(id_col, maintain_order=True).count()
+            sizes = group_sizes["count"].to_numpy()
+        indptr = np.append(0, sizes.cumsum())
+        data = df[target_col].to_numpy().copy()
+        if data.dtype not in (np.float32, np.float64):
+            data = data.astype(np.float32)
+        return cls(data, indptr)
 
     def _take_from_ranges(self, ranges: Sequence) -> "GroupedArray":
         items = [self.data[r] for r in ranges]
