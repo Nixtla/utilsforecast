@@ -5,82 +5,69 @@ __all__ = ['BaseTargetTransform', 'LocalStandardScaler']
 
 # %% ../nbs/target_transforms.ipynb 3
 import abc
-from typing import Optional
+from typing import Tuple
 
+try:
+    from numba import njit
+except ImportError:
+    raise ImportError(
+        "Please install numba. "
+        "You can find detailed instructions at https://numba.pydata.org/numba-doc/latest/user/installing.html"
+    )
 import numpy as np
-import pandas as pd
+
+from .grouped_array import GroupedArray
 
 # %% ../nbs/target_transforms.ipynb 4
-def _ensure_shallow_copy(df: pd.DataFrame) -> pd.DataFrame:
-    from packaging.version import Version
-
-    if Version(pd.__version__) < Version("1.4"):
-        # https://github.com/pandas-dev/pandas/pull/43406
-        df = df.copy()
-    return df
-
-# %% ../nbs/target_transforms.ipynb 5
 class BaseTargetTransform(abc.ABC):
     """Base class used for target transformations."""
 
-    idxs: Optional[np.ndarray] = None
-
-    def set_column_names(self, id_col: str, time_col: str, target_col: str):
-        self.id_col = id_col
-        self.time_col = time_col
-        self.target_col = target_col
-
     @abc.abstractmethod
-    def fit_transform(self, df: pd.DataFrame) -> pd.DataFrame:
+    def fit_transform(self, ga: GroupedArray) -> np.ndarray:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def inverse_transform(self, df: pd.DataFrame) -> pd.DataFrame:
+    def inverse_transform(self, ga: GroupedArray) -> np.ndarray:
         raise NotImplementedError
 
-    def inverse_transform_fitted(
-        self, df: pd.DataFrame, _sizes: np.ndarray
-    ) -> pd.DataFrame:
-        return self.inverse_transform(df)
+# %% ../nbs/target_transforms.ipynb 5
+@njit
+def _standard_scaler_transform(
+    data: np.ndarray, indptr: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
+    n_groups = len(indptr) - 1
+    stats = np.empty((n_groups, 2))
+    out = np.empty_like(data)
+    for i in range(n_groups):
+        sl = slice(indptr[i], indptr[i + 1])
+        mean = np.mean(data[sl])
+        std = np.std(data[sl])
+        stats[i, :] = mean, std
+        out[sl] = (data[sl] - mean) / std
+    return out, stats
+
+
+@njit
+def _standard_scaler_inverse_transform(
+    data: np.ndarray,
+    indptr: np.ndarray,
+    stats: np.ndarray,
+) -> np.ndarray:
+    n_groups = len(indptr) - 1
+    out = np.empty_like(data)
+    for i in range(n_groups):
+        sl = slice(indptr[i], indptr[i + 1])
+        mean, std = stats[i]
+        out[sl] = data[sl] * std + mean
+    return out
 
 # %% ../nbs/target_transforms.ipynb 6
 class LocalStandardScaler(BaseTargetTransform):
     """Standardizes each serie by subtracting its mean and dividing by its standard deviation."""
 
-    def fit_transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        stats = df.groupby(self.id_col, observed=True)[self.target_col].agg(
-            ["size", "mean", "std"]
-        )
-        sizes = stats["size"].values
-        self.stats_ = stats[["mean", "std"]].values
-        bc_stats = np.repeat(self.stats_, sizes, axis=0)
-        df = df.copy(deep=False)
-        df = _ensure_shallow_copy(df)
-        df[self.target_col] = (df[self.target_col].values - bc_stats[:, 0]) / bc_stats[
-            :, 1
-        ]
-        return df
+    def fit_transform(self, ga: GroupedArray) -> np.ndarray:
+        transformed, self.stats_ = _standard_scaler_transform(ga.data, ga.indptr)
+        return transformed
 
-    def _invert_with_stats(
-        self, df: pd.DataFrame, bc_stats: np.ndarray
-    ) -> pd.DataFrame:
-        df = df.copy(deep=False)
-        df = _ensure_shallow_copy(df)
-        model_cols = df.columns.drop([self.id_col, self.time_col])
-        for model in model_cols:
-            df[model] = df[model].values * bc_stats[:, 1] + bc_stats[:, 0]
-        return df
-
-    def inverse_transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        stats = self.stats_
-        if self.idxs is not None:
-            stats = stats[self.idxs]
-        h = df.shape[0] // stats.shape[0]
-        bc_stats = np.repeat(stats, h, axis=0)
-        return self._invert_with_stats(df, bc_stats)
-
-    def inverse_transform_fitted(
-        self, df: pd.DataFrame, sizes: np.ndarray
-    ) -> pd.DataFrame:
-        bc_stats = np.repeat(self.stats_, sizes, axis=0)
-        return self._invert_with_stats(df, bc_stats)
+    def inverse_transform(self, ga: GroupedArray) -> np.ndarray:
+        return _standard_scaler_inverse_transform(ga.data, ga.indptr, self.stats_)
