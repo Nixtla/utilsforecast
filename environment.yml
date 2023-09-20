@@ -10,6 +10,7 @@ dependencies:
   - plotly
   - pip
   - pyarrow
+  - scipy
   - pip:
     - nbdev
     - plotly-resampler
