@@ -4,6 +4,7 @@ channels:
 dependencies:
   - matplotlib
   - nbformat
+  - numba
   - numpy
   - pandas
   - plotly
