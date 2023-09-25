@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .compat import DataFrame
+from .processing import DataFrameProcessor
 
 # %% ../nbs/grouped_array.ipynb 2
 def _append_one(
@@ -70,11 +71,13 @@ class GroupedArray:
         return self.n_groups
 
     def __getitem__(self, idx: int) -> np.ndarray:
+        if idx < 0:
+            idx = self.n_groups + idx
         return self.data[self.indptr[idx] : self.indptr[idx + 1]]
 
     @classmethod
     def from_sorted_df(
-        cls, df: DataFrame, id_col: str, target_col: str
+        cls, df: DataFrame, id_col: str, time_col: str, target_col: str
     ) -> "GroupedArray":
         if isinstance(df, pd.DataFrame):
             sizes = df.groupby(id_col, observed=True).size().values
@@ -84,8 +87,10 @@ class GroupedArray:
             except AttributeError:
                 group_sizes = df.groupby(id_col, maintain_order=True).count()
             sizes = group_sizes["count"].to_numpy()
+
         indptr = np.append(0, sizes.cumsum())
-        data = df[target_col].to_numpy().copy()
+        proc = DataFrameProcessor(id_col, time_col, target_col)
+        data = proc._value_cols_to_numpy(df)
         if data.dtype not in (np.float32, np.float64):
             data = data.astype(np.float32)
         return cls(data, indptr)
@@ -125,4 +130,4 @@ class GroupedArray:
         return GroupedArray(new_data, new_indptr)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(n_data={self.data.size:,}, n_groups={self.n_groups:,})"
+        return f"{self.__class__.__name__}(n_rows={self.data.shape[0]:,}, n_groups={self.n_groups:,})"
