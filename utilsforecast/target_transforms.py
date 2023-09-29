@@ -72,11 +72,11 @@ class BaseTargetTransform:
         self.stats_ = _fit(ga.data, ga.indptr, self.stats_fn)
         return self
 
-    def fit_transform(self, ga: GroupedArray) -> np.ndarray:
-        return self.fit(ga).transform(ga)
-
     def transform(self, ga: GroupedArray) -> np.ndarray:
         return _transform(ga.data, ga.indptr, self.stats_, _common_scaler_transform)
+
+    def fit_transform(self, ga: GroupedArray) -> np.ndarray:
+        return self.fit(ga).transform(ga)
 
     def inverse_transform(self, ga: GroupedArray) -> np.ndarray:
         return _transform(
@@ -108,14 +108,14 @@ class LocalMinMaxScaler(BaseTargetTransform):
 # %% ../nbs/target_transforms.ipynb 15
 @njit
 def _robust_scaler_iqr_stats(data: np.ndarray) -> Tuple[float, float]:
-    q25, median, q75 = np.quantile(data, (0.25, 0.5, 0.75))
+    q25, median, q75 = np.nanquantile(data, (0.25, 0.5, 0.75))
     return median, q75 - q25
 
 
 @njit
 def _robust_scaler_mad_stats(data: np.ndarray) -> Tuple[float, float]:
-    median = np.median(data)
-    mad = np.median(np.abs(data - median))
+    median = np.nanmedian(data)
+    mad = np.nanmedian(np.abs(data - median))
     return median, mad
 
 # %% ../nbs/target_transforms.ipynb 16
