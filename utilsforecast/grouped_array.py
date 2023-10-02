@@ -109,6 +109,9 @@ class GroupedArray:
 
     def take_from_groups(self, idx: Union[int, slice]) -> "GroupedArray":
         """Select a subset from each group."""
+        if isinstance(idx, int):
+            # this preserves the 2d structure of data when indexing with the range
+            idx = slice(idx, idx + 1)
         ranges = [
             range(self.indptr[i], self.indptr[i + 1])[idx] for i in range(self.n_groups)
         ]
