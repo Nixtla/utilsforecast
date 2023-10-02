@@ -97,7 +97,7 @@ class GroupedArray:
 
     def _take_from_ranges(self, ranges: Sequence) -> "GroupedArray":
         items = [self.data[r] for r in ranges]
-        sizes = np.array([item.size for item in items])
+        sizes = np.array([item.shape[0] for item in items])
         data = np.vstack(items)
         indptr = np.append(0, sizes.cumsum())
         return GroupedArray(data, indptr)
