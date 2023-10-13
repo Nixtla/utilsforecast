@@ -10,24 +10,27 @@ import pandas as pd
 
 # %% ../nbs/compat.ipynb 2
 try:
+    from polars import Categorical as pl_Categorical
     from polars import DataFrame as pl_DataFrame
+    from polars import Datetime as pl_Datetime
+    from polars import Float64 as pl_Float64
     from polars import Series as pl_Series
     from polars import col as pl_col
     from polars import concat as pl_concat
+    from polars import from_numpy as pl_from_numpy
     from polars import lit as pl_lit
 
     POLARS_INSTALLED = True
 except ImportError:
-
-    class pl_DataFrame:  # type: ignore
-        ...
-
-    class pl_Series:  # type: ignore
-        ...
-
-    pl_col = None  # type: ignore
-    pl_concat = None  # type: ignore
-    pl_lit = None  # type: ignore
+    pl_Categorical = type(None)
+    pl_DataFrame = type(None)
+    pl_Datetime = type(None)
+    pl_Float64 = type(None)
+    pl_Series = type(None)
+    pl_col = None
+    pl_concat = None
+    pl_from_numpy = None
+    pl_lit = None
 
     POLARS_INSTALLED = False
 
