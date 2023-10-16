@@ -14,7 +14,6 @@ import pandas as pd
 from pandas.tseries.offsets import BaseOffset
 
 from .compat import DataFrame, Series, pl, pl_DataFrame, pl_Series
-from .utils import ensure_dtypes
 from .validation import validate_format
 
 # %% ../nbs/processing.ipynb 4
@@ -24,7 +23,6 @@ def _polars_categorical_to_numerical(serie: pl_Series) -> pl_Series:
     return serie
 
 # %% ../nbs/processing.ipynb 5
-@ensure_dtypes("df")
 def assign_columns(
     df: DataFrame,
     names: Union[str, List[str]],
@@ -47,8 +45,7 @@ def assign_columns(
         df = df.with_columns(vals)
     return df
 
-# %% ../nbs/processing.ipynb 7
-@ensure_dtypes("df")
+# %% ../nbs/processing.ipynb 8
 def take_rows(df: Union[DataFrame, Series], idxs: np.ndarray) -> DataFrame:
     if isinstance(df, (pd.DataFrame, pd.Series)):
         df = df.iloc[idxs]
@@ -56,8 +53,7 @@ def take_rows(df: Union[DataFrame, Series], idxs: np.ndarray) -> DataFrame:
         df = df[idxs]
     return df
 
-# %% ../nbs/processing.ipynb 9
-@ensure_dtypes("df")
+# %% ../nbs/processing.ipynb 10
 def filter_with_mask(
     df: Union[Series, DataFrame, pd.Index],
     mask: Union[np.ndarray, pd.Series, pl_Series],
@@ -68,8 +64,7 @@ def filter_with_mask(
         out = df.filter(mask)  # type: ignore
     return out
 
-# %% ../nbs/processing.ipynb 10
-@ensure_dtypes("s")
+# %% ../nbs/processing.ipynb 11
 def is_nan(s: Series) -> Series:
     if isinstance(s, pd.Series):
         out = s.isna()
@@ -77,8 +72,7 @@ def is_nan(s: Series) -> Series:
         out = s.is_nan()
     return out
 
-# %% ../nbs/processing.ipynb 12
-@ensure_dtypes("s")
+# %% ../nbs/processing.ipynb 13
 def is_none(s: Series) -> Series:
     if isinstance(s, pd.Series):
         out = is_nan(s)
@@ -86,11 +80,11 @@ def is_none(s: Series) -> Series:
         out = s.is_null()
     return out
 
-# %% ../nbs/processing.ipynb 14
+# %% ../nbs/processing.ipynb 15
 def is_nan_or_none(s: Series) -> Series:
     return is_nan(s) | is_none(s)
 
-# %% ../nbs/processing.ipynb 16
+# %% ../nbs/processing.ipynb 17
 def vertical_concat(dfs: List[DataFrame]) -> DataFrame:
     if not dfs:
         raise ValueError("Can't concatenate empty list.")
@@ -102,7 +96,7 @@ def vertical_concat(dfs: List[DataFrame]) -> DataFrame:
         raise ValueError(f"Got list of unexpected types: {type(dfs[0])}.")
     return out
 
-# %% ../nbs/processing.ipynb 18
+# %% ../nbs/processing.ipynb 19
 def horizontal_concat(dfs: List[DataFrame]) -> DataFrame:
     if not dfs:
         raise ValueError("Can't concatenate empty list.")
@@ -114,15 +108,13 @@ def horizontal_concat(dfs: List[DataFrame]) -> DataFrame:
         raise ValueError(f"Got list of unexpected types: {type(dfs[0])}.")
     return out
 
-# %% ../nbs/processing.ipynb 20
-@ensure_dtypes("df")
+# %% ../nbs/processing.ipynb 21
 def copy_if_pandas(df: DataFrame, deep: bool = False) -> DataFrame:
     if isinstance(df, pd.DataFrame):
         df = df.copy(deep=deep)
     return df
 
-# %% ../nbs/processing.ipynb 21
-@ensure_dtypes("df1", "df2")
+# %% ../nbs/processing.ipynb 22
 def join(
     df1: DataFrame, df2: DataFrame, on: Union[str, List[str]], how: str = "inner"
 ) -> DataFrame:
@@ -132,15 +124,13 @@ def join(
         out = df1.join(df2, on=on, how=how)  # type: ignore
     return out
 
-# %% ../nbs/processing.ipynb 22
-@ensure_dtypes("df")
+# %% ../nbs/processing.ipynb 23
 def drop_index_if_pandas(df: DataFrame) -> DataFrame:
     if isinstance(df, pd.DataFrame):
         df = df.reset_index(drop=True)
     return df
 
-# %% ../nbs/processing.ipynb 23
-@ensure_dtypes("df")
+# %% ../nbs/processing.ipynb 24
 def rename(df: DataFrame, mapping: Dict[str, str]) -> DataFrame:
     if isinstance(df, pd.DataFrame):
         df = df.rename(columns=mapping, copy=False)
@@ -148,8 +138,7 @@ def rename(df: DataFrame, mapping: Dict[str, str]) -> DataFrame:
         df = df.rename(mapping)
     return df
 
-# %% ../nbs/processing.ipynb 24
-@ensure_dtypes("df")
+# %% ../nbs/processing.ipynb 25
 def sort(df: DataFrame, by: Union[str, List[str]]) -> DataFrame:
     if isinstance(df, pd.DataFrame):
         out = df.sort_values(by)
@@ -157,7 +146,7 @@ def sort(df: DataFrame, by: Union[str, List[str]]) -> DataFrame:
         out = df.sort(by)
     return out
 
-# %% ../nbs/processing.ipynb 25
+# %% ../nbs/processing.ipynb 26
 def offset_dates(
     dates: Union[pd.Index, pl_Series],
     freq: Union[int, str, BaseOffset],
@@ -179,8 +168,7 @@ def offset_dates(
         )
     return out
 
-# %% ../nbs/processing.ipynb 26
-@ensure_dtypes("df")
+# %% ../nbs/processing.ipynb 27
 def group_by(df: Union[Series, DataFrame], by, maintain_order=False):
     if isinstance(df, (pd.Series, pd.DataFrame)):
         out = df.groupby(by, observed=True, sort=not maintain_order)
@@ -193,7 +181,7 @@ def group_by(df: Union[Series, DataFrame], by, maintain_order=False):
             out = df.groupby(by, maintain_order=maintain_order)
     return out
 
-# %% ../nbs/processing.ipynb 27
+# %% ../nbs/processing.ipynb 28
 class DataFrameProcessor:
     def __init__(
         self,

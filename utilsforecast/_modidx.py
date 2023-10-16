@@ -150,6 +150,5 @@ d = { 'settings': { 'branch': 'main',
                                                                                                              'utilsforecast/target_transforms.py'),
                                                  'utilsforecast.target_transforms._transform': ( 'target_transforms.html#_transform',
                                                                                                  'utilsforecast/target_transforms.py')},
-            'utilsforecast.utils': {'utilsforecast.utils.ensure_dtypes': ('utils.html#ensure_dtypes', 'utilsforecast/utils.py')},
             'utilsforecast.validation': { 'utilsforecast.validation.validate_format': ( 'validation.html#validate_format',
                                                                                         'utilsforecast/validation.py')}}}

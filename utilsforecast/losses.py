@@ -12,7 +12,6 @@ import pandas as pd
 
 from .compat import DataFrame, pl_DataFrame, pl
 from .processing import group_by
-from .utils import ensure_dtypes
 
 # %% ../nbs/losses.ipynb 11
 def _base_docstring(*args, **kwargs) -> Callable:
@@ -55,7 +54,6 @@ def _pl_agg_expr(
     return res
 
 # %% ../nbs/losses.ipynb 13
-@ensure_dtypes("df")
 @_base_docstring
 def mae(
     df: DataFrame,
@@ -88,7 +86,6 @@ def mae(
     return res
 
 # %% ../nbs/losses.ipynb 19
-@ensure_dtypes("df")
 @_base_docstring
 def mse(
     df: DataFrame,
@@ -121,7 +118,6 @@ def mse(
     return res
 
 # %% ../nbs/losses.ipynb 24
-@ensure_dtypes("df")
 @_base_docstring
 def rmse(
     df: DataFrame,
@@ -155,7 +151,6 @@ def _zero_to_nan(series: Union[pd.Series, "pl.Expr"]) -> Union[pd.Series, "pl.Ex
     return res
 
 # %% ../nbs/losses.ipynb 31
-@ensure_dtypes("df")
 @_base_docstring
 def mape(
     df: DataFrame,
@@ -195,7 +190,6 @@ def mape(
     return res
 
 # %% ../nbs/losses.ipynb 35
-@ensure_dtypes("df")
 @_base_docstring
 def smape(
     df: DataFrame,
@@ -234,7 +228,6 @@ def smape(
     return res
 
 # %% ../nbs/losses.ipynb 41
-@ensure_dtypes("df", "train_df")
 def mase(
     df: DataFrame,
     models: List[str],
@@ -306,7 +299,6 @@ def mase(
     return res
 
 # %% ../nbs/losses.ipynb 46
-@ensure_dtypes("df")
 def rmae(
     df: DataFrame,
     models: List[str],
@@ -367,7 +359,6 @@ def rmae(
     return res
 
 # %% ../nbs/losses.ipynb 52
-@ensure_dtypes("df")
 def quantile_loss(
     df: DataFrame,
     models: List[str],
@@ -423,7 +414,6 @@ def quantile_loss(
     return res
 
 # %% ../nbs/losses.ipynb 57
-@ensure_dtypes("df")
 def mqloss(
     df: DataFrame,
     models: List[str],
@@ -489,7 +479,6 @@ def mqloss(
     return res
 
 # %% ../nbs/losses.ipynb 61
-@ensure_dtypes("df")
 def coverage(
     df: DataFrame,
     models: List[str],
@@ -547,7 +536,6 @@ def coverage(
     return res
 
 # %% ../nbs/losses.ipynb 65
-@ensure_dtypes("df")
 def calibration(
     df: DataFrame,
     models: List[str],
@@ -598,7 +586,6 @@ def calibration(
     return res
 
 # %% ../nbs/losses.ipynb 69
-@ensure_dtypes("df")
 def scaled_crps(
     df: DataFrame,
     models: List[str],

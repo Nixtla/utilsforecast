@@ -12,7 +12,6 @@ from typing import Callable, List, Optional
 import pandas as pd
 
 from .compat import DataFrame, pl
-from .utils import ensure_dtypes
 
 # %% ../nbs/evaluation.ipynb 4
 def _function_name(f: Callable):
@@ -24,7 +23,6 @@ def _function_name(f: Callable):
     return name
 
 # %% ../nbs/evaluation.ipynb 5
-@ensure_dtypes("df")
 def evaluate(
     df: DataFrame,
     metrics: List[Callable],
