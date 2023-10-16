@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .compat import DataFrame
-from .processing import DataFrameProcessor
+from .processing import DataFrameProcessor, group_by
 
 # %% ../nbs/grouped_array.ipynb 2
 def _append_one(
@@ -82,10 +82,7 @@ class GroupedArray:
         if isinstance(df, pd.DataFrame):
             sizes = df.groupby(id_col, observed=True).size().values
         else:
-            try:
-                group_sizes = df.group_by(id_col, maintain_order=True).count()
-            except AttributeError:
-                group_sizes = df.groupby(id_col, maintain_order=True).count()
+            group_sizes = group_by(df, id_col, maintain_order=True).count()
             sizes = group_sizes["count"].to_numpy()
 
         indptr = np.append(0, sizes.cumsum())

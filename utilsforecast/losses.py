@@ -5,15 +5,14 @@ __all__ = ['mae', 'mse', 'rmse', 'mape', 'smape', 'mase', 'rmae', 'quantile_loss
            'scaled_crps']
 
 # %% ../nbs/losses.ipynb 3
-from typing import TYPE_CHECKING, Callable, List, Optional, Union
-
-if TYPE_CHECKING:
-    import polars as pl
+from typing import Callable, List, Optional, Union
 
 import numpy as np
 import pandas as pd
 
-from .compat import DataFrame, pl_DataFrame, pl_col
+from .compat import DataFrame, pl_DataFrame, pl
+from .processing import group_by
+from .utils import ensure_dtypes
 
 # %% ../nbs/losses.ipynb 11
 def _base_docstring(*args, **kwargs) -> Callable:
@@ -52,13 +51,11 @@ def _pl_agg_expr(
 ) -> pl_DataFrame:
     exprs = [gen_expr(model) for model in models]
     df = df.select([id_col, *exprs])
-    try:
-        res = df.group_by(id_col).mean()
-    except AttributeError:
-        res = df.groupby(id_col).mean()
+    res = group_by(df, id_col).mean()
     return res
 
 # %% ../nbs/losses.ipynb 13
+@ensure_dtypes("df")
 @_base_docstring
 def mae(
     df: DataFrame,
@@ -85,12 +82,13 @@ def mae(
     else:
 
         def gen_expr(model):
-            return pl_col(target_col).sub(pl_col(model)).abs().alias(model)
+            return pl.col(target_col).sub(pl.col(model)).abs().alias(model)
 
         res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
 # %% ../nbs/losses.ipynb 19
+@ensure_dtypes("df")
 @_base_docstring
 def mse(
     df: DataFrame,
@@ -117,12 +115,13 @@ def mse(
     else:
 
         def gen_expr(model):
-            return pl_col(target_col).sub(pl_col(model)).pow(2).alias(model)
+            return pl.col(target_col).sub(pl.col(model)).pow(2).alias(model)
 
         res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
 # %% ../nbs/losses.ipynb 24
+@ensure_dtypes("df")
 @_base_docstring
 def rmse(
     df: DataFrame,
@@ -144,7 +143,7 @@ def rmse(
     if isinstance(res, pd.DataFrame):
         res[models] = res[models].pow(0.5)
     else:
-        res = res.with_columns(*[pl_col(c).pow(0.5) for c in models])
+        res = res.with_columns(*[pl.col(c).pow(0.5) for c in models])
     return res
 
 # %% ../nbs/losses.ipynb 30
@@ -152,12 +151,11 @@ def _zero_to_nan(series: Union[pd.Series, "pl.Expr"]) -> Union[pd.Series, "pl.Ex
     if isinstance(series, pd.Series):
         res = series.replace(0, np.nan)
     else:
-        import polars as pl
-
         res = pl.when(series == 0).then(float("nan")).otherwise(series.abs())
     return res
 
 # %% ../nbs/losses.ipynb 31
+@ensure_dtypes("df")
 @_base_docstring
 def mape(
     df: DataFrame,
@@ -188,8 +186,8 @@ def mape(
     else:
 
         def gen_expr(model):
-            abs_err = pl_col(target_col).sub(pl_col(model)).abs()
-            abs_target = _zero_to_nan(pl_col(target_col))
+            abs_err = pl.col(target_col).sub(pl.col(model)).abs()
+            abs_target = _zero_to_nan(pl.col(target_col))
             ratio = abs_err.truediv(abs_target).alias(model)
             return ratio.fill_nan(0)
 
@@ -197,6 +195,7 @@ def mape(
     return res
 
 # %% ../nbs/losses.ipynb 35
+@ensure_dtypes("df")
 @_base_docstring
 def smape(
     df: DataFrame,
@@ -224,9 +223,9 @@ def smape(
     else:
 
         def gen_expr(model):
-            abs_err = pl_col(model).sub(pl_col(target_col)).abs()
+            abs_err = pl.col(model).sub(pl.col(target_col)).abs()
             denominator = _zero_to_nan(
-                pl_col(model).abs().add(pl_col(target_col)).abs()
+                pl.col(model).abs().add(pl.col(target_col)).abs()
             )
             ratio = abs_err.truediv(denominator).alias(model)
             return ratio.fill_nan(0)
@@ -235,6 +234,7 @@ def smape(
     return res
 
 # %% ../nbs/losses.ipynb 41
+@ensure_dtypes("df", "train_df")
 def mase(
     df: DataFrame,
     models: List[str],
@@ -289,23 +289,24 @@ def mase(
         res = res.reset_index()
     else:
         # assume train_df is sorted
-        lagged = pl_col(target_col).shift(seasonality).over(id_col)
-        scale_expr = pl_col(target_col).sub(lagged).abs().alias("scale")
+        lagged = pl.col(target_col).shift(seasonality).over(id_col)
+        scale_expr = pl.col(target_col).sub(lagged).abs().alias("scale")
         scale = train_df.select([id_col, scale_expr])
         try:
             scale = scale.group_by(id_col).mean()
         except AttributeError:
             scale = scale.groupby(id_col).mean()
-        scale = scale.with_columns(_zero_to_nan(pl_col("scale")))
+        scale = scale.with_columns(_zero_to_nan(pl.col("scale")))
 
         def gen_expr(model):
-            return pl_col(model).truediv(pl_col("scale")).fill_nan(0).alias(model)
+            return pl.col(model).truediv(pl.col("scale")).fill_nan(0).alias(model)
 
         full_df = mean_abs_err.join(scale, on=id_col, how="left")
         res = _pl_agg_expr(full_df, models, id_col, gen_expr)
     return res
 
 # %% ../nbs/losses.ipynb 46
+@ensure_dtypes("df")
 def rmae(
     df: DataFrame,
     models: List[str],
@@ -352,9 +353,9 @@ def rmae(
     else:
 
         def gen_expr(model, baseline):
-            denominator = _zero_to_nan(pl_col(f"{baseline}_denominator"))
+            denominator = _zero_to_nan(pl.col(f"{baseline}_denominator"))
             return (
-                pl_col(model)
+                pl.col(model)
                 .truediv(denominator)
                 .fill_nan(0)
                 .alias(f"{model}_div_{baseline}")
@@ -366,6 +367,7 @@ def rmae(
     return res
 
 # %% ../nbs/losses.ipynb 52
+@ensure_dtypes("df")
 def quantile_loss(
     df: DataFrame,
     models: List[str],
@@ -408,10 +410,9 @@ def quantile_loss(
         res.index.name = id_col
         res = res.reset_index()
     else:
-        import polars as pl
 
         def gen_expr(model):
-            delta_y = pl_col(model).sub(pl_col(target_col)).abs()
+            delta_y = pl.col(model).sub(pl.col(target_col)).abs()
             try:
                 col_max = pl.max_horizontal([q * delta_y, (q - 1) * delta_y])
             except AttributeError:
@@ -422,6 +423,7 @@ def quantile_loss(
     return res
 
 # %% ../nbs/losses.ipynb 57
+@ensure_dtypes("df")
 def mqloss(
     df: DataFrame,
     models: List[str],
@@ -473,10 +475,7 @@ def mqloss(
         if isinstance(result, pd.DataFrame):
             result = result.groupby(df[id_col], observed=True).mean()
         else:
-            try:
-                result = result.group_by(df[id_col]).mean()
-            except AttributeError:
-                result = result.groupby(df[id_col]).mean()
+            result = group_by(result, df[id_col]).mean()
         if res is None:
             res = result
             if isinstance(res, pd.DataFrame):
@@ -490,6 +489,7 @@ def mqloss(
     return res
 
 # %% ../nbs/losses.ipynb 61
+@ensure_dtypes("df")
 def coverage(
     df: DataFrame,
     models: List[str],
@@ -536,9 +536,9 @@ def coverage(
 
         def gen_expr(model):
             return (
-                pl_col(target_col)
+                pl.col(target_col)
                 .is_between(
-                    pl_col(f"{model}-lo-{level}"), pl_col(f"{model}-hi-{level}")
+                    pl.col(f"{model}-lo-{level}"), pl.col(f"{model}-hi-{level}")
                 )
                 .alias(model)
             )
@@ -547,6 +547,7 @@ def coverage(
     return res
 
 # %% ../nbs/losses.ipynb 65
+@ensure_dtypes("df")
 def calibration(
     df: DataFrame,
     models: List[str],
@@ -591,12 +592,13 @@ def calibration(
     else:
 
         def gen_expr(model):
-            return pl_col(target_col).le(pl_col(f"{model}-hi-{level}")).alias(model)
+            return pl.col(target_col).le(pl.col(f"{model}-hi-{level}")).alias(model)
 
         res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
 # %% ../nbs/losses.ipynb 69
+@ensure_dtypes("df")
 def scaled_crps(
     df: DataFrame,
     models: List[str],
@@ -649,18 +651,15 @@ def scaled_crps(
 
         def gen_expr(model):
             return (
-                2 * pl_col(model) * pl_col("counts") / (pl_col("norm") + eps)
+                2 * pl.col(model) * pl.col("counts") / (pl.col("norm") + eps)
             ).alias(model)
 
-        try:
-            grouped_df = df.group_by(id_col)
-        except AttributeError:
-            grouped_df = df.groupby(id_col)
-        norm = grouped_df.agg(pl_col(target_col).abs().sum().alias("norm"))
+        grouped_df = group_by(df, id_col)
+        norm = grouped_df.agg(pl.col(target_col).abs().sum().alias("norm"))
         sizes = (
             df[id_col]
             .value_counts()
-            .with_columns(pl_col("counts") * (pl_col("counts") + 1) / 2)
+            .with_columns(pl.col("counts") * (pl.col("counts") + 1) / 2)
         )
         res = _pl_agg_expr(
             loss.join(sizes, on=id_col).join(norm, on=id_col), models, id_col, gen_expr

@@ -11,7 +11,8 @@ from typing import Callable, List, Optional
 
 import pandas as pd
 
-from .compat import DataFrame, pl_concat, pl_lit
+from .compat import DataFrame
+from .utils import ensure_dtypes
 
 # %% ../nbs/evaluation.ipynb 4
 def _function_name(f: Callable):
@@ -23,6 +24,7 @@ def _function_name(f: Callable):
     return name
 
 # %% ../nbs/evaluation.ipynb 5
+@ensure_dtypes("df")
 def evaluate(
     df: DataFrame,
     metrics: List[Callable],
@@ -102,14 +104,14 @@ def evaluate(
         if isinstance(result, pd.DataFrame):
             result["metric"] = metric_name
         else:
-            result = result.with_columns(pl_lit(metric_name).alias("metric"))
+            result = result.with_columns(pl.lit(metric_name).alias("metric"))
         results_per_metric.append(result)
     if isinstance(df, pd.DataFrame):
         df = pd.concat(results_per_metric).reset_index(drop=True)
         out_cols = [c for c in df.columns if c not in (id_col, "metric")]
         df = df[[id_col, "metric", *out_cols]]
     else:
-        df = pl_concat(results_per_metric, how="diagonal")
+        df = pl.concat(results_per_metric, how="diagonal")
         out_cols = [c for c in df.columns if c not in (id_col, "metric")]
         df = df.select([id_col, "metric", *out_cols])
     return df
