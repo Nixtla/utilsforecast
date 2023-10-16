@@ -11,7 +11,7 @@ from typing import Callable, List, Optional
 
 import pandas as pd
 
-from .compat import DataFrame
+from .compat import DataFrame, pl
 from .utils import ensure_dtypes
 
 # %% ../nbs/evaluation.ipynb 4

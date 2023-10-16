@@ -87,7 +87,7 @@ class GroupedArray:
 
         indptr = np.append(0, sizes.cumsum())
         proc = DataFrameProcessor(id_col, time_col, target_col)
-        data = proc._value_cols_to_numpy(df)
+        data = proc.value_cols_to_numpy(df)
         if data.dtype not in (np.float32, np.float64):
             data = data.astype(np.float32)
         return cls(data, indptr)

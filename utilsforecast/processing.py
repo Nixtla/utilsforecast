@@ -65,8 +65,7 @@ def filter_with_mask(
     if isinstance(df, (pd.DataFrame, pd.Series, pd.Index)):
         out = df[mask]
     else:
-        assert isinstance(mask, (pl_Series, pl_DataFrame))
-        out = df.filter(mask)
+        out = df.filter(mask)  # type: ignore
     return out
 
 # %% ../nbs/processing.ipynb 10
