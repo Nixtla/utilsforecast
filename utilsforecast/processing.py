@@ -216,13 +216,13 @@ def group_by(df: Union[Series, DataFrame], by, maintain_order=False):
 
 # %% ../nbs/processing.ipynb 30
 def is_in(s: Series, collection) -> Series:
-    if isistance(s, pl_Series):
+    if isinstance(s, pl_Series):
         out = s.is_in(collection)
     else:
         out = s.isin(collection)
     return out
 
-# %% ../nbs/processing.ipynb 31
+# %% ../nbs/processing.ipynb 33
 class DataFrameProcessor:
     def __init__(
         self,
