@@ -3,8 +3,8 @@
 # %% auto 0
 __all__ = ['to_numpy', 'counts_by_id', 'maybe_compute_sort_indices', 'assign_columns', 'take_rows', 'filter_with_mask', 'is_nan',
            'is_none', 'is_nan_or_none', 'vertical_concat', 'horizontal_concat', 'copy_if_pandas', 'join',
-           'drop_index_if_pandas', 'rename', 'sort', 'offset_dates', 'group_by', 'is_in', 'process_df',
-           'DataFrameProcessor']
+           'drop_index_if_pandas', 'rename', 'sort', 'offset_dates', 'group_by', 'is_in', 'value_cols_to_numpy',
+           'process_df', 'DataFrameProcessor']
 
 # %% ../nbs/processing.ipynb 2
 import re
@@ -252,6 +252,17 @@ def is_in(s: Series, collection) -> Series:
     return out
 
 # %% ../nbs/processing.ipynb 34
+def value_cols_to_numpy(
+    df: DataFrame, id_col: str, time_col: str, target_col: str
+) -> np.ndarray:
+    exclude_cols = [id_col, time_col, target_col]
+    value_cols = [target_col] + [col for col in df.columns if col not in exclude_cols]
+    data = to_numpy(df[value_cols])
+    if data.dtype not in (np.float32, np.float64):
+        data = data.astype(np.float32)
+    return data
+
+# %% ../nbs/processing.ipynb 35
 def process_df(
     df: DataFrame, id_col: str, time_col: str, target_col: str
 ) -> Tuple[Series, np.ndarray, np.ndarray, np.ndarray, Optional[np.ndarray]]:
@@ -269,7 +280,7 @@ def process_df(
     last_times : numpy array
         array with the last time for each serie.
     data : numpy ndarray
-        1d array with target values.
+        2d array with target plus features values.
     indptr : numpy ndarray
         1d array with indices to the start and end of each serie.
     sort_idxs : numpy array or None
@@ -284,24 +295,12 @@ def process_df(
     uids = id_counts[id_col]
 
     # indices
-    indptr = np.append(
-        np.int64(0),
-        id_counts["counts"].to_numpy().cumsum().astype(np.int64),
-    )
+    sizes = id_counts["counts"].to_numpy()
+    indptr = np.append(0, sizes.cumsum()).astype(np.int32)
     last_idxs = indptr[1:] - 1
 
     # data
-    exclude_cols = [id_col, time_col, target_col]
-    value_cols = [col for col in df.columns if col not in exclude_cols]
-    # ensure target is the first column
-    value_cols = [target_col] + value_cols
-    data = to_numpy(df[value_cols])
-    # ensure float dtype
-    if data.dtype not in (np.float32, np.float64):
-        data = data.astype(np.float32)
-    # ensure 2d
-    if data.ndim == 1:
-        data = data.reshape(-1, 1)
+    data = value_cols_to_numpy(df, id_col, time_col, target_col)
 
     # check if we need to sort
     sort_idxs = maybe_compute_sort_indices(df, id_col, time_col)
@@ -311,7 +310,7 @@ def process_df(
     times = df[time_col].to_numpy()[last_idxs]
     return uids, times, data, indptr, sort_idxs
 
-# %% ../nbs/processing.ipynb 35
+# %% ../nbs/processing.ipynb 36
 class DataFrameProcessor:
     def __init__(
         self,
