@@ -51,8 +51,10 @@ def counts_by_id(df: DataFrame, id_col: str) -> DataFrame:
             id_counts = id_counts.sort_index()
         id_counts = id_counts.reset_index()
         id_counts.columns = [id_col, "counts"]
-    else:
+    elif isinstance(df, pl.DataFrame):
         id_counts = df[id_col].value_counts().sort(id_col)
+    else:
+        raise ValueError(f"{type(df)} is not supported")
     return id_counts
 
 # %% ../nbs/processing.ipynb 7
