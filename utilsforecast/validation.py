@@ -5,6 +5,7 @@ __all__ = ['validate_format']
 
 # %% ../nbs/validation.ipynb 2
 import numpy as np
+import pandas as pd
 
 from .compat import DataFrame, pl_DataFrame
 
