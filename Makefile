@@ -23,7 +23,7 @@ header:
 	@echo "$$HEADER"
 
 setup:
-	@python -m pip install ./dev/requirements.txt
+	@python -m pip install -r ./dev/requirements.txt
 	@nbdev_install_hooks
 
 test:
