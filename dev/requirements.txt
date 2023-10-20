@@ -1,0 +1,13 @@
+matplotlib
+nbformat
+numba
+numpy
+pandas
+plotly
+pip
+pyarrow
+scipy
+nbdev
+plotly-resampler
+polars
+mypy
