@@ -325,11 +325,11 @@ def group_by(df: Union[Series, DataFrame], by, maintain_order=False):
     return out
 
 # %% ../nbs/processing.ipynb 36
-def group_by_agg(df: DataFrame, by, aggs) -> DataFrame:
+def group_by_agg(df: DataFrame, by, aggs, maintain_order=False) -> DataFrame:
     if isinstance(df, pd.DataFrame):
-        out = group_by(df, by).agg(aggs).reset_index()
+        out = group_by(df, by, maintain_order).agg(aggs).reset_index()
     else:
-        out = group_by(df, by).agg(
+        out = group_by(df, by, maintain_order).agg(
             *[getattr(pl.col(c), agg)() for c, agg in aggs.items()]
         )
     return out
