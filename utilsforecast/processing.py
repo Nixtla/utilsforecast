@@ -152,8 +152,9 @@ def match_if_categorical(
 ) -> Tuple[Series, Series]:
     if isinstance(s1.dtype, pd.CategoricalDtype):
         if isinstance(s1, pd.Index):
-            s1 = pd.Series(s1)
-        cat1 = s1.cat.categories
+            cat1 = s1.categories
+        else:
+            cat1 = s1.cat.categories
         if isinstance(s2.dtype, pd.CategoricalDtype):
             cat2 = s2.cat.categories
         else:
