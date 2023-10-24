@@ -24,7 +24,7 @@ jobs:
           cache-dependency-path: settings.ini
       - name: Build docs
         run: |
-          pip install -e ".[dev]"
+          pip install -e ".[dev]" PyYAML
           mkdir nbs/_extensions
           cp -r docs-scripts/mintlify/ nbs/_extensions/
           python docs-scripts/update-quarto.py
