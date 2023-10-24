@@ -1,0 +1,205 @@
+---
+description: Utilities for processing data before training/analysis
+output-file: preprocessing.html
+title: Preprocessing
+
+---
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/preprocessing.py#L35"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### fill_gaps
+
+> ``` text
+>  fill_gaps (df:pandas.core.frame.DataFrame, freq:Union[str,int],
+>             start:Union[str,int]='per_serie', end:Union[str,int]='global',
+>             id_col:str='unique_id', time_col:str='ds')
+> ```
+
+Enforce start and end datetimes for dataframe.
+
+|             | **Type**      | **Default** | **Details**                                                                                                                                                                                                                    |
+|------|------------------|-------------------------|-------------------------|
+| df          | DataFrame     |             | Input data                                                                                                                                                                                                                     |
+| freq        | Union         |             | Series’ frequency                                                                                                                                                                                                              |
+| start       | Union         | per_serie   | Initial timestamp for the series.<br/> \* ‘per_serie’ uses each serie’s first timestamp<br/> \* ‘global’ uses the first timestamp seen in the data<br/> \* Can also be a specific timestamp or integer, e.g. ‘2000-01-01’ or 2000 |
+| end         | Union         | global      | Initial timestamp for the series.<br/> \* ‘per_serie’ uses each serie’s last timestamp<br/> \* ‘global’ uses the last timestamp seen in the data<br/> \* Can also be a specific timestamp or integer, e.g. ‘2000-01-01’ or 2000   |
+| id_col      | str           | unique_id   | Column that identifies each serie.                                                                                                                                                                                             |
+| time_col    | str           | ds          | Column that identifies each timestamp.                                                                                                                                                                                         |
+| **Returns** | **DataFrame** |             | **Dataframe with gaps filled.**                                                                                                                                                                                                |
+
+```python
+df = pd.DataFrame(
+    {
+        'unique_id': [0, 0, 0, 1, 1],
+        'ds': pd.to_datetime(['2020', '2021', '2023', '2021', '2022']),
+        'y': np.arange(5),
+    }
+)
+df
+```
+
+|     | unique_id | ds         | y   |
+|-----|-----------|------------|-----|
+| 0   | 0         | 2020-01-01 | 0   |
+| 1   | 0         | 2021-01-01 | 1   |
+| 2   | 0         | 2023-01-01 | 2   |
+| 3   | 1         | 2021-01-01 | 3   |
+| 4   | 1         | 2022-01-01 | 4   |
+
+The default functionality is taking the current starts and only
+extending the end date to be the same for all series.
+
+```python
+fill_gaps(
+    df,
+    freq='YS',
+)
+```
+
+|     | unique_id | ds         | y   |
+|-----|-----------|------------|-----|
+| 0   | 0         | 2020-01-01 | 0.0 |
+| 1   | 0         | 2021-01-01 | 1.0 |
+| 2   | 0         | 2022-01-01 | NaN |
+| 3   | 0         | 2023-01-01 | 2.0 |
+| 4   | 1         | 2021-01-01 | 3.0 |
+| 5   | 1         | 2022-01-01 | 4.0 |
+| 6   | 1         | 2023-01-01 | NaN |
+
+We can also specify `end='per_serie'` to only fill possible gaps within
+each serie.
+
+```python
+fill_gaps(
+    df,
+    freq='YS',
+    end='per_serie',
+)
+```
+
+|     | unique_id | ds         | y   |
+|-----|-----------|------------|-----|
+| 0   | 0         | 2020-01-01 | 0.0 |
+| 1   | 0         | 2021-01-01 | 1.0 |
+| 2   | 0         | 2022-01-01 | NaN |
+| 3   | 0         | 2023-01-01 | 2.0 |
+| 4   | 1         | 2021-01-01 | 3.0 |
+| 5   | 1         | 2022-01-01 | 4.0 |
+
+We can also specify an end date in the future.
+
+```python
+fill_gaps(
+    df,
+    freq='YS',
+    end='2024',
+)
+```
+
+|     | unique_id | ds         | y   |
+|-----|-----------|------------|-----|
+| 0   | 0         | 2020-01-01 | 0.0 |
+| 1   | 0         | 2021-01-01 | 1.0 |
+| 2   | 0         | 2022-01-01 | NaN |
+| 3   | 0         | 2023-01-01 | 2.0 |
+| 4   | 0         | 2024-01-01 | NaN |
+| 5   | 1         | 2021-01-01 | 3.0 |
+| 6   | 1         | 2022-01-01 | 4.0 |
+| 7   | 1         | 2023-01-01 | NaN |
+| 8   | 1         | 2024-01-01 | NaN |
+
+We can set all series to start at the same time.
+
+```python
+fill_gaps(
+    df,
+    freq='YS',
+    start='global'
+)
+```
+
+|     | unique_id | ds         | y   |
+|-----|-----------|------------|-----|
+| 0   | 0         | 2020-01-01 | 0.0 |
+| 1   | 0         | 2021-01-01 | 1.0 |
+| 2   | 0         | 2022-01-01 | NaN |
+| 3   | 0         | 2023-01-01 | 2.0 |
+| 4   | 1         | 2020-01-01 | NaN |
+| 5   | 1         | 2021-01-01 | 3.0 |
+| 6   | 1         | 2022-01-01 | 4.0 |
+| 7   | 1         | 2023-01-01 | NaN |
+
+We can also set a common start date for all series (which can be earlier
+than their current starts).
+
+```python
+fill_gaps(
+    df,
+    freq='YS',
+    start='2019',
+)
+```
+
+|     | unique_id | ds         | y   |
+|-----|-----------|------------|-----|
+| 0   | 0         | 2019-01-01 | NaN |
+| 1   | 0         | 2020-01-01 | 0.0 |
+| 2   | 0         | 2021-01-01 | 1.0 |
+| 3   | 0         | 2022-01-01 | NaN |
+| 4   | 0         | 2023-01-01 | 2.0 |
+| 5   | 1         | 2019-01-01 | NaN |
+| 6   | 1         | 2020-01-01 | NaN |
+| 7   | 1         | 2021-01-01 | 3.0 |
+| 8   | 1         | 2022-01-01 | 4.0 |
+| 9   | 1         | 2023-01-01 | NaN |
+
+In case the times are integers the frequency, start and end must also be
+integers.
+
+```python
+df = pd.DataFrame(
+    {
+        'unique_id': [0, 0, 0, 1, 1],
+        'ds': [2020, 2021, 2023, 2021, 2022],
+        'y': np.arange(5),
+    }
+)
+df
+```
+
+|     | unique_id | ds   | y   |
+|-----|-----------|------|-----|
+| 0   | 0         | 2020 | 0   |
+| 1   | 0         | 2021 | 1   |
+| 2   | 0         | 2023 | 2   |
+| 3   | 1         | 2021 | 3   |
+| 4   | 1         | 2022 | 4   |
+
+```python
+fill_gaps(
+    df,
+    freq=1,
+    start=2019,
+    end=2024,
+)
+```
+
+|     | unique_id | ds   | y   |
+|-----|-----------|------|-----|
+| 0   | 0         | 2019 | NaN |
+| 1   | 0         | 2020 | 0.0 |
+| 2   | 0         | 2021 | 1.0 |
+| 3   | 0         | 2022 | NaN |
+| 4   | 0         | 2023 | 2.0 |
+| 5   | 0         | 2024 | NaN |
+| 6   | 1         | 2019 | NaN |
+| 7   | 1         | 2020 | NaN |
+| 8   | 1         | 2021 | 3.0 |
+| 9   | 1         | 2022 | 4.0 |
+| 10  | 1         | 2023 | NaN |
+| 11  | 1         | 2024 | NaN |
+

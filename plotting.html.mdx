@@ -1,0 +1,81 @@
+---
+description: Time series visualizations
+output-file: plotting.html
+title: Plotting
+
+---
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/plotting.py#L53"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### plot_series
+
+> ``` text
+>  plot_series
+>               (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame
+>               .DataFrame], forecasts_df:Union[pandas.core.frame.DataFrame,
+>               polars.dataframe.frame.DataFrame,NoneType]=None,
+>               ids:Optional[List[str]]=None, plot_random:bool=True,
+>               max_ids:int=8, models:Optional[List[str]]=None,
+>               level:Optional[List[float]]=None,
+>               max_insample_length:Optional[int]=None,
+>               plot_anomalies:bool=False, engine:str='matplotlib',
+>               palette:str='viridis', id_col:str='unique_id',
+>               time_col:str='ds', target_col:str='y', seed:int=0,
+>               resampler_kwargs:Optional[Dict]=None)
+> ```
+
+Plot forecasts and insample values.
+
+|                     | **Type**                        | **Default** | **Details**                                                                                                                                                                                                        |
+|------|------------------|-------------------------|-------------------------|
+| df                  | Union                           |             | DataFrame with columns \[`id_col`, `time_col`, `target_col`\].                                                                                                                                                     |
+| forecasts_df        | Union                           | None        | DataFrame with columns \[`id_col`, `time_col`\] and models.                                                                                                                                                        |
+| ids                 | Optional                        | None        | Time Series to plot.<br/>If None, time series are selected randomly.                                                                                                                                                |
+| plot_random         | bool                            | True        | Select time series to plot randomly.                                                                                                                                                                               |
+| max_ids             | int                             | 8           | Maximum number of ids to plot.                                                                                                                                                                                     |
+| models              | Optional                        | None        | Models to plot.                                                                                                                                                                                                    |
+| level               | Optional                        | None        | Prediction intervals to plot.                                                                                                                                                                                      |
+| max_insample_length | Optional                        | None        | Maximum number of train/insample observations to be plotted.                                                                                                                                                       |
+| plot_anomalies      | bool                            | False       | Plot anomalies for each prediction interval.                                                                                                                                                                       |
+| engine              | str                             | matplotlib  | Library used to plot. ‘plotly’, ‘plotly-resampler’ or ‘matplotlib’.                                                                                                                                                |
+| palette             | str                             | viridis     | Name of the matplotlib colormap to use.                                                                                                                                                                            |
+| id_col              | str                             | unique_id   | Column that identifies each serie.                                                                                                                                                                                 |
+| time_col            | str                             | ds          | Column that identifies each timestep, its values can be timestamps or integers.                                                                                                                                    |
+| target_col          | str                             | y           | Column that contains the target.                                                                                                                                                                                   |
+| seed                | int                             | 0           | Seed used for the random number generator. Only used if plot_random is True.                                                                                                                                       |
+| resampler_kwargs    | Optional                        | None        | Keyword arguments to be passed to plotly-resampler constructor.<br/>For further custumization (“show_dash”) call the method,<br/>store the plotting object and add the extra arguments to<br/>its `show_dash` method. |
+| **Returns**         | **matplotlib or plotly figure** |             | **Plot’s figure**                                                                                                                                                                                                  |
+
+```python
+from utilsforecast.data import generate_series
+```
+
+
+```python
+level = [80, 95]
+series = generate_series(4, freq='D', equal_ends=True, with_trend=True, n_models=2, level=level)
+test_pd = series.groupby('unique_id', observed=True).tail(10).copy()
+train_pd = series.drop(test_pd.index)
+```
+
+
+```python
+fig = plot_series(
+    train_pd,
+    forecasts_df=test_pd,
+    ids=[0, 3],
+    plot_random=False,
+    level=level,    
+    max_insample_length=50,
+    engine='matplotlib',
+    plot_anomalies=True,
+)
+fig.savefig('imgs/plotting.png', bbox_inches='tight')
+```
+
+![](/imgs/plotting.png)
+

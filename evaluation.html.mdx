@@ -1,0 +1,116 @@
+---
+description: Model performance evaluation
+output-file: evaluation.html
+title: Evaluation
+
+---
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/evaluation.py#L26"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### evaluate
+
+> ``` text
+>  evaluate
+>            (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.Da
+>            taFrame], metrics:List[Callable],
+>            models:Optional[List[str]]=None, train_df:Union[pandas.core.fra
+>            me.DataFrame,polars.dataframe.frame.DataFrame,NoneType]=None,
+>            id_col:str='unique_id', time_col:str='ds', target_col:str='y')
+> ```
+
+Evaluate forecast using different metrics.
+
+|             | **Type**  | **Default** | **Details**                                                                                                              |
+|------|------------------|-------------------------|-------------------------|
+| df          | Union     |             | Forecasts to evaluate.<br/>Must have `id_col`, `time_col`, `target_col` and models’ predictions.                          |
+| metrics     | List      |             | Functions with arguments `df`, `models`, `id_col`, `target_col` and optionally `train_df`.                               |
+| models      | Optional  | None        | Names of the models to evaluate.<br/>If `None` will use every column in the dataframe after removing id, time and target. |
+| train_df    | Union     | None        | Training set. Used to evaluate metrics such as [`mase`](https://Nixtla.github.io/utilsforecast/losses.html#mase).        |
+| id_col      | str       | unique_id   | Column that identifies each serie.                                                                                       |
+| time_col    | str       | ds          | Column that identifies each timestep, its values can be timestamps or integers.                                          |
+| target_col  | str       | y           | Column that contains the target.                                                                                         |
+| **Returns** | **Union** |             | **Metrics with one row per (id, metric) combination and one column per model.**                                          |
+
+```python
+from functools import partial
+
+import numpy as np
+import pandas as pd
+
+from utilsforecast.losses import *
+from utilsforecast.data import generate_series
+```
+
+
+```python
+series = generate_series(10, n_models=2, level=[80])
+```
+
+
+```python
+models = ['model0', 'model1']
+metrics = [
+    mae,
+    mse,
+    rmse,
+    mape,
+    smape,
+    partial(mase, seasonality=7),
+    partial(rmae, baseline_models=list(reversed(models))),
+    quantile_loss,
+    partial(mqloss, quantiles=np.array([0.3, 0.5])),
+    partial(coverage, level=80),
+    partial(calibration, level=80),
+    partial(scaled_crps, quantiles=np.array([0.3, 0.5])),
+]
+```
+
+
+```python
+evaluation = evaluate(
+    series,
+    metrics=metrics,
+    models=models,
+    train_df=series,
+)
+evaluation
+```
+
+|     | unique_id | metric      | model0   | model1    | model0_div_model1 | model1_div_model0 |
+|-----|-----------|-------------|----------|-----------|-------------------|-------------------|
+| 0   | 0         | mae         | 0.158108 | 0.163246  | NaN               | NaN               |
+| 1   | 1         | mae         | 0.160109 | 0.143805  | NaN               | NaN               |
+| 2   | 2         | mae         | 0.159815 | 0.170510  | NaN               | NaN               |
+| 3   | 3         | mae         | 0.168537 | 0.161595  | NaN               | NaN               |
+| 4   | 4         | mae         | 0.170182 | 0.163329  | NaN               | NaN               |
+| ... | ...       | ...         | ...      | ...       | ...               | ...               |
+| 115 | 5         | scaled_crps | 7.564046 | 7.580635  | NaN               | NaN               |
+| 116 | 6         | scaled_crps | 6.063454 | 5.748035  | NaN               | NaN               |
+| 117 | 7         | scaled_crps | 9.691468 | 10.132641 | NaN               | NaN               |
+| 118 | 8         | scaled_crps | 1.481827 | 1.559418  | NaN               | NaN               |
+| 119 | 9         | scaled_crps | 6.278162 | 6.563539  | NaN               | NaN               |
+
+```python
+summary = evaluation.drop(columns='unique_id').groupby('metric').mean().reset_index()
+summary
+```
+
+|     | metric        | model0   | model1   | model0_div_model1 | model1_div_model0 |
+|-----|---------------|----------|----------|-------------------|-------------------|
+| 0   | calibration   | 0.833993 | 0.815833 | NaN               | NaN               |
+| 1   | coverage      | 0.833993 | 0.815833 | NaN               | NaN               |
+| 2   | mae           | 0.161286 | 0.162281 | NaN               | NaN               |
+| 3   | mape          | 0.048894 | 0.049624 | NaN               | NaN               |
+| 4   | mase          | 0.966846 | 0.975354 | NaN               | NaN               |
+| 5   | mqloss        | 0.080764 | 0.079965 | NaN               | NaN               |
+| 6   | mse           | 0.048653 | 0.049198 | NaN               | NaN               |
+| 7   | quantile_loss | 0.080643 | 0.081141 | NaN               | NaN               |
+| 8   | rmae          | NaN      | NaN      | 0.996604          | 1.007927          |
+| 9   | rmse          | 0.220357 | 0.221543 | NaN               | NaN               |
+| 10  | scaled_crps   | 5.917607 | 5.887435 | NaN               | NaN               |
+| 11  | smape         | 0.024475 | 0.024902 | NaN               | NaN               |
+

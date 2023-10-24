@@ -1,0 +1,152 @@
+---
+output-file: target_transforms.html
+title: Target transforms
+
+---
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/target_transforms.py#L71"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### BaseTargetTransform
+
+> ``` text
+>  BaseTargetTransform ()
+> ```
+
+Base class used for target transformations.
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/target_transforms.py#L97"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### LocalStandardScaler
+
+> ``` text
+>  LocalStandardScaler ()
+> ```
+
+Standardizes each serie by subtracting its mean and dividing by its
+standard deviation.
+
+```python
+from utilsforecast.data import generate_series
+```
+
+
+```python
+series = generate_series(10, min_length=50, max_length=100)
+data = series['y'].values
+sizes = series.groupby('unique_id', observed=True).size().values
+indptr = np.append(0, sizes.cumsum())
+ga = GroupedArray(data, indptr)
+# introduce some constant series
+for i, c in zip([0, 3], [10, 0]):
+    ga.data[ga.indptr[i] : ga.indptr[i + 1]] = c * np.ones(ga[i].size)
+```
+
+
+```python
+def test_transform(tfm, ga):
+    transformed = tfm.fit_transform(ga)
+    transformed2 = tfm.transform(ga)
+    np.testing.assert_allclose(transformed, transformed2)
+    transformed_ga = GroupedArray(transformed, ga.indptr)
+    np.testing.assert_allclose(
+        tfm.inverse_transform(transformed_ga),
+        ga.data,
+    )
+```
+
+
+```python
+test_transform(LocalStandardScaler(), ga)
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/target_transforms.py#L110"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### LocalMinMaxScaler
+
+> ``` text
+>  LocalMinMaxScaler ()
+> ```
+
+Scales each serie to be in the \[0, 1\] interval.
+
+```python
+test_transform(LocalMinMaxScaler(), ga)
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/target_transforms.py#L129"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### LocalRobustScaler
+
+> ``` text
+>  LocalRobustScaler (scale:str='iqr')
+> ```
+
+Scaler robust to outliers.
+
+|       | **Type** | **Default** | **Details**                                                                                                   |
+|------|------------------|-------------------------|-------------------------|
+| scale | str      | iqr         | Statistic to use for scaling. Can be either ‘iqr’ (Inter Quartile Range) or ‘mad’ (Median Asbolute Deviation) |
+
+```python
+for scale in ('iqr', 'mad'):
+    test_transform(LocalRobustScaler(scale=scale), ga)
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/target_transforms.py#L153"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### LocalBoxCox
+
+> ``` text
+>  LocalBoxCox ()
+> ```
+
+Finds optimum lambda for each serie and applies Box-Cox transformation.
+
+```python
+test_transform(LocalBoxCox(), ga)
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/target_transforms.py#L198"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### GlobalFuncTransformer
+
+> ``` text
+>  GlobalFuncTransformer (func:Callable, inverse_func:Callable)
+> ```
+
+Uses `func` and `inverse_func` for applying the same transformation to
+all series.
+
+|              | **Type** | **Details**                                |
+|--------------|----------|--------------------------------------------|
+| func         | Callable | Function that transforms the data.         |
+| inverse_func | Callable | Function that inverse transforms the data. |
+
+```python
+test_transform(GlobalFuncTransformer(np.log1p, np.expm1), ga)
+```
+

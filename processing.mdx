@@ -1,0 +1,659 @@
+```python
+from fastcore.test import test_eq
+from nbdev import show_doc
+
+from utilsforecast.compat import POLARS_INSTALLED
+from utilsforecast.data import generate_series
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L28"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### to_numpy
+
+> ``` text
+>  to_numpy
+>            (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.Da
+>            taFrame])
+> ```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L49"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### counts_by_id
+
+> ``` text
+>  counts_by_id
+>                (df:Union[pandas.core.frame.DataFrame,polars.dataframe.fram
+>                e.DataFrame], id_col:str)
+> ```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L61"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### maybe_compute_sort_indices
+
+> ``` text
+>  maybe_compute_sort_indices
+>                              (df:Union[pandas.core.frame.DataFrame,polars.
+>                              dataframe.frame.DataFrame], id_col:str,
+>                              time_col:str)
+> ```
+
+Compute indices that would sort dataframe
+
+|             | **Type**     | **Details**                                                                  |
+|--------|---------------------------|-------------------------------------|
+| df          | Union        | Input dataframe with id, times and target values.                            |
+| id_col      | str          |                                                                              |
+| time_col    | str          |                                                                              |
+| **Returns** | **Optional** | **Array with indices to sort the dataframe or None if it’s already sorted.** |
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L89"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### assign_columns
+
+> ``` text
+>  assign_columns
+>                  (df:Union[pandas.core.frame.DataFrame,polars.dataframe.fr
+>                  ame.DataFrame], names:Union[str,List[str]], values:Union[
+>                  numpy.ndarray,pandas.core.series.Series,polars.series.ser
+>                  ies.Series])
+> ```
+
+```python
+engines = ['pandas']
+if POLARS_INSTALLED:
+    engines.append('polars')
+```
+
+
+```python
+for engine in engines:
+    series = generate_series(2, engine=engine)
+    x = np.random.rand(series.shape[0])    
+    series = assign_columns(series, 'x', x)
+    series = assign_columns(series, ['y', 'z'], np.vstack([x, x]).T)
+    series = assign_columns(series, 'ones', 1)
+    series = assign_columns(series, 'zeros', np.zeros(series.shape[0]))
+    series = assign_columns(series, 'as', 'a')
+    np.testing.assert_allclose(
+        series[['x', 'y', 'z']],
+        np.vstack([x, x, x]).T
+    )
+    np.testing.assert_equal(series['ones'], np.ones(series.shape[0]))
+    np.testing.assert_equal(series['as'], np.full(series.shape[0], 'a'))
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L112"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### take_rows
+
+> ``` text
+>  take_rows (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.Da
+>             taFrame,pandas.core.series.Series,polars.series.series.Series,
+>             numpy.ndarray], idxs:numpy.ndarray)
+> ```
+
+```python
+for engine in engines:
+    series = generate_series(2, engine=engine)
+    subset = take_rows(series, np.array([0, 2]))
+    assert subset.shape[0] == 2
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L120"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### filter_with_mask
+
+> ``` text
+>  filter_with_mask (df:Union[pandas.core.series.Series,polars.series.series
+>                    .Series,pandas.core.frame.DataFrame,polars.dataframe.fr
+>                    ame.DataFrame,pandas.core.indexes.base.Index,numpy.ndar
+>                    ray], mask:Union[numpy.ndarray,pandas.core.series.Serie
+>                    s,polars.series.series.Series])
+> ```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L131"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### is_nan
+
+> ``` text
+>  is_nan (s:Union[pandas.core.series.Series,polars.series.series.Series])
+> ```
+
+```python
+np.testing.assert_equal(
+    is_nan(pd.Series([np.nan, 1.0, None])).to_numpy(),
+    np.array([True, False, True]),
+)
+if POLARS_INSTALLED:
+    np.testing.assert_equal(
+        is_nan(pl.Series([np.nan, 1.0, None])).to_numpy(),
+        np.array([True, False, None]),
+    )
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L139"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### is_none
+
+> ``` text
+>  is_none (s:Union[pandas.core.series.Series,polars.series.series.Series])
+> ```
+
+```python
+np.testing.assert_equal(
+    is_none(pd.Series([np.nan, 1.0, None])).to_numpy(),
+    np.array([True, False, True]),
+)
+if POLARS_INSTALLED:
+    np.testing.assert_equal(
+        is_none(pl.Series([np.nan, 1.0, None])).to_numpy(),
+        np.array([False, False, True]),
+    )
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L147"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### is_nan_or_none
+
+> ``` text
+>  is_nan_or_none
+>                  (s:Union[pandas.core.series.Series,polars.series.series.S
+>                  eries])
+> ```
+
+```python
+np.testing.assert_equal(
+    is_nan_or_none(pd.Series([np.nan, 1.0, None])).to_numpy(),
+    np.array([True, False, True]),
+)
+if POLARS_INSTALLED:
+    np.testing.assert_equal(
+        is_nan_or_none(pl.Series([np.nan, 1.0, None])).to_numpy(),
+        np.array([True, False, True]),
+    )
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L151"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### match_if_categorical
+
+> ``` text
+>  match_if_categorical (s1:Union[pandas.core.series.Series,polars.series.se
+>                        ries.Series,pandas.core.indexes.base.Index], s2:Uni
+>                        on[pandas.core.series.Series,polars.series.series.S
+>                        eries])
+> ```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L183"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### vertical_concat
+
+> ``` text
+>  vertical_concat (dfs:List[Union[pandas.core.frame.DataFrame,polars.datafr
+>                   ame.frame.DataFrame]], match_categories:bool=True)
+> ```
+
+```python
+df1 = pd.DataFrame({'x': ['a', 'b', 'c']}, dtype='category')
+df2 = pd.DataFrame({'x': ['f', 'b', 'a']}, dtype='category')
+pd.testing.assert_series_equal(
+    vertical_concat([df1,df2])['x'],
+    pd.Series(['a', 'b', 'c', 'f', 'b', 'a'], name='x', dtype=pd.CategoricalDtype(categories=['a', 'b', 'c', 'f']))
+)
+```
+
+
+```python
+df1 = pl.DataFrame({'x': ['a', 'b', 'c']}, schema={'x': pl.Categorical})
+df2 = pl.DataFrame({'x': ['f', 'b', 'a']}, schema={'x': pl.Categorical})
+out = vertical_concat([df1,df2])['x']
+assert out.series_equal(pl.Series('x', ['a', 'b', 'c', 'f', 'b', 'a']))
+assert out.to_physical().series_equal(pl.Series('x', [0, 1, 2, 3, 1, 0]))
+assert out.cat.get_categories().series_equal(
+    pl.Series('x', ['a', 'b', 'c', 'f'])
+)
+```
+
+
+```python
+for engine in engines:
+    series = generate_series(2, engine=engine)
+    doubled = vertical_concat([series, series])
+    assert doubled.shape[0] == 2 * series.shape[0]
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L230"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### horizontal_concat
+
+> ``` text
+>  horizontal_concat (dfs:List[Union[pandas.core.frame.DataFrame,polars.data
+>                     frame.frame.DataFrame]])
+> ```
+
+```python
+for engine in engines:
+    series = generate_series(2, engine=engine)
+    renamer = {c: f'{c}_2' for c in series.columns}
+    if engine == 'pandas':
+        series2 = series.rename(columns=renamer)
+    else:
+        series2 = series.rename(renamer)
+    doubled = horizontal_concat([series, series2])
+    assert doubled.shape[1] == 2 * series.shape[1]
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L242"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### copy_if_pandas
+
+> ``` text
+>  copy_if_pandas
+>                  (df:Union[pandas.core.frame.DataFrame,polars.dataframe.fr
+>                  ame.DataFrame], deep:bool=False)
+> ```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L248"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### join
+
+> ``` text
+>  join (df1:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFr
+>        ame,pandas.core.series.Series,polars.series.series.Series], df2:Uni
+>        on[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFrame,pan
+>        das.core.series.Series,polars.series.series.Series],
+>        on:Union[str,List[str]], how:str='inner')
+> ```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L265"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### drop_index_if_pandas
+
+> ``` text
+>  drop_index_if_pandas
+>                        (df:Union[pandas.core.frame.DataFrame,polars.datafr
+>                        ame.frame.DataFrame])
+> ```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L271"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### rename
+
+> ``` text
+>  rename
+>          (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.Data
+>          Frame], mapping:Dict[str,str])
+> ```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L279"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### sort
+
+> ``` text
+>  sort
+>        (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFr
+>        ame], by:Union[str,List[str],NoneType]=None)
+> ```
+
+```python
+pd.testing.assert_frame_equal(
+    sort(pd.DataFrame({'x': [3, 1, 2]}), 'x'),
+    pd.DataFrame({'x': [1, 2, 3]})
+)
+pd.testing.assert_frame_equal(
+    sort(pd.DataFrame({'x': [3, 1, 2]}), ['x']),
+    pd.DataFrame({'x': [1, 2, 3]})
+)
+pd.testing.assert_series_equal(
+    sort(pd.Series([3, 1, 2])),
+    pd.Series([1, 2, 3])
+)
+pd.testing.assert_index_equal(
+    sort(pd.Index([3, 1, 2])),
+    pd.Index([1, 2, 3])
+)
+```
+
+
+```python
+# TODO: replace with pl.testing.assert_frame_equal when it's released
+pd.testing.assert_frame_equal(
+    sort(pl.DataFrame({'x': [3, 1, 2]}), 'x').to_pandas(),
+    pd.DataFrame({'x': [1, 2, 3]}),
+)
+pd.testing.assert_frame_equal(
+    sort(pl.DataFrame({'x': [3, 1, 2]}), ['x']).to_pandas(),
+    pd.DataFrame({'x': [1, 2, 3]}),
+)
+pd.testing.assert_series_equal(
+    sort(pl.Series('x', [3, 1, 2])).to_pandas(),
+    pd.Series([1, 2, 3], name='x')
+)
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L293"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### offset_dates
+
+> ``` text
+>  offset_dates
+>                (dates:Union[pandas.core.indexes.base.Index,polars.series.s
+>                eries.Series],
+>                freq:Union[int,str,pandas._libs.tslibs.offsets.BaseOffset],
+>                n:int)
+> ```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L315"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### group_by
+
+> ``` text
+>  group_by (df:Union[pandas.core.series.Series,polars.series.series.Series,
+>            pandas.core.frame.DataFrame,polars.dataframe.frame.DataFrame],
+>            by, maintain_order=False)
+> ```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L328"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### group_by_agg
+
+> ``` text
+>  group_by_agg
+>                (df:Union[pandas.core.frame.DataFrame,polars.dataframe.fram
+>                e.DataFrame], by, aggs, maintain_order=False)
+> ```
+
+```python
+pd.testing.assert_frame_equal(
+    group_by_agg(pd.DataFrame({'x': [1, 1, 2], 'y': [1, 1, 1]}), 'x', {'y': 'sum'}),
+    pd.DataFrame({'x': [1, 2], 'y': [2, 1]})
+)
+```
+
+
+```python
+pd.testing.assert_frame_equal(
+    group_by_agg(pl.DataFrame({'x': [1, 1, 2], 'y': [1, 1, 1]}), 'x', {'y': 'sum'}, maintain_order=True).to_pandas(),
+    pd.DataFrame({'x': [1, 2], 'y': [2, 1]})
+)
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L338"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### is_in
+
+> ``` text
+>  is_in (s:Union[pandas.core.series.Series,polars.series.series.Series],
+>         collection)
+> ```
+
+```python
+np.testing.assert_equal(is_in(pd.Series([1, 2, 3]), [1]), np.array([True, False, False]))
+```
+
+
+```python
+np.testing.assert_equal(is_in(pl.Series([1, 2, 3]), [1]), np.array([True, False, False]))
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L346"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### between
+
+> ``` text
+>  between (s:Union[pandas.core.series.Series,polars.series.series.Series],
+>           lower:Union[pandas.core.series.Series,polars.series.series.Serie
+>           s], upper:Union[pandas.core.series.Series,polars.series.series.S
+>           eries])
+> ```
+
+```python
+np.testing.assert_equal(
+    between(pd.Series([1, 2, 3]), pd.Series([0, 1, 4]), pd.Series([4, 1, 2])),
+    np.array([True, False, False]),
+)
+```
+
+
+```python
+np.testing.assert_equal(
+    between(pl.Series([1, 2, 3]), pl.Series([0, 1, 4]), pl.Series([4, 1, 2])),
+    np.array([True, False, False]),
+)
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L354"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### fill_null
+
+> ``` text
+>  fill_null
+>             (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.D
+>             ataFrame], mapping:Dict[str,Any])
+> ```
+
+```python
+pd.testing.assert_frame_equal(
+    fill_null(pd.DataFrame({'x': [1, np.nan], 'y': [np.nan, 2]}), {'x': 2, 'y': 1}),
+    pd.DataFrame({'x': [1, 2], 'y': [1, 2]}, dtype='float64')
+)
+```
+
+
+```python
+# TODO: replace with pl.testing.assert_frame_equal when it's released
+pd.testing.assert_frame_equal(
+    fill_null(pl.DataFrame({'x': [1, None], 'y': [None, 2]}), {'x': 2, 'y': 1}).to_pandas(),
+    pd.DataFrame({'x': [1, 2], 'y': [1, 2]})
+)
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L362"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### cast
+
+> ``` text
+>  cast (s:Union[pandas.core.series.Series,polars.series.series.Series],
+>        dtype:type)
+> ```
+
+```python
+pd.testing.assert_series_equal(
+    cast(pd.Series([1, 2, 3]), 'int16'),
+    pd.Series([1, 2, 3], dtype='int16')
+)
+```
+
+
+```python
+pd.testing.assert_series_equal(
+    cast(pl.Series('x', [1, 2, 3]), pl.Int16).to_pandas(),
+    pd.Series([1, 2, 3], name='x', dtype='int16')
+)
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L370"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### value_cols_to_numpy
+
+> ``` text
+>  value_cols_to_numpy
+>                       (df:Union[pandas.core.frame.DataFrame,polars.datafra
+>                       me.frame.DataFrame], id_col:str, time_col:str,
+>                       target_col:str)
+> ```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L381"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### process_df
+
+> ``` text
+>  process_df
+>              (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.
+>              DataFrame], id_col:str, time_col:str, target_col:str)
+> ```
+
+Extract components from dataframe
+
+|             | **Type**  | **Details**                                               |
+|--------|---------------------------|-------------------------------------|
+| df          | Union     | Input dataframe with id, times and target values.         |
+| id_col      | str       |                                                           |
+| time_col    | str       |                                                           |
+| target_col  | str       |                                                           |
+| **Returns** | **Tuple** | **serie with the sorted unique ids present in the data.** |
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L429"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### DataFrameProcessor
+
+> ``` text
+>  DataFrameProcessor (id_col:str='unique_id', time_col:str='ds',
+>                      target_col:str='y')
+> ```
+
+Initialize self. See help(type(self)) for accurate signature.
+
+```python
+static_features = ['static_0', 'static_1']
+```
+
+
+```python
+for n_static_features in [0, 2]:
+    series_pd = generate_series(1_000, n_static_features=n_static_features, equal_ends=False, engine='pandas')
+    for i in range(n_static_features):
+        series_pd[f'static_{i}'] = series_pd[f'static_{i}'].map(lambda x: f'x_{x}').astype('category')
+    scrambled_series_pd = series_pd.sample(frac=1.0)
+    dfp = DataFrameProcessor('unique_id', 'ds', 'y')
+    uids, times, data, indptr, _ = dfp.process(scrambled_series_pd)
+    test_eq(times, series_pd.groupby('unique_id', observed=True)['ds'].max().values)
+    test_eq(uids, np.sort(series_pd['unique_id'].unique()))
+    for i in range(n_static_features):
+        series_pd[f'static_{i}'] = series_pd[f'static_{i}'].cat.codes
+    test_eq(data, series_pd[['y'] + static_features[:n_static_features]].to_numpy())
+    test_eq(np.diff(indptr), series_pd.groupby('unique_id', observed=True).size().values)
+```
+
+
+```python
+for n_static_features in [0, 2]:
+    series_pl = generate_series(1_000, n_static_features=n_static_features, equal_ends=False, engine='polars')
+    scrambled_series_pl = series_pl.sample(fraction=1.0, shuffle=True)
+    dfp = DataFrameProcessor('unique_id', 'ds', 'y')
+    uids, times, data, indptr, _ = dfp.process(scrambled_series_pl)
+    grouped = group_by(series_pl, 'unique_id')
+    test_eq(times, grouped.agg(pl.col('ds').max()).sort('unique_id')['ds'].to_numpy())
+    test_eq(uids, series_pl['unique_id'].unique().sort())
+    test_eq(data, series_pl.select(pl.col(c).map_batches(lambda s: s.to_physical()) for c in ['y'] + static_features[:n_static_features]).to_numpy())
+    test_eq(np.diff(indptr), grouped.count().sort('unique_id')['count'].to_numpy())
+```
+

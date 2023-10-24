@@ -1,0 +1,583 @@
+---
+description: Loss functions for model evaluation.
+output-file: losses.html
+title: Losses
+
+---
+
+> The most important train signal is the forecast error, which is the
+> difference between the observed value $y_{\tau}$ and the prediction
+> $\hat{y}_{\tau}$, at time $y_{\tau}$:
+>
+> $$ e_{\tau} = y_{\tau}-\hat{y}_{\tau} \qquad \qquad \tau \in \{t+1,\dots,t+H \} $$
+>
+> The train loss summarizes the forecast errors in different evaluation
+> metrics.
+
+```python
+from utilsforecast.data import generate_series
+```
+
+
+```python
+models = ['model0', 'model1']
+series = generate_series(10, n_models=2, level=[80])
+series_pl = generate_series(10, n_models=2, level=[80], engine='polars')
+```
+
+# 1. Scale-dependent Errors
+
+## Mean Absolute Error (MAE)
+
+> $$ \mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} |y_{\tau} - \hat{y}_{\tau}| $$
+
+![](/imgs/losses/mae_loss.png)
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L58"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### mae
+
+> ``` text
+>  mae
+>       (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFra
+>       me], models:List[str], id_col:str='unique_id', target_col:str='y')
+> ```
+
+Mean Absolute Error (MAE)
+
+MAE measures the relative prediction accuracy of a forecasting method by
+calculating the deviation of the prediction and the true value at a
+given time and averages these devations over the length of the series.
+
+|             | **Type**  | **Default** | **Details**                                                 |
+|------|------------------|-------------------------|-------------------------|
+| df          | Union     |             | Input dataframe with id, actual values and predictions.     |
+| models      | List      |             | Columns that identify the models predictions.               |
+| id_col      | str       | unique_id   | Column that identifies each serie.                          |
+| target_col  | str       | y           | Column that contains the target.                            |
+| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+
+```python
+def pd_vs_pl(pd_df, pl_df, models):
+    np.testing.assert_allclose(
+        pd_df[models].to_numpy(),
+        pl_df.sort('unique_id').select(models).to_numpy(),
+    )
+```
+
+
+```python
+pd_vs_pl(
+    mae(series, models),
+    mae(series_pl, models),
+    models,
+)
+```
+
+## Mean Squared Error
+
+> $$ \mathrm{MSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} (y_{\tau} - \hat{y}_{\tau})^{2} $$
+
+![](/imgs/losses/mse_loss.png)
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L90"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### mse
+
+> ``` text
+>  mse
+>       (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFra
+>       me], models:List[str], id_col:str='unique_id', target_col:str='y')
+> ```
+
+Mean Squared Error (MSE)
+
+MSE measures the relative prediction accuracy of a forecasting method by
+calculating the squared deviation of the prediction and the true value
+at a given time, and averages these devations over the length of the
+series.
+
+|             | **Type**  | **Default** | **Details**                                                 |
+|------|------------------|-------------------------|-------------------------|
+| df          | Union     |             | Input dataframe with id, actual values and predictions.     |
+| models      | List      |             | Columns that identify the models predictions.               |
+| id_col      | str       | unique_id   | Column that identifies each serie.                          |
+| target_col  | str       | y           | Column that contains the target.                            |
+| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+
+```python
+pd_vs_pl(
+    mse(series, models),
+    mse(series_pl, models),
+    models,
+)
+```
+
+## Root Mean Squared Error
+
+> $$ \mathrm{RMSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \sqrt{\frac{1}{H} \sum^{t+H}_{\tau=t+1} (y_{\tau} - \hat{y}_{\tau})^{2}} $$
+
+![](/imgs/losses/rmse_loss.png)
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L122"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### rmse
+
+> ``` text
+>  rmse
+>        (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFr
+>        ame], models:List[str], id_col:str='unique_id', target_col:str='y')
+> ```
+
+Root Mean Squared Error (RMSE)
+
+RMSE measures the relative prediction accuracy of a forecasting method
+by calculating the squared deviation of the prediction and the observed
+value at a given time and averages these devations over the length of
+the series. Finally the RMSE will be in the same scale as the original
+time series so its comparison with other series is possible only if they
+share a common scale. RMSE has a direct connection to the L2 norm.
+
+|             | **Type**  | **Default** | **Details**                                                 |
+|------|------------------|-------------------------|-------------------------|
+| df          | Union     |             | Input dataframe with id, actual values and predictions.     |
+| models      | List      |             | Columns that identify the models predictions.               |
+| id_col      | str       | unique_id   | Column that identifies each serie.                          |
+| target_col  | str       | y           | Column that contains the target.                            |
+| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+
+```python
+pd_vs_pl(
+    rmse(series, models),
+    rmse(series_pl, models),
+    models,
+)
+```
+
+# 2. Percentage Errors
+
+## Mean Absolute Percentage Error
+
+> $$ \mathrm{MAPE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{|y_{\tau}|} $$
+
+![](/imgs/losses/mape_loss.png)
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L155"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### mape
+
+> ``` text
+>  mape
+>        (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFr
+>        ame], models:List[str], id_col:str='unique_id', target_col:str='y')
+> ```
+
+Mean Absolute Percentage Error (MAPE)
+
+MAPE measures the relative prediction accuracy of a forecasting method
+by calculating the percentual deviation of the prediction and the
+observed value at a given time and averages these devations over the
+length of the series. The closer to zero an observed value is, the
+higher penalty MAPE loss assigns to the corresponding error.
+
+|             | **Type**  | **Default** | **Details**                                                 |
+|------|------------------|-------------------------|-------------------------|
+| df          | Union     |             | Input dataframe with id, actual values and predictions.     |
+| models      | List      |             | Columns that identify the models predictions.               |
+| id_col      | str       | unique_id   | Column that identifies each serie.                          |
+| target_col  | str       | y           | Column that contains the target.                            |
+| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+
+```python
+pd_vs_pl(
+    mape(series, models),
+    mape(series_pl, models),
+    models,
+)
+```
+
+## Symmetric Mean Absolute Percentage Error
+
+> $$ \mathrm{SMAPE}_{2}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{|y_{\tau}|+|\hat{y}_{\tau}|} $$
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L194"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### smape
+
+> ``` text
+>  smape
+>         (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataF
+>         rame], models:List[str], id_col:str='unique_id',
+>         target_col:str='y')
+> ```
+
+Symmetric Mean Absolute Percentage Error (SMAPE)
+
+SMAPE measures the relative prediction accuracy of a forecasting method
+by calculating the relative deviation of the prediction and the observed
+value scaled by the sum of the absolute values for the prediction and
+observed value at a given time, then averages these devations over the
+length of the series. This allows the SMAPE to have bounds between 0%
+and 200% which is desireble compared to normal MAPE that may be
+undetermined when the target is zero.
+
+|             | **Type**  | **Default** | **Details**                                                 |
+|------|------------------|-------------------------|-------------------------|
+| df          | Union     |             | Input dataframe with id, actual values and predictions.     |
+| models      | List      |             | Columns that identify the models predictions.               |
+| id_col      | str       | unique_id   | Column that identifies each serie.                          |
+| target_col  | str       | y           | Column that contains the target.                            |
+| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+
+```python
+pd_vs_pl(
+    smape(series, models),
+    smape(series_pl, models),
+    models,
+)
+```
+
+# 3. Scale-independent Errors
+
+## Mean Absolute Scaled Error
+
+> $$ \mathrm{MASE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau}) = 
+> \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})} $$
+
+![](/imgs/losses/mase_loss.png)
+
+``` text
+/opt/hostedtoolcache/Python/3.10.13/x64/lib/python3.10/site-packages/fastcore/docscrape.py:225: UserWarning: Unknown section References
+  else: warn(msg)
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L231"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### mase
+
+> ``` text
+>  mase
+>        (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFr
+>        ame], models:List[str], seasonality:int, train_df:Union[pandas.core
+>        .frame.DataFrame,polars.dataframe.frame.DataFrame],
+>        id_col:str='unique_id', target_col:str='y')
+> ```
+
+Mean Absolute Scaled Error (MASE)
+
+MASE measures the relative prediction accuracy of a forecasting method
+by comparinng the mean absolute errors of the prediction and the
+observed value against the mean absolute errors of the seasonal naive
+model. The MASE partially composed the Overall Weighted Average (OWA),
+used in the M4 Competition.
+
+|             | **Type**  | **Default** | **Details**                                                                                             |
+|------|------------------|-------------------------|-------------------------|
+| df          | Union     |             | Input dataframe with id, actuals and predictions.                                                       |
+| models      | List      |             | Columns that identify the models predictions.                                                           |
+| seasonality | int       |             | Main frequency of the time series;<br/>Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1. |
+| train_df    | Union     |             | Training dataframe with id and actual values. Must be sorted by time.                                   |
+| id_col      | str       | unique_id   | Column that identifies each serie.                                                                      |
+| target_col  | str       | y           | Column that contains the target.                                                                        |
+| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.**                                             |
+
+```python
+pd_vs_pl(
+    mase(series, models, 7, series),
+    mase(series_pl, models, 7, series_pl),
+    models,
+)
+```
+
+## Relative Mean Absolute Error
+
+> $$ \mathrm{RMAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{base}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{base}_{\tau})} $$
+
+![](/imgs/losses/rmae_loss.png)
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L302"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### rmae
+
+> ``` text
+>  rmae
+>        (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFr
+>        ame], models:List[str], baseline_models:List[str],
+>        id_col:str='unique_id', target_col:str='y')
+> ```
+
+Relative Mean Absolute Error (RMAE)
+
+Calculates the RAME between two sets of forecasts (from two different
+forecasting methods). A number smaller than one implies that the
+forecast in the numerator is better than the forecast in the
+denominator.
+
+|                 | **Type**  | **Default** | **Details**                                                 |
+|------|------------------|-------------------------|-------------------------|
+| df              | Union     |             | Input dataframe with id, times, actuals and predictions.    |
+| models          | List      |             | Columns that identify the models predictions.               |
+| baseline_models | List      |             | Columns that identify the baseline models predictions.      |
+| id_col          | str       | unique_id   | Column that identifies each serie.                          |
+| target_col      | str       | y           | Column that contains the target.                            |
+| **Returns**     | **Union** |             | **dataframe with one row per id and one column per model.** |
+
+```python
+pd_vs_pl(
+    rmae(series, models, list(reversed(models))),
+    rmae(series_pl, models, list(reversed(models))),
+    [f'{m1}_div_{m2}' for m1, m2 in zip(models, reversed(models))],
+)
+```
+
+# 4. Probabilistic Errors
+
+## Quantile Loss
+
+> $$ \mathrm{QL}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{(q)}_{\tau}) = 
+> \frac{1}{H} \sum^{t+H}_{\tau=t+1} 
+> \Big( (1-q)\,( \hat{y}^{(q)}_{\tau} - y_{\tau} )_{+} 
+> + q\,( y_{\tau} - \hat{y}^{(q)}_{\tau} )_{+} \Big) $$
+
+![](/imgs/losses/q_loss.png)
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L362"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### quantile_loss
+
+> ``` text
+>  quantile_loss
+>                 (df:Union[pandas.core.frame.DataFrame,polars.dataframe.fra
+>                 me.DataFrame], models:List[str], q:float=0.5,
+>                 id_col:str='unique_id', target_col:str='y')
+> ```
+
+Quantile Loss (QL)
+
+QL measures the deviation of a quantile forecast. By weighting the
+absolute deviation in a non symmetric way, the loss pays more attention
+to under or over estimation.  
+A common value for q is 0.5 for the deviation from the median.
+
+|             | **Type**  | **Default** | **Details**                                                 |
+|------|------------------|-------------------------|-------------------------|
+| df          | Union     |             | Input dataframe with id, times, actuals and predictions.    |
+| models      | List      |             | Columns that identify the models predictions.               |
+| q           | float     | 0.5         | Quantile for the predictions’ comparison.                   |
+| id_col      | str       | unique_id   | Column that identifies each serie.                          |
+| target_col  | str       | y           | Column that contains the target.                            |
+| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+
+```python
+pd_vs_pl(
+    quantile_loss(series, models),
+    quantile_loss(series_pl, models),
+    models,
+)
+```
+
+## Multi-Quantile Loss
+
+> $$ \mathrm{MQL}(\mathbf{y}_{\tau},
+> [\mathbf{\hat{y}}^{(q_{1})}_{\tau}, ... ,\hat{y}^{(q_{n})}_{\tau}]) = 
+> \frac{1}{n} \sum_{q_{i}} \mathrm{QL}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{(q_{i})}_{\tau}) $$
+
+![](/imgs/losses/mq_loss.png)
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L417"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### mqloss
+
+> ``` text
+>  mqloss
+>          (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.Data
+>          Frame], models:List[str], quantiles:numpy.ndarray,
+>          id_col:str='unique_id', target_col:str='y')
+> ```
+
+Multi-Quantile loss (MQL)
+
+MQL calculates the average multi-quantile Loss for a given set of
+quantiles, based on the absolute difference between predicted quantiles
+and observed values.
+
+The limit behavior of MQL allows to measure the accuracy of a full
+predictive distribution $\mathbf{\hat{F}}_{\tau}$ with the continuous
+ranked probability score (CRPS). This can be achieved through a
+numerical integration technique, that discretizes the quantiles and
+treats the CRPS integral with a left Riemann approximation, averaging
+over uniformly distanced quantiles.
+
+|             | **Type**  | **Default** | **Details**                                                 |
+|------|------------------|-------------------------|-------------------------|
+| df          | Union     |             | Input dataframe with id, times, actuals and predictions.    |
+| models      | List      |             | Columns that identify the models predictions.               |
+| quantiles   | ndarray   |             | Quantiles to compare against.                               |
+| id_col      | str       | unique_id   | Column that identifies each serie.                          |
+| target_col  | str       | y           | Column that contains the target.                            |
+| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+
+```python
+pd_vs_pl(
+    mqloss(series, models, [0.1, 0.3]),
+    mqloss(series_pl, models, [0.1, 0.3]),
+    models,
+)
+```
+
+## Coverage
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L482"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### coverage
+
+> ``` text
+>  coverage
+>            (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.Da
+>            taFrame], models:List[str], level:int, id_col:str='unique_id',
+>            target_col:str='y')
+> ```
+
+Coverage of y with y_hat_lo and y_hat_hi.
+
+|             | **Type**  | **Default** | **Details**                                                 |
+|------|------------------|-------------------------|-------------------------|
+| df          | Union     |             | Input dataframe with id, times, actuals and predictions.    |
+| models      | List      |             | Columns that identify the models predictions.               |
+| level       | int       |             | Confidence level used for intervals.                        |
+| id_col      | str       | unique_id   | Column that identifies each serie.                          |
+| target_col  | str       | y           | Column that contains the target.                            |
+| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+
+```python
+pd_vs_pl(
+    coverage(series, models, 80),
+    coverage(series_pl, models, 80),
+    models,
+)
+```
+
+## Calibration
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L539"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### calibration
+
+> ``` text
+>  calibration
+>               (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame
+>               .DataFrame], models:List[str], level:int,
+>               id_col:str='unique_id', target_col:str='y')
+> ```
+
+Fraction of y that is lower than y_hat_hi.
+
+|             | **Type**  | **Default** | **Details**                                                 |
+|------|------------------|-------------------------|-------------------------|
+| df          | Union     |             | Input dataframe with id, times, actuals and predictions.    |
+| models      | List      |             | Columns that identify the models predictions.               |
+| level       | int       |             | Confidence level used for intervals.                        |
+| id_col      | str       | unique_id   | Column that identifies each serie.                          |
+| target_col  | str       | y           | Column that contains the target.                            |
+| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+
+```python
+pd_vs_pl(
+    calibration(series, models, 80),
+    calibration(series_pl, models, 80),
+    models,
+)
+```
+
+## CRPS
+
+> $$ \mathrm{sCRPS}(\hat{F}_{\tau}, \mathbf{y}_{\tau}) = \frac{2}{N} \sum_{i}
+> \int^{1}_{0}
+> \frac{\mathrm{QL}(\hat{F}_{i,\tau}, y_{i,\tau})_{q}}{\sum_{i} | y_{i,\tau} |} dq $$
+>
+> Where $\hat{F}_{\tau}$ is the an estimated multivariate distribution,
+> and $y_{i,\tau}$ are its realizations.
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L589"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### scaled_crps
+
+> ``` text
+>  scaled_crps
+>               (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame
+>               .DataFrame], models:List[str], quantiles:numpy.ndarray,
+>               id_col:str='unique_id', target_col:str='y')
+> ```
+
+Scaled Continues Ranked Probability Score
+
+Calculates a scaled variation of the CRPS, as proposed by Rangapuram
+(2021), to measure the accuracy of predicted quantiles `y_hat` compared
+to the observation `y`. This metric averages percentual weighted
+absolute deviations as defined by the quantile losses.
+
+|             | **Type**  | **Default** | **Details**                                                 |
+|------|------------------|-------------------------|-------------------------|
+| df          | Union     |             | Input dataframe with id, times, actuals and predictions.    |
+| models      | List      |             | Columns that identify the models predictions.               |
+| quantiles   | ndarray   |             | Quantiles to compare against.                               |
+| id_col      | str       | unique_id   | Column that identifies each serie.                          |
+| target_col  | str       | y           | Column that contains the target.                            |
+| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+
+```python
+pd_vs_pl(
+    scaled_crps(series, models, [0.3, 0.5]),
+    scaled_crps(series_pl, models, [0.3, 0.5]),
+    models,
+)
+```
+

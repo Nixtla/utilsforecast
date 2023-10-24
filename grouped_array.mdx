@@ -1,0 +1,132 @@
+```python
+# test _append_one
+data = np.arange(5).reshape(-1, 1)
+indptr = np.array([0, 2, 5])
+new = np.array([7, 8])
+new_data, new_indptr = _append_one(data, indptr, new)
+np.testing.assert_equal(
+    new_data,
+    np.array([0, 1, 7, 2, 3, 4, 8]).reshape(-1, 1),
+)
+np.testing.assert_equal(
+    new_indptr,
+    np.array([0, 3, 7]),
+)
+```
+
+
+```python
+# test append several
+data = np.arange(5).reshape(-1, 1)
+indptr = np.array([0, 2, 5])
+new_sizes = np.array([0, 2, 1])
+new_values = np.array([6, 7, 5]).reshape(-1, 1)
+new_groups = np.array([False, True, False])
+new_data, new_indptr = _append_several(data, indptr, new_sizes, new_values, new_groups)
+np.testing.assert_equal(
+    new_data,
+    np.array([0, 1, 6, 7, 2, 3, 4, 5]).reshape(-1, 1),
+)
+np.testing.assert_equal(
+    new_indptr,
+    np.array([0, 2, 4, 8]),
+)
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/grouped_array.py#L63"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### GroupedArray
+
+> ``` text
+>  GroupedArray (data:numpy.ndarray, indptr:numpy.ndarray)
+> ```
+
+Initialize self. See help(type(self)) for accurate signature.
+
+```python
+from fastcore.test import test_eq, test_fail
+
+from utilsforecast.data import generate_series
+```
+
+
+```python
+# The `GroupedArray` is used internally for storing the series values and performing transformations.
+data = np.arange(20, dtype=np.float32).reshape(-1, 2)
+indptr = np.array([0, 2, 10])  # group 1: [0, 1], group 2: [2..9]
+ga = GroupedArray(data, indptr)
+test_eq(len(ga), 2)
+```
+
+
+```python
+# Iterate through the groups
+ga_iter = iter(ga)
+np.testing.assert_equal(next(ga_iter), np.arange(4).reshape(-1, 2))
+np.testing.assert_equal(next(ga_iter), np.arange(4, 20).reshape(-1, 2))
+```
+
+
+```python
+# Take the last two observations from each group
+last_2 = ga.take_from_groups(slice(-2, None))
+np.testing.assert_equal(
+    last_2.data,
+    np.vstack([
+        np.arange(4).reshape(-1, 2),
+        np.arange(16, 20).reshape(-1, 2),
+    ]),
+)
+np.testing.assert_equal(last_2.indptr, np.array([0, 2, 4]))
+
+# Take the second observation from each group
+second = ga.take_from_groups(1)
+np.testing.assert_equal(second.data, np.array([[2, 3], [6, 7]]))
+np.testing.assert_equal(second.indptr, np.array([0, 1, 2]))
+```
+
+
+```python
+# Take the last four observations from every group. Note that since group 1 only has two elements, only these are returned.
+last_4 = ga.take_from_groups(slice(-4, None))
+np.testing.assert_equal(
+    last_4.data,
+    np.vstack([
+        np.arange(4).reshape(-1, 2),
+        np.arange(12, 20).reshape(-1, 2),
+    ]),
+)
+np.testing.assert_equal(last_4.indptr, np.array([0, 2, 6]))
+```
+
+
+```python
+# Select a specific subset of groups
+indptr = np.array([0, 2, 4, 7, 10])
+ga2 = GroupedArray(data, indptr)
+subset = ga2.take([0, 2])
+np.testing.assert_allclose(subset[0].data, ga2[0].data)
+np.testing.assert_allclose(subset[1].data, ga2[2].data)
+```
+
+
+```python
+# try to append new values that don't match the number of groups
+test_fail(lambda: ga.append(np.array([1., 2., 3.])), contains='new must have 2 rows')
+```
+
+
+```python
+# build from df
+series_pd = generate_series(10, static_as_categorical=False, engine='pandas')
+ga_pd = GroupedArray.from_sorted_df(series_pd, 'unique_id', 'ds', 'y')
+series_pl = generate_series(10, static_as_categorical=False, engine='polars')
+ga_pl = GroupedArray.from_sorted_df(series_pl, 'unique_id', 'ds', 'y')
+np.testing.assert_allclose(ga_pd.data, ga_pl.data)
+np.testing.assert_equal(ga_pd.indptr, ga_pl.indptr)
+```
+
