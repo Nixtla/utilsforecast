@@ -5,10 +5,75 @@ title: Validation
 
 ---
 
+```python
+from fastcore.test import test_fail
+```
+
+
+```python
+import polars.testing
+```
+
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/validation.py#L13"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/validation.py#L20"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### ensure_shallow_copy
+
+> ``` text
+>  ensure_shallow_copy (df:pandas.core.frame.DataFrame)
+> ```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/validation.py#L29"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### ensure_time_dtype
+
+> ``` text
+>  ensure_time_dtype
+>                     (df:Union[pandas.core.frame.DataFrame,polars.dataframe
+>                     .frame.DataFrame], time_col:str='ds')
+> ```
+
+Make sure that `time_col` contains timestamps or integers. If it
+contains strings, try to cast them as timestamps.
+
+```python
+pd.testing.assert_frame_equal(
+    ensure_time_dtype(pd.DataFrame({'ds': ['2000-01-01']})),
+    pd.DataFrame({'ds': pd.to_datetime(['2000-01-01'])})
+)
+df = pd.DataFrame({'ds': [1, 2]})
+assert df is ensure_time_dtype(df)
+test_fail(
+    lambda: ensure_time_dtype(pd.DataFrame({'ds': ['2000-14-14']})),
+    contains='Please make sure that it contains valid timestamps',
+)
+```
+
+
+```python
+pl.testing.assert_frame_equal(
+    ensure_time_dtype(pl.DataFrame({'ds': ['2000-01-01']})),
+    pl.DataFrame().with_columns(ds=pl.datetime(2000, 1, 1))
+)
+df = pl.DataFrame({'ds': [1, 2]})
+assert df is ensure_time_dtype(df)
+test_fail(
+    lambda: ensure_time_dtype(pl.DataFrame({'ds': ['hello']})),
+    contains='Please make sure that it contains valid timestamps',
+)
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/validation.py#L57"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### validate_format
@@ -33,10 +98,7 @@ Ensure DataFrame has expected format.
 ```python
 import datetime
 
-import pandas as pd
-from fastcore.test import test_fail
-
-from utilsforecast.compat import POLARS_INSTALLED, pl
+from utilsforecast.compat import POLARS_INSTALLED
 from utilsforecast.data import generate_series
 ```
 
