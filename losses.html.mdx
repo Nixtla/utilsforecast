@@ -5,14 +5,14 @@ title: Losses
 
 ---
 
-> The most important train signal is the forecast error, which is the
-> difference between the observed value $y_{\tau}$ and the prediction
-> $\hat{y}_{\tau}$, at time $y_{\tau}$:
->
-> $$ e_{\tau} = y_{\tau}-\hat{y}_{\tau} \qquad \qquad \tau \in \{t+1,\dots,t+H \} $$
->
-> The train loss summarizes the forecast errors in different evaluation
-> metrics.
+The most important train signal is the forecast error, which is the
+difference between the observed value $y_{\tau}$ and the prediction
+$\hat{y}_{\tau}$, at time $y_{\tau}$:
+
+$$e_{\tau} = y_{\tau}-\hat{y}_{\tau} \qquad \qquad \tau \in \{t+1,\dots,t+H \}$$
+
+The train loss summarizes the forecast errors in different evaluation
+metrics.
 
 ```python
 from utilsforecast.data import generate_series
@@ -25,9 +25,9 @@ series = generate_series(10, n_models=2, level=[80])
 series_pl = generate_series(10, n_models=2, level=[80], engine='polars')
 ```
 
-# 1. Scale-dependent Errors
+## 1. Scale-dependent Errors
 
-## Mean Absolute Error (MAE)
+### Mean Absolute Error (MAE)
 
 > $$ \mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} |y_{\tau} - \hat{y}_{\tau}| $$
 
@@ -39,7 +39,7 @@ series_pl = generate_series(10, n_models=2, level=[80], engine='polars')
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L58"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
-### mae
+#### mae
 
 > ``` text
 >  mae
@@ -78,7 +78,7 @@ pd_vs_pl(
 )
 ```
 
-## Mean Squared Error
+### Mean Squared Error
 
 > $$ \mathrm{MSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} (y_{\tau} - \hat{y}_{\tau})^{2} $$
 
@@ -90,7 +90,7 @@ pd_vs_pl(
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L90"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
-### mse
+#### mse
 
 > ``` text
 >  mse
@@ -121,7 +121,7 @@ pd_vs_pl(
 )
 ```
 
-## Root Mean Squared Error
+### Root Mean Squared Error
 
 > $$ \mathrm{RMSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \sqrt{\frac{1}{H} \sum^{t+H}_{\tau=t+1} (y_{\tau} - \hat{y}_{\tau})^{2}} $$
 
@@ -133,7 +133,7 @@ pd_vs_pl(
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L122"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
-### rmse
+#### rmse
 
 > ``` text
 >  rmse
@@ -166,9 +166,9 @@ pd_vs_pl(
 )
 ```
 
-# 2. Percentage Errors
+## 2. Percentage Errors
 
-## Mean Absolute Percentage Error
+### Mean Absolute Percentage Error
 
 > $$ \mathrm{MAPE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{|y_{\tau}|} $$
 
@@ -180,7 +180,7 @@ pd_vs_pl(
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L155"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
-### mape
+#### mape
 
 > ``` text
 >  mape
@@ -212,7 +212,7 @@ pd_vs_pl(
 )
 ```
 
-## Symmetric Mean Absolute Percentage Error
+### Symmetric Mean Absolute Percentage Error
 
 > $$ \mathrm{SMAPE}_{2}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{|y_{\tau}|+|\hat{y}_{\tau}|} $$
 
@@ -222,7 +222,7 @@ pd_vs_pl(
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L194"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
-### smape
+#### smape
 
 > ``` text
 >  smape
@@ -257,12 +257,14 @@ pd_vs_pl(
 )
 ```
 
-# 3. Scale-independent Errors
+## 3. Scale-independent Errors
 
-## Mean Absolute Scaled Error
+### Mean Absolute Scaled Error
 
-> $$ \mathrm{MASE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau}) = 
-> \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})} $$
+> $$
+> \mathrm{MASE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau}) = 
+> \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}
+> $$
 
 ![](/imgs/losses/mase_loss.png)
 
@@ -277,7 +279,7 @@ pd_vs_pl(
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L231"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
-### mase
+#### mase
 
 > ``` text
 >  mase
@@ -313,7 +315,7 @@ pd_vs_pl(
 )
 ```
 
-## Relative Mean Absolute Error
+### Relative Mean Absolute Error
 
 > $$ \mathrm{RMAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{base}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{base}_{\tau})} $$
 
@@ -325,7 +327,7 @@ pd_vs_pl(
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L302"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
-### rmae
+#### rmae
 
 > ``` text
 >  rmae
@@ -358,14 +360,16 @@ pd_vs_pl(
 )
 ```
 
-# 4. Probabilistic Errors
+## 4. Probabilistic Errors
 
-## Quantile Loss
+### Quantile Loss
 
-> $$ \mathrm{QL}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{(q)}_{\tau}) = 
-> \frac{1}{H} \sum^{t+H}_{\tau=t+1} 
-> \Big( (1-q)\,( \hat{y}^{(q)}_{\tau} - y_{\tau} )_{+} 
-> + q\,( y_{\tau} - \hat{y}^{(q)}_{\tau} )_{+} \Big) $$
+$$
+\mathrm{QL}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{(q)}_{\tau}) = 
+\frac{1}{H} \sum^{t+H}_{\tau=t+1} 
+\Big( (1-q)\,( \hat{y}^{(q)}_{\tau} - y_{\tau} )_{+} 
++ q\,( y_{\tau} - \hat{y}^{(q)}_{\tau} )_{+} \Big)
+$$
 
 ![](/imgs/losses/q_loss.png)
 
@@ -375,7 +379,7 @@ pd_vs_pl(
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L362"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
-### quantile_loss
+#### quantile_loss
 
 > ``` text
 >  quantile_loss
@@ -408,11 +412,13 @@ pd_vs_pl(
 )
 ```
 
-## Multi-Quantile Loss
+### Multi-Quantile Loss
 
-> $$ \mathrm{MQL}(\mathbf{y}_{\tau},
-> [\mathbf{\hat{y}}^{(q_{1})}_{\tau}, ... ,\hat{y}^{(q_{n})}_{\tau}]) = 
-> \frac{1}{n} \sum_{q_{i}} \mathrm{QL}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{(q_{i})}_{\tau}) $$
+$$
+\mathrm{MQL}(\mathbf{y}_{\tau},
+[\mathbf{\hat{y}}^{(q_{1})}_{\tau}, ... ,\hat{y}^{(q_{n})}_{\tau}]) = 
+\frac{1}{n} \sum_{q_{i}} \mathrm{QL}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{(q_{i})}_{\tau})
+$$
 
 ![](/imgs/losses/mq_loss.png)
 
@@ -422,7 +428,7 @@ pd_vs_pl(
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L417"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
-### mqloss
+#### mqloss
 
 > ``` text
 >  mqloss
@@ -461,7 +467,7 @@ pd_vs_pl(
 )
 ```
 
-## Coverage
+### Coverage
 
 ------------------------------------------------------------------------
 
@@ -469,7 +475,7 @@ pd_vs_pl(
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L482"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
-### coverage
+#### coverage
 
 > ``` text
 >  coverage
@@ -497,7 +503,7 @@ pd_vs_pl(
 )
 ```
 
-## Calibration
+### Calibration
 
 ------------------------------------------------------------------------
 
@@ -505,7 +511,7 @@ pd_vs_pl(
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L539"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
-### calibration
+#### calibration
 
 > ``` text
 >  calibration
@@ -533,14 +539,15 @@ pd_vs_pl(
 )
 ```
 
-## CRPS
+### CRPS
 
-> $$ \mathrm{sCRPS}(\hat{F}_{\tau}, \mathbf{y}_{\tau}) = \frac{2}{N} \sum_{i}
-> \int^{1}_{0}
-> \frac{\mathrm{QL}(\hat{F}_{i,\tau}, y_{i,\tau})_{q}}{\sum_{i} | y_{i,\tau} |} dq $$
->
-> Where $\hat{F}_{\tau}$ is the an estimated multivariate distribution,
-> and $y_{i,\tau}$ are its realizations.
+$$
+\mathrm{sCRPS}(\hat{F}_{\tau}, \mathbf{y}_{\tau}) = \frac{2}{N} \sum_{i}
+\int^{1}_{0} \frac{\mathrm{QL}(\hat{F}_{i,\tau}, y_{i,\tau})_{q}}{\sum_{i} | y_{i,\tau} |} dq
+$$
+
+Where $\hat{F}_{\tau}$ is the an estimated multivariate distribution,
+and $y_{i,\tau}$ are its realizations.
 
 ------------------------------------------------------------------------
 
@@ -548,7 +555,7 @@ pd_vs_pl(
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L589"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
-### scaled_crps
+#### scaled_crps
 
 > ``` text
 >  scaled_crps
