@@ -4,14 +4,13 @@
 __all__ = ['to_numpy', 'counts_by_id', 'maybe_compute_sort_indices', 'assign_columns', 'take_rows', 'filter_with_mask', 'is_nan',
            'is_none', 'is_nan_or_none', 'match_if_categorical', 'vertical_concat', 'horizontal_concat',
            'copy_if_pandas', 'join', 'drop_index_if_pandas', 'rename', 'sort', 'offset_times', 'offset_dates',
-           'time_ranges', 'cv_times', 'repeat', 'group_by', 'group_by_agg', 'is_in', 'between', 'fill_null', 'cast',
+           'time_ranges', 'repeat', 'cv_times', 'group_by', 'group_by_agg', 'is_in', 'between', 'fill_null', 'cast',
            'value_cols_to_numpy', 'process_df', 'DataFrameProcessor', 'backtest_splits']
 
 # %% ../nbs/processing.ipynb 2
 import re
 import reprlib
 import warnings
-from datetime import datetime as dt
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import numpy as np
@@ -401,6 +400,25 @@ def time_ranges(
     return out
 
 # %% ../nbs/processing.ipynb 42
+def repeat(
+    s: Union[Series, pd.Index, np.ndarray], n: Union[int, np.ndarray, Series]
+) -> Union[Series, pd.Index, np.ndarray]:
+    if isinstance(s, pl_Series):
+        if isinstance(n, np.ndarray):
+            n = pl_Series(n)
+        out = (
+            pl.DataFrame(s.alias("x"))
+            .select(pl.col("x").repeat_by(n))["x"]
+            .explode()
+            .alias(s.name)
+        )
+    else:
+        out = np.repeat(s, n)
+        if isinstance(out, pd.Series):
+            out = out.reset_index(drop=True)
+    return out
+
+# %% ../nbs/processing.ipynb 45
 def cv_times(
     times: np.ndarray,
     uids: Union[Series, pd.Index],
@@ -440,25 +458,6 @@ def cv_times(
             "cutoff": np.hstack(out_cutoffs),
         }
     )
-
-# %% ../nbs/processing.ipynb 44
-def repeat(
-    s: Union[Series, pd.Index, np.ndarray], n: Union[int, np.ndarray, Series]
-) -> Union[Series, pd.Index, np.ndarray]:
-    if isinstance(s, pl_Series):
-        if isinstance(n, np.ndarray):
-            n = pl_Series(n)
-        out = (
-            pl.DataFrame(s.alias("x"))
-            .select(pl.col("x").repeat_by(n))["x"]
-            .explode()
-            .alias(s.name)
-        )
-    else:
-        out = np.repeat(s, n)
-        if isinstance(out, pd.Series):
-            out = out.reset_index(drop=True)
-    return out
 
 # %% ../nbs/processing.ipynb 47
 def group_by(df: Union[Series, DataFrame], by, maintain_order=False):
