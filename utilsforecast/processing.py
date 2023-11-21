@@ -354,17 +354,25 @@ def time_ranges(
     if isinstance(starts, pd.Series):
         starts = pd.Index(starts)
     if isinstance(starts, pd.Index):
-        if issubclass(starts.dtype.type, np.integer):
+        starts_dtype = starts.dtype.type
+        if issubclass(starts_dtype, np.integer):
             out = np.hstack(
-                [np.arange(start, start + freq * periods, freq) for start in starts]
+                [
+                    np.arange(start, start + freq * periods, freq, dtype=starts_dtype)
+                    for start in starts
+                ]
             )
-        else:
+        elif pd.api.types.is_datetime64_dtype(starts_dtype):
             if isinstance(freq, str):
                 freq = pd.tseries.frequencies.to_offset(freq)
             out = []
             for i in range(periods):
                 out.append([starts + i * freq])
             out = np.vstack(out).ravel(order="F")
+        else:
+            raise ValueError(
+                f"`starts` must be integers or timestamps, got '{starts_dtype}'."
+            )
         out = pd.Series(out)
     else:
         if starts.is_integer():
