@@ -359,35 +359,12 @@ def time_ranges(
                 [np.arange(start, start + freq * periods, freq) for start in starts]
             )
         else:
-            used_np = False
             if isinstance(freq, str):
-                offset = pd.tseries.frequencies.to_offset(freq)
-                try:
-                    # try generating the dates with numpy (can be 100x faster)
-                    # an invalid frequency raises a type error when building the delta
-                    # and falls back to pandas
-                    freq = freq.replace(str(offset.n), "")
-                    delta = np.timedelta64(offset.n, freq)
-                    starts_np = starts.to_numpy().astype(f"datetime64[{freq}]")
-                    ends_np = starts_np + periods * delta
-                    out = np.hstack(
-                        [
-                            np.arange(start, end, delta)
-                            for start, end in zip(starts_np, ends_np)
-                        ]
-                    )
-                    out = pd.Index(out.astype("datetime64[ns]", copy=False))
-                    start = starts[0].to_numpy()
-                    was_truncated = start != start.astype(f"datetime64[{freq}]")
-                    if was_truncated:
-                        out += pd.tseries.frequencies.to_offset(freq)
-                    used_np = True
-                except TypeError:
-                    pass
-            if not used_np:
-                out = np.hstack(
-                    [start + i * offset for start in starts for i in range(periods)]
-                )
+                freq = pd.tseries.frequencies.to_offset(freq)
+            out = []
+            for i in range(periods):
+                out.append([starts + i * freq])
+            out = np.vstack(out).ravel(order="F")
         out = pd.Series(out)
     else:
         if starts.is_integer():
