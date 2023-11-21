@@ -11,6 +11,9 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
+from .compat import DataFrame, pl, pl_DataFrame, pl_Series
+from .processing import group_by, repeat
+
 # %% ../nbs/preprocessing.ipynb 4
 def _determine_bound(bound, freq, times_by_id, agg) -> np.ndarray:
     if bound == "per_serie":
