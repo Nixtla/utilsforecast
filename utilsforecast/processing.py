@@ -431,7 +431,7 @@ def cv_times(
         use_series = sizes > offset
         cutoff_idxs = indptr[1:][use_series] - offset
         valid_idxs = np.repeat(cutoff_idxs + 1, h) + np.tile(
-            np.arange(h, dtype=times.dtype), cutoff_idxs.size
+            np.arange(h), cutoff_idxs.size
         )
         out_times.append(times[valid_idxs])
         out_cutoffs.append(np.repeat(times[cutoff_idxs], h))
