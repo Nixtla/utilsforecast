@@ -8,28 +8,31 @@ title: Preprocessing
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/preprocessing.py#L35"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/preprocessing.py#L55"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### fill_gaps
 
 > ``` text
->  fill_gaps (df:pandas.core.frame.DataFrame, freq:Union[str,int],
->             start:Union[str,int]='per_serie', end:Union[str,int]='global',
+>  fill_gaps
+>             (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.D
+>             ataFrame], freq:Union[str,int],
+>             start:Union[str,int,datetime.datetime]='per_serie',
+>             end:Union[str,int,datetime.datetime]='global',
 >             id_col:str='unique_id', time_col:str='ds')
 > ```
 
 Enforce start and end datetimes for dataframe.
 
-|             | **Type**      | **Default** | **Details**                                                                                                                                                                                                                    |
+|             | **Type**      | **Default** | **Details**                                                                                                                                                                                                                                          |
 |------|------------------|-------------------------|-------------------------|
-| df          | DataFrame     |             | Input data                                                                                                                                                                                                                     |
-| freq        | Union         |             | Series’ frequency                                                                                                                                                                                                              |
-| start       | Union         | per_serie   | Initial timestamp for the series.<br/> \* ‘per_serie’ uses each serie’s first timestamp<br/> \* ‘global’ uses the first timestamp seen in the data<br/> \* Can also be a specific timestamp or integer, e.g. ‘2000-01-01’ or 2000 |
-| end         | Union         | global      | Initial timestamp for the series.<br/> \* ‘per_serie’ uses each serie’s last timestamp<br/> \* ‘global’ uses the last timestamp seen in the data<br/> \* Can also be a specific timestamp or integer, e.g. ‘2000-01-01’ or 2000   |
-| id_col      | str           | unique_id   | Column that identifies each serie.                                                                                                                                                                                             |
-| time_col    | str           | ds          | Column that identifies each timestamp.                                                                                                                                                                                         |
-| **Returns** | **DataFrame** |             | **Dataframe with gaps filled.**                                                                                                                                                                                                |
+| df          | Union         |             | Input data                                                                                                                                                                                                                                           |
+| freq        | Union         |             | Series’ frequency                                                                                                                                                                                                                                    |
+| start       | Union         | per_serie   | Initial timestamp for the series.<br/> \* ‘per_serie’ uses each serie’s first timestamp<br/> \* ‘global’ uses the first timestamp seen in the data<br/> \* Can also be a specific timestamp or integer, e.g. ‘2000-01-01’, 2000 or datetime(2000, 1, 1) |
+| end         | Union         | global      | Initial timestamp for the series.<br/> \* ‘per_serie’ uses each serie’s last timestamp<br/> \* ‘global’ uses the last timestamp seen in the data<br/> \* Can also be a specific timestamp or integer, e.g. ‘2000-01-01’, 2000 or datetime(2000, 1, 1)   |
+| id_col      | str           | unique_id   | Column that identifies each serie.                                                                                                                                                                                                                   |
+| time_col    | str           | ds          | Column that identifies each timestamp.                                                                                                                                                                                                               |
+| **Returns** | **DataFrame** |             | **Dataframe with gaps filled.**                                                                                                                                                                                                                      |
 
 ```python
 df = pd.DataFrame(
@@ -202,4 +205,96 @@ fill_gaps(
 | 9   | 1         | 2022 | 4.0 |
 | 10  | 1         | 2023 | NaN |
 | 11  | 1         | 2024 | NaN |
+
+The function also accepts polars dataframes
+
+```python
+df = pl.DataFrame(
+    {
+        'unique_id': [0, 0, 0, 1, 1],
+        'ds': [
+            datetime(2020, 1, 1), datetime(2022, 1, 1), datetime(2023, 1, 1),
+            datetime(2021, 1, 1), datetime(2022, 1, 1)],
+        'y': np.arange(5),
+    }
+)
+df
+```
+
+| unique_id | ds                  | y   |
+|-----------|---------------------|-----|
+| i64       | datetime\[μs\]      | i64 |
+| 0         | 2020-01-01 00:00:00 | 0   |
+| 0         | 2022-01-01 00:00:00 | 1   |
+| 0         | 2023-01-01 00:00:00 | 2   |
+| 1         | 2021-01-01 00:00:00 | 3   |
+| 1         | 2022-01-01 00:00:00 | 4   |
+
+```python
+fill_gaps(
+    df,
+    freq='1y',
+    start=datetime(2019, 1, 1),
+    end=datetime(2024, 1, 1),
+)
+```
+
+| unique_id | ds                  | y    |
+|-----------|---------------------|------|
+| i64       | datetime\[μs\]      | i64  |
+| 0         | 2019-01-01 00:00:00 | null |
+| 0         | 2020-01-01 00:00:00 | 0    |
+| 0         | 2021-01-01 00:00:00 | null |
+| 0         | 2022-01-01 00:00:00 | 1    |
+| 0         | 2023-01-01 00:00:00 | 2    |
+| 0         | 2024-01-01 00:00:00 | null |
+| 1         | 2019-01-01 00:00:00 | null |
+| 1         | 2020-01-01 00:00:00 | null |
+| 1         | 2021-01-01 00:00:00 | 3    |
+| 1         | 2022-01-01 00:00:00 | 4    |
+| 1         | 2023-01-01 00:00:00 | null |
+| 1         | 2024-01-01 00:00:00 | null |
+
+```python
+df = pl.DataFrame(
+    {
+        'unique_id': [0, 0, 0, 1, 1],
+        'ds': [2020, 2021, 2023, 2021, 2022],
+        'y': np.arange(5),
+    }
+)
+df
+```
+
+| unique_id | ds   | y   |
+|-----------|------|-----|
+| i64       | i64  | i64 |
+| 0         | 2020 | 0   |
+| 0         | 2021 | 1   |
+| 0         | 2023 | 2   |
+| 1         | 2021 | 3   |
+| 1         | 2022 | 4   |
+
+```python
+fill_gaps(
+    df,
+    freq=1,
+    start=2019,
+    end=2024,
+)
+```
+
+| unique_id | ds   | y    |
+|-----------|------|------|
+| i64       | i64  | i64  |
+| 0         | 2019 | null |
+| 0         | 2020 | 0    |
+| 0         | 2021 | 1    |
+| 0         | 2022 | null |
+| 0         | 2023 | 2    |
+| 1         | 2019 | null |
+| 1         | 2020 | null |
+| 1         | 2021 | 3    |
+| 1         | 2022 | 4    |
+| 1         | 2023 | null |
 
