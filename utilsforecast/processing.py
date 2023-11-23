@@ -311,7 +311,9 @@ def _multiply_pl_freq(freq: str, n: Union[int, Series]) -> str:
     return out
 
 # %% ../nbs/processing.ipynb 37
-def _ensure_month_ends(times: pl_Series, orig_times: pl_Series, freq: str) -> pl_Series:
+def _ensure_month_ends(
+    times: pl_Series, orig_times: pl_Series, freq: Union[str, int, BaseOffset]
+) -> pl_Series:
     if not isinstance(freq, str) or "mo" not in freq:
         return times
     next_days = orig_times.dt.offset_by("1d")
