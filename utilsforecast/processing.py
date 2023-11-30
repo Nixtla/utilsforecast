@@ -406,7 +406,11 @@ def time_ranges(
             out = pl.int_ranges(starts, ends, freq, eager=True).explode()
         else:
             ends = offset_times(starts, freq, periods - 1)
-            out = pl.datetime_ranges(starts, ends, interval=freq, eager=True).explode()
+            if starts.dtype == pl.Date:
+                ranges_fn = pl.date_ranges
+            else:
+                ranges_fn = pl.datetime_ranges
+            out = ranges_fn(starts, ends, interval=freq, eager=True).explode()
             out = _ensure_month_ends(out, starts, freq)
         out = out.alias(starts.name)
     return out
