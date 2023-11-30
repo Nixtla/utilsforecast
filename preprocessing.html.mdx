@@ -16,9 +16,9 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 > ``` text
 >  fill_gaps
 >             (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.D
->             ataFrame], freq:Union[str,int],
->             start:Union[str,int,datetime.datetime]='per_serie',
->             end:Union[str,int,datetime.datetime]='global',
+>             ataFrame], freq:Union[str,int], start:Union[str,int,datetime.d
+>             ate,datetime.datetime]='per_serie',
+>             end:Union[str,int,datetime.date,datetime.datetime]='global',
 >             id_col:str='unique_id', time_col:str='ds')
 > ```
 
@@ -259,6 +259,51 @@ fill_gaps(
 df = pl.DataFrame(
     {
         'unique_id': [0, 0, 0, 1, 1],
+        'ds': [
+            date(2020, 1, 1), date(2022, 1, 1), date(2023, 1, 1),
+            date(2021, 1, 1), date(2022, 1, 1)],
+        'y': np.arange(5),
+    }
+)
+df
+```
+
+| unique_id | ds         | y   |
+|-----------|------------|-----|
+| i64       | date       | i64 |
+| 0         | 2020-01-01 | 0   |
+| 0         | 2022-01-01 | 1   |
+| 0         | 2023-01-01 | 2   |
+| 1         | 2021-01-01 | 3   |
+| 1         | 2022-01-01 | 4   |
+
+```python
+fill_gaps(
+    df,
+    freq='1y',
+    start=date(2020, 1, 1),
+    end=date(2024, 1, 1),
+)
+```
+
+| unique_id | ds         | y    |
+|-----------|------------|------|
+| i64       | date       | i64  |
+| 0         | 2020-01-01 | 0    |
+| 0         | 2021-01-01 | null |
+| 0         | 2022-01-01 | 1    |
+| 0         | 2023-01-01 | 2    |
+| 0         | 2024-01-01 | null |
+| 1         | 2020-01-01 | null |
+| 1         | 2021-01-01 | 3    |
+| 1         | 2022-01-01 | 4    |
+| 1         | 2023-01-01 | null |
+| 1         | 2024-01-01 | null |
+
+```python
+df = pl.DataFrame(
+    {
+        'unique_id': [0, 0, 0, 1, 1],
         'ds': [2020, 2021, 2023, 2021, 2022],
         'y': np.arange(5),
     }
@@ -292,9 +337,11 @@ fill_gaps(
 | 0         | 2021 | 1    |
 | 0         | 2022 | null |
 | 0         | 2023 | 2    |
+| 0         | 2024 | null |
 | 1         | 2019 | null |
 | 1         | 2020 | null |
 | 1         | 2021 | 3    |
 | 1         | 2022 | 4    |
 | 1         | 2023 | null |
+| 1         | 2024 | null |
 
