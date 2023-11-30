@@ -37,7 +37,7 @@ def _determine_bound(bound, freq, times_by_id, agg) -> np.ndarray:
 
 # %% ../nbs/preprocessing.ipynb 5
 def _determine_bound_pl(
-    bound: Union[str, int, datetime],
+    bound: Union[str, int, date, datetime],
     times_by_id: pl_DataFrame,
     agg: str,
 ) -> pl_Series:
