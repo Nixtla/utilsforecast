@@ -9,7 +9,11 @@ The most important train signal is the forecast error, which is the
 difference between the observed value $y_{\tau}$ and the prediction
 $\hat{y}_{\tau}$, at time $y_{\tau}$:
 
-$$e_{\tau} = y_{\tau}-\hat{y}_{\tau} \qquad \qquad \tau \in \{t+1,\dots,t+H \}$$
+$$
+
+e_{\tau} = y_{\tau}-\hat{y}_{\tau} \qquad \qquad \tau \in \{t+1,\dots,t+H \}
+
+$$
 
 The train loss summarizes the forecast errors in different evaluation
 metrics.
@@ -29,7 +33,11 @@ series_pl = generate_series(10, n_models=2, level=[80], engine='polars')
 
 ### Mean Absolute Error (MAE)
 
-> $$ \mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} |y_{\tau} - \hat{y}_{\tau}| $$
+$$
+
+\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} |y_{\tau} - \hat{y}_{\tau}|
+
+$$
 
 ![](/imgs/losses/mae_loss.png)
 
@@ -80,7 +88,11 @@ pd_vs_pl(
 
 ### Mean Squared Error
 
-> $$ \mathrm{MSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} (y_{\tau} - \hat{y}_{\tau})^{2} $$
+$$
+
+\mathrm{MSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} (y_{\tau} - \hat{y}_{\tau})^{2}
+
+$$
 
 ![](/imgs/losses/mse_loss.png)
 
@@ -123,7 +135,11 @@ pd_vs_pl(
 
 ### Root Mean Squared Error
 
-> $$ \mathrm{RMSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \sqrt{\frac{1}{H} \sum^{t+H}_{\tau=t+1} (y_{\tau} - \hat{y}_{\tau})^{2}} $$
+$$
+
+\mathrm{RMSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \sqrt{\frac{1}{H} \sum^{t+H}_{\tau=t+1} (y_{\tau} - \hat{y}_{\tau})^{2}}
+
+$$
 
 ![](/imgs/losses/rmse_loss.png)
 
@@ -170,7 +186,11 @@ pd_vs_pl(
 
 ### Mean Absolute Percentage Error
 
-> $$ \mathrm{MAPE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{|y_{\tau}|} $$
+$$
+
+\mathrm{MAPE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{|y_{\tau}|}
+
+$$
 
 ![](/imgs/losses/mape_loss.png)
 
@@ -214,7 +234,11 @@ pd_vs_pl(
 
 ### Symmetric Mean Absolute Percentage Error
 
-> $$ \mathrm{SMAPE}_{2}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{|y_{\tau}|+|\hat{y}_{\tau}|} $$
+$$
+
+\mathrm{SMAPE}_{2}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{|y_{\tau}|+|\hat{y}_{\tau}|}
+
+$$
 
 ------------------------------------------------------------------------
 
@@ -238,7 +262,7 @@ by calculating the relative deviation of the prediction and the observed
 value scaled by the sum of the absolute values for the prediction and
 observed value at a given time, then averages these devations over the
 length of the series. This allows the SMAPE to have bounds between 0%
-and 200% which is desireble compared to normal MAPE that may be
+and 100% which is desirable compared to normal MAPE that may be
 undetermined when the target is zero.
 
 |             | **Type**  | **Default** | **Details**                                                 |
@@ -261,11 +285,11 @@ pd_vs_pl(
 
 ### Mean Absolute Scaled Error
 
-> $$
+$$
 
-> \mathrm{MASE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau}) = 
-> \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}
-> 
+\mathrm{MASE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau}) = 
+\frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}
+
 $$
 
 ![](/imgs/losses/mase_loss.png)
@@ -319,7 +343,11 @@ pd_vs_pl(
 
 ### Relative Mean Absolute Error
 
-> $$ \mathrm{RMAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{base}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{base}_{\tau})} $$
+$$
+
+\mathrm{RMAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{base}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{base}_{\tau})}
+
+$$
 
 ![](/imgs/losses/rmae_loss.png)
 
