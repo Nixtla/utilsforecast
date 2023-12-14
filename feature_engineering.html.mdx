@@ -1,0 +1,74 @@
+---
+description: Create exogenous regressors for your models
+output-file: feature_engineering.html
+title: Feature engineering
+
+---
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/feature_engineering.py#L16"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### fourier
+
+> ``` text
+>  fourier
+>           (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.Dat
+>           aFrame], freq:str, season_length:int, k:int, h:int=0,
+>           id_col:str='unique_id', time_col:str='ds')
+> ```
+
+Compute fourier seasonal terms for training and forecasting
+
+|               | **Type**  | **Default** | **Details**                                                                          |
+|------|------------------|-------------------------|-------------------------|
+| df            | Union     |             | Dataframe with ids, times and values for the exogenous regressors.                   |
+| freq          | str       |             | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
+| season_length | int       |             | Number of observations per unit of time. Ex: 24 Hourly data.                         |
+| k             | int       |             | Maximum order of the fourier terms                                                   |
+| h             | int       | 0           | Forecast horizon.                                                                    |
+| id_col        | str       | unique_id   | Column that identifies each serie.                                                   |
+| time_col      | str       | ds          | Column that identifies each timestep, its values can be timestamps or integers.      |
+| **Returns**   | **Tuple** |             | **Original DataFrame with the computed features**                                    |
+
+```python
+import pandas as pd
+
+from utilsforecast.data import generate_series
+```
+
+
+```python
+series = generate_series(5)
+transformed_df, future_df = fourier(series, freq='D', season_length=7, k=2, h=1)
+transformed_df
+```
+
+|      | unique_id | ds         | y        | sin1_7    | sin2_7    | cos1_7    | cos2_7    |
+|------|-----------|------------|----------|-----------|-----------|-----------|-----------|
+| 0    | 0         | 2000-01-01 | 0.428973 | 0.781832  | 0.974928  | 0.623490  | -0.222521 |
+| 1    | 0         | 2000-01-02 | 1.423626 | 0.974928  | -0.433884 | -0.222521 | -0.900969 |
+| 2    | 0         | 2000-01-03 | 2.311782 | 0.433884  | -0.781831 | -0.900969 | 0.623490  |
+| 3    | 0         | 2000-01-04 | 3.192191 | -0.433884 | 0.781832  | -0.900969 | 0.623490  |
+| 4    | 0         | 2000-01-05 | 4.148767 | -0.974928 | 0.433884  | -0.222521 | -0.900969 |
+| ...  | ...       | ...        | ...      | ...       | ...       | ...       | ...       |
+| 1096 | 4         | 2001-01-03 | 4.058910 | -0.974927 | 0.433888  | -0.222523 | -0.900967 |
+| 1097 | 4         | 2001-01-04 | 5.178157 | -0.781823 | -0.974934 | 0.623500  | -0.222495 |
+| 1098 | 4         | 2001-01-05 | 6.133142 | -0.000002 | -0.000003 | 1.000000  | 1.000000  |
+| 1099 | 4         | 2001-01-06 | 0.403709 | 0.781840  | 0.974922  | 0.623479  | -0.222548 |
+| 1100 | 4         | 2001-01-07 | 1.081779 | 0.974928  | -0.433882 | -0.222520 | -0.900970 |
+
+```python
+future_df
+```
+
+|     | unique_id | ds         | sin1_7        | sin2_7        | cos1_7    | cos2_7    |
+|-----|-----------|------------|---------------|---------------|-----------|-----------|
+| 0   | 0         | 2000-08-10 | -7.818282e-01 | -9.749302e-01 | 0.623494  | -0.222511 |
+| 1   | 1         | 2000-04-07 | -2.320534e-06 | -4.641067e-06 | 1.000000  | 1.000000  |
+| 2   | 2         | 2000-06-16 | 3.815962e-07  | 7.631924e-07  | 1.000000  | 1.000000  |
+| 3   | 3         | 2000-08-30 | -9.749273e-01 | 4.338886e-01  | -0.222524 | -0.900967 |
+| 4   | 4         | 2001-01-08 | 4.338705e-01  | -7.818132e-01 | -0.900975 | 0.623513  |
+

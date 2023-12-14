@@ -84,7 +84,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >  validate_format
 >                   (df:Union[pandas.core.frame.DataFrame,polars.dataframe.f
 >                   rame.DataFrame], id_col:str='unique_id',
->                   time_col:str='ds', target_col:str='y')
+>                   time_col:str='ds', target_col:Optional[str]='y')
 > ```
 
 Ensure DataFrame has expected format.
@@ -94,7 +94,7 @@ Ensure DataFrame has expected format.
 | df          | Union    |             | DataFrame with time series in long format. |
 | id_col      | str      | unique_id   | Column that identifies each serie.         |
 | time_col    | str      | ds          | Column that identifies each timestamp.     |
-| target_col  | str      | y           | Column that contains the target.           |
+| target_col  | Optional | y           | Column that contains the target.           |
 | **Returns** | **None** |             |                                            |
 
 ```python
@@ -123,7 +123,7 @@ for constructor in constructors:
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/validation.py#L126"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/validation.py#L131"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### validate_freq
