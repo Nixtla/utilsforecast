@@ -746,7 +746,7 @@ def add_insample_levels(
     level: List[Union[int, float]],
     id_col: str = "unique_id",
     target_col: str = "y",
-):
+) -> DataFrame:
     import operator
 
     from scipy.stats import norm
