@@ -1039,3 +1039,39 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >                   input_size:Optional[int]=None)
 > ```
 
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L743"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### add_insample_levels
+
+> ``` text
+>  add_insample_levels
+>                       (df:Union[pandas.core.frame.DataFrame,polars.datafra
+>                       me.frame.DataFrame], models:List[str],
+>                       level:List[Union[int,float]],
+>                       id_col:str='unique_id', target_col:str='y')
+> ```
+
+```python
+series = generate_series(100, n_models=2)
+models = ['model0', 'model1']
+levels = [80, 95]
+with_levels = add_insample_levels(series, models, levels)
+for model in models:
+    for lvl in levels:
+        assert with_levels[f'{model}-lo-{lvl}'].lt(with_levels[f'{model}-hi-{lvl}']).all()
+```
+
+
+```python
+series_pl = generate_series(100, n_models=2, engine='polars')
+with_levels_pl = add_insample_levels(series_pl, ['model0', 'model1'], [80, 95])
+pd.testing.assert_frame_equal(
+    with_levels.drop(columns='unique_id'),
+    with_levels_pl.to_pandas().drop(columns='unique_id')
+)
+```
+
