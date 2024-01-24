@@ -120,7 +120,7 @@ def validate_format(
         return None
     target = df[target_col]
     if isinstance(target, pd.Series):
-        is_numeric = pd.api.types.is_numeric_dtype(target)
+        is_numeric = pd.api.types.is_numeric_dtype(target.dtype)
     else:
         try:
             is_numeric = target.dtype.is_numeric()
