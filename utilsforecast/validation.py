@@ -14,7 +14,7 @@ from .compat import DataFrame, Series, pl_DataFrame, pl_Series, pl
 # %% ../nbs/validation.ipynb 5
 def _is_int_dtype(s: Union[pd.Index, Series]) -> bool:
     if isinstance(s, (pd.Index, pd.Series)):
-        out = pd.api.types.is_integer_dtype(s)
+        out = pd.api.types.is_integer_dtype(s.dtype)
     else:
         try:
             out = s.dtype.is_integer()
@@ -25,16 +25,16 @@ def _is_int_dtype(s: Union[pd.Index, Series]) -> bool:
 
 def _is_dt_dtype(s: Union[pd.Index, Series]) -> bool:
     if isinstance(s, (pd.Index, pd.Series)):
-        out = pd.api.types.is_datetime64_any_dtype(s)
+        out = pd.api.types.is_datetime64_any_dtype(s.dtype)
     else:
         out = s.dtype in (pl.Date, pl.Datetime)
     return out
 
-# %% ../nbs/validation.ipynb 8
+# %% ../nbs/validation.ipynb 9
 def _is_dt_or_int(s: Series) -> bool:
     return _is_dt_dtype(s) or _is_int_dtype(s)
 
-# %% ../nbs/validation.ipynb 9
+# %% ../nbs/validation.ipynb 10
 def ensure_shallow_copy(df: pd.DataFrame) -> pd.DataFrame:
     from packaging.version import Version
 
@@ -43,7 +43,7 @@ def ensure_shallow_copy(df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
     return df
 
-# %% ../nbs/validation.ipynb 10
+# %% ../nbs/validation.ipynb 11
 def ensure_time_dtype(df: DataFrame, time_col: str = "ds") -> DataFrame:
     """Make sure that `time_col` contains timestamps or integers.
     If it contains strings, try to cast them as timestamps."""
@@ -71,7 +71,7 @@ def ensure_time_dtype(df: DataFrame, time_col: str = "ds") -> DataFrame:
         raise ValueError(f"'{time_col}' should have valid timestamps or integers.")
     return df
 
-# %% ../nbs/validation.ipynb 13
+# %% ../nbs/validation.ipynb 14
 def validate_format(
     df: DataFrame,
     id_col: str = "unique_id",
@@ -131,7 +131,7 @@ def validate_format(
             f"The target column ('{target_col}') should have a numeric data type, got '{target.dtype}')"
         )
 
-# %% ../nbs/validation.ipynb 18
+# %% ../nbs/validation.ipynb 19
 def validate_freq(
     times: Series,
     freq: Union[str, int],
