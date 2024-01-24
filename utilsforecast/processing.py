@@ -346,7 +346,7 @@ def offset_times(
         dts = _is_dt_dtype(times) and isinstance(freq, BaseOffset)
         if not ints and not dts:
             raise ValueError(
-                f"Cannot offset times with data type: '{times_dtype}' "
+                f"Cannot offset times with data type: '{times.dtype}' "
                 f"using a frequency of type: '{type(freq)}'."
             )
         out = times + n * freq

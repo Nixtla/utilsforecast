@@ -7,7 +7,6 @@ __all__ = ['ensure_shallow_copy', 'ensure_time_dtype', 'validate_format', 'valid
 import re
 from typing import Optional, Union
 
-import numpy as np
 import pandas as pd
 
 from .compat import DataFrame, Series, pl_DataFrame, pl_Series, pl
