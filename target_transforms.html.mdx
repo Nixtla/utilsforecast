@@ -34,19 +34,16 @@ Standardizes each serie by subtracting its mean and dividing by its
 standard deviation.
 
 ```python
-from utilsforecast.data import generate_series
-```
-
-
-```python
-series = generate_series(10, min_length=50, max_length=100)
-data = series['y'].values
-sizes = series.groupby('unique_id', observed=True).size().values
+sizes = np.random.randint(low=50, high=100, size=10)
+data = np.random.rand(sizes.sum())
 indptr = np.append(0, sizes.cumsum())
 ga = GroupedArray(data, indptr)
 # introduce some constant series
 for i, c in zip([0, 3], [10, 0]):
     ga.data[ga.indptr[i] : ga.indptr[i + 1]] = c * np.ones(ga[i].size)
+# introduce some nans
+for i in [1, 4]:
+    ga.data[ga.indptr[i] : ga.indptr[i] + 5] = np.nan
 ```
 
 
@@ -129,7 +126,7 @@ test_transform(LocalBoxCox(), ga)
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/target_transforms.py#L192"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/target_transforms.py#L189"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### GlobalFuncTransformer
