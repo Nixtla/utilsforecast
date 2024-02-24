@@ -392,7 +392,8 @@ def quantile_loss(
         dataframe with one row per id and one column per model.
     """
     if isinstance(df, pd.DataFrame):
-        delta_y = df[models].sub(df[target_col], axis=0).abs()
+        # we multiply by -1 because we want errors defined by y - y_hat
+        delta_y = df[models].sub(df[target_col], axis=0) * (-1)
         res = (
             np.maximum(q * delta_y, (q - 1) * delta_y)
             .groupby(df[id_col], observed=True)
@@ -403,7 +404,8 @@ def quantile_loss(
     else:
 
         def gen_expr(model):
-            delta_y = pl.col(model).sub(pl.col(target_col)).abs()
+            # we multiply by -1 because we want errors defined by y - y_hat
+            delta_y = pl.col(model).sub(pl.col(target_col)) * (-1)
             try:
                 col_max = pl.max_horizontal([q * delta_y, (q - 1) * delta_y])
             except AttributeError:
@@ -413,7 +415,7 @@ def quantile_loss(
         res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 57
+# %% ../nbs/losses.ipynb 58
 def mqloss(
     df: DataFrame,
     models: List[str],
@@ -479,7 +481,7 @@ def mqloss(
                 res = res.join(result, on=id_col)
     return res
 
-# %% ../nbs/losses.ipynb 61
+# %% ../nbs/losses.ipynb 63
 def coverage(
     df: DataFrame,
     models: List[str],
@@ -536,7 +538,7 @@ def coverage(
         res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 65
+# %% ../nbs/losses.ipynb 67
 def calibration(
     df: DataFrame,
     models: List[str],
@@ -586,7 +588,7 @@ def calibration(
         res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 69
+# %% ../nbs/losses.ipynb 71
 def scaled_crps(
     df: DataFrame,
     models: List[str],
