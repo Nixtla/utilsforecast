@@ -474,12 +474,12 @@ def mqloss(
                 res = res.reset_index()
         else:
             if isinstance(res, pd.DataFrame):
-                res = pd.concat([res, result], axis=1)
+                res = pd.concat([res, result.reset_index(drop=True)], axis=1)
             else:
                 res = res.join(result, on=id_col)
     return res
 
-# %% ../nbs/losses.ipynb 61
+# %% ../nbs/losses.ipynb 62
 def coverage(
     df: DataFrame,
     models: List[str],
@@ -536,7 +536,7 @@ def coverage(
         res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 65
+# %% ../nbs/losses.ipynb 66
 def calibration(
     df: DataFrame,
     models: List[str],
@@ -586,7 +586,7 @@ def calibration(
         res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 69
+# %% ../nbs/losses.ipynb 70
 def scaled_crps(
     df: DataFrame,
     models: List[str],
