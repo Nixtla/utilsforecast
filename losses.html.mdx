@@ -493,12 +493,32 @@ pd_vs_pl(
 )
 ```
 
+
+```python
+for df in [series, series_pl]:
+    if isinstance(df, pd.DataFrame):
+        df_test = df.assign(unique_id=lambda df: df["unique_id"].astype(str))
+    else:
+        df_test = df.with_columns(pl.col("unique_id").cast(pl.Utf8))
+    mql_df = mqloss(
+        df_test, 
+        models, 
+        [0.1, 0.3],
+    )
+    assert mql_df.shape == (series["unique_id"].nunique(), 1 + len(models))
+    if isinstance(mql_df, pd.DataFrame):
+        null_vals = mql_df.isna().sum().sum()
+    else:
+        null_vals = df.select(pl.all().is_null().sum()).sum_horizontal()
+    assert null_vals.item() == 0
+```
+
 ### Coverage
 
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L489"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L484"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### coverage
@@ -534,7 +554,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L546"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L541"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### calibration
@@ -580,7 +600,7 @@ and $y_{i,\tau}$ are its realizations.
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L596"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L591"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### scaled_crps
