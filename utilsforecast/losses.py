@@ -392,20 +392,24 @@ def quantile_loss(
         dataframe with one row per id and one column per model.
     """
     if isinstance(df, pd.DataFrame):
-        # we multiply by -1 because we want errors defined by y - y_hat
-        delta_y = df[models].sub(df[target_col], axis=0) * (-1)
-        res = (
-            np.maximum(q * delta_y, (q - 1) * delta_y)
-            .groupby(df[id_col], observed=True)
-            .mean()
-        )
-        res.index.name = id_col
-        res = res.reset_index()
+        res: Optional[pd.DataFrame] = None
+        for model in models:
+            delta_y = df[target_col].sub(df[model], axis=0)
+            model_res = (
+                np.maximum(q * delta_y, (q - 1) * delta_y)
+                .groupby(df[id_col], observed=True)
+                .mean()
+                .rename(model)
+                .reset_index()
+            )
+            if res is None:
+                res = model_res
+            else:
+                res[model] = model_res[model]
     else:
 
         def gen_expr(model):
-            # we multiply by -1 because we want errors defined by y - y_hat
-            delta_y = pl.col(model).sub(pl.col(target_col)) * (-1)
+            delta_y = pl.col(target_col).sub(pl.col(model))
             try:
                 col_max = pl.max_horizontal([q * delta_y, (q - 1) * delta_y])
             except AttributeError:
