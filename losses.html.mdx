@@ -436,14 +436,6 @@ A common value for q is 0.5 for the deviation from the median.
 | target_col  | str       | y           | Column that contains the target.                            |
 | **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
 
-```python
-pd_vs_pl(
-    quantile_loss(series, models),
-    quantile_loss(series_pl, models),
-    models,
-)
-```
-
 ### Multi-Quantile Loss
 
 $$
@@ -459,7 +451,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L417"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L423"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mqloss
@@ -506,7 +498,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L483"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L489"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### coverage
@@ -542,7 +534,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L540"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L546"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### calibration
@@ -588,7 +580,7 @@ and $y_{i,\tau}$ are its realizations.
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L590"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L596"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### scaled_crps
