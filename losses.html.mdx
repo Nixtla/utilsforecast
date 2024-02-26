@@ -354,7 +354,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L302"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L299"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### rmae
@@ -408,7 +408,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L362"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L359"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### quantile_loss
@@ -436,6 +436,15 @@ A common value for q is 0.5 for the deviation from the median.
 | target_col  | str       | y           | Column that contains the target.                            |
 | **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
 
+```python
+for q in quantiles:
+    pd_vs_pl(
+        quantile_loss(series, models, q=q),
+        quantile_loss(series_pl, models, q=q),
+        models,
+    )
+```
+
 ### Multi-Quantile Loss
 
 $$
@@ -451,7 +460,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L423"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L420"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mqloss
@@ -493,32 +502,12 @@ pd_vs_pl(
 )
 ```
 
-
-```python
-for df in [series, series_pl]:
-    if isinstance(df, pd.DataFrame):
-        df_test = df.assign(unique_id=lambda df: df["unique_id"].astype(str))
-    else:
-        df_test = df.with_columns(pl.col("unique_id").cast(pl.Utf8))
-    mql_df = mqloss(
-        df_test, 
-        models, 
-        [0.1, 0.3],
-    )
-    assert mql_df.shape == (series["unique_id"].nunique(), 1 + len(models))
-    if isinstance(mql_df, pd.DataFrame):
-        null_vals = mql_df.isna().sum().sum()
-    else:
-        null_vals = df.select(pl.all().is_null().sum()).sum_horizontal()
-    assert null_vals.item() == 0
-```
-
 ### Coverage
 
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L484"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L478"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### coverage
@@ -554,7 +543,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L541"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L537"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### calibration
@@ -600,7 +589,7 @@ and $y_{i,\tau}$ are its realizations.
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L591"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L589"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### scaled_crps
