@@ -46,7 +46,7 @@ def _pl_agg_expr(
     df: pl_DataFrame,
     models: Union[List[str], List[Tuple[str, str]]],
     id_col: str,
-    gen_expr: Callable[[str], "pl.Expr"],
+    gen_expr: Callable[[Union[str, Tuple[str, str]]], "pl.Expr"],
 ) -> pl_DataFrame:
     exprs = [gen_expr(model) for model in models]
     df = df.select([id_col, *exprs])
@@ -642,6 +642,9 @@ def scaled_crps(
         grouped_df = ufp.group_by(df, id_col)
         norm = grouped_df.agg(pl.col(target_col).abs().sum().alias("norm"))
         res = _pl_agg_expr(
-            loss.join(sizes, on=id_col).join(norm, on=id_col), models, id_col, gen_expr
+            loss.join(sizes, on=id_col).join(norm, on=id_col),
+            list(models.keys()),
+            id_col,
+            gen_expr,
         )
     return res

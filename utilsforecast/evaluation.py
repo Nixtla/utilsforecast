@@ -25,7 +25,7 @@ def _function_name(f: Callable):
     return name
 
 
-def _quantiles_from_levels(level) -> np.ndarray:
+def _quantiles_from_levels(level: List[int]) -> np.ndarray:
     """Returns quantiles associated to `level` and the sorte columns of `model_name`"""
     level = sorted(level)
     alphas = [100 - lv for lv in level]
@@ -34,7 +34,7 @@ def _quantiles_from_levels(level) -> np.ndarray:
     return np.array(quantiles)
 
 
-def _models_from_levels(model_name, level) -> List[str]:
+def _models_from_levels(model_name: str, level: List[int]) -> List[str]:
     cols = [f"{model_name}-lo-{lv}" for lv in reversed(level)]
     cols.extend([f"{model_name}-hi-{lv}" for lv in level])
     return cols
@@ -145,6 +145,7 @@ def evaluate(
             kwargs["train_df"] = train_df
         metric_params = inspect.signature(metric).parameters
         if "q" in metric_params or metric_params["models"].annotation is Dict[str, str]:
+            assert level is not None  # we've already made sure of this above
             for lvl in level:
                 quantiles = _quantiles_from_levels([lvl])
                 for q, side in zip(quantiles, ["lo", "hi"]):
@@ -159,6 +160,7 @@ def evaluate(
                     result = ufp.assign_columns(result, "metric", f"{metric_name}_q{q}")
                     results_per_metric.append(result)
         elif "quantiles" in metric_params:
+            assert level is not None  # we've already made sure of this above
             quantiles = _quantiles_from_levels(level)
             kwargs["quantiles"] = quantiles
             kwargs["models"] = {
@@ -168,6 +170,7 @@ def evaluate(
             result = ufp.assign_columns(result, "metric", metric_name)
             results_per_metric.append(result)
         elif "level" in metric_params:
+            assert level is not None  # we've already made sure of this above
             for lvl in level:
                 kwargs["level"] = lvl
                 result = metric(**kwargs)
