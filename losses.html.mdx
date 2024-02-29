@@ -44,7 +44,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L58"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L57"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mae
@@ -99,7 +99,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L90"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L89"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mse
@@ -146,7 +146,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L122"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L121"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### rmse
@@ -197,7 +197,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L155"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L154"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mape
@@ -243,7 +243,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L194"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L193"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### smape
@@ -302,7 +302,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L231"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L230"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mase
@@ -354,7 +354,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L299"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L298"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### rmae
@@ -408,7 +408,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L359"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L358"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### quantile_loss
@@ -416,7 +416,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 > ``` text
 >  quantile_loss
 >                 (df:Union[pandas.core.frame.DataFrame,polars.dataframe.fra
->                 me.DataFrame], models:List[str], q:float=0.5,
+>                 me.DataFrame], models:Dict[str,str], q:float=0.5,
 >                 id_col:str='unique_id', target_col:str='y')
 > ```
 
@@ -427,23 +427,14 @@ absolute deviation in a non symmetric way, the loss pays more attention
 to under or over estimation.  
 A common value for q is 0.5 for the deviation from the median.
 
-|             | **Type**  | **Default** | **Details**                                                 |
+|             | **Type**  | **Default** | **Details**                                                                  |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Input dataframe with id, times, actuals and predictions.    |
-| models      | List      |             | Columns that identify the models predictions.               |
-| q           | float     | 0.5         | Quantile for the predictions’ comparison.                   |
-| id_col      | str       | unique_id   | Column that identifies each serie.                          |
-| target_col  | str       | y           | Column that contains the target.                            |
-| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
-
-```python
-for q in quantiles:
-    pd_vs_pl(
-        quantile_loss(series, models, q=q),
-        quantile_loss(series_pl, models, q=q),
-        models,
-    )
-```
+| df          | Union     |             | Input dataframe with id, times, actuals and predictions.                     |
+| models      | Dict      |             | Mapping from model name to the model predictions for the specified quantile. |
+| q           | float     | 0.5         | Quantile for the predictions’ comparison.                                    |
+| id_col      | str       | unique_id   | Column that identifies each serie.                                           |
+| target_col  | str       | y           | Column that contains the target.                                             |
+| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.**                  |
 
 ### Multi-Quantile Loss
 
@@ -468,7 +459,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 > ``` text
 >  mqloss
 >          (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.Data
->          Frame], models:List[str], quantiles:numpy.ndarray,
+>          Frame], models:Dict[str,List[str]], quantiles:numpy.ndarray,
 >          id_col:str='unique_id', target_col:str='y')
 > ```
 
@@ -485,19 +476,19 @@ numerical integration technique, that discretizes the quantiles and
 treats the CRPS integral with a left Riemann approximation, averaging
 over uniformly distanced quantiles.
 
-|             | **Type**  | **Default** | **Details**                                                 |
+|             | **Type**  | **Default** | **Details**                                                         |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Input dataframe with id, times, actuals and predictions.    |
-| models      | List      |             | Columns that identify the models predictions.               |
-| quantiles   | ndarray   |             | Quantiles to compare against.                               |
-| id_col      | str       | unique_id   | Column that identifies each serie.                          |
-| target_col  | str       | y           | Column that contains the target.                            |
-| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+| df          | Union     |             | Input dataframe with id, times, actuals and predictions.            |
+| models      | Dict      |             | Mapping from model name to the model predictions for each quantile. |
+| quantiles   | ndarray   |             | Quantiles to compare against.                                       |
+| id_col      | str       | unique_id   | Column that identifies each serie.                                  |
+| target_col  | str       | y           | Column that contains the target.                                    |
+| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.**         |
 
 ```python
 pd_vs_pl(
-    mqloss(series, models, [0.1, 0.3]),
-    mqloss(series_pl, models, [0.1, 0.3]),
+    mqloss(series, mq_models, quantiles=quantiles),
+    mqloss(series_pl, mq_models, quantiles=quantiles),
     models,
 )
 ```
@@ -507,7 +498,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L478"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L479"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### coverage
@@ -543,7 +534,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L537"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L538"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### calibration
@@ -551,25 +542,24 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 > ``` text
 >  calibration
 >               (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame
->               .DataFrame], models:List[str], level:int,
->               id_col:str='unique_id', target_col:str='y')
+>               .DataFrame], models:Dict[str,str], id_col:str='unique_id',
+>               target_col:str='y')
 > ```
 
-Fraction of y that is lower than y_hat_hi.
+Fraction of y that is lower than the model’s predictions.
 
 |             | **Type**  | **Default** | **Details**                                                 |
 |------|------------------|-------------------------|-------------------------|
 | df          | Union     |             | Input dataframe with id, times, actuals and predictions.    |
-| models      | List      |             | Columns that identify the models predictions.               |
-| level       | int       |             | Confidence level used for intervals.                        |
+| models      | Dict      |             | Mapping from model name to the model predictions.           |
 | id_col      | str       | unique_id   | Column that identifies each serie.                          |
 | target_col  | str       | y           | Column that contains the target.                            |
 | **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
-    calibration(series, models, 80),
-    calibration(series_pl, models, 80),
+    calibration(series, q_models[0.1]),
+    calibration(series_pl, q_models[0.1]),
     models,
 )
 ```
@@ -589,7 +579,7 @@ and $y_{i,\tau}$ are its realizations.
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L589"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L588"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### scaled_crps
@@ -597,8 +587,9 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 > ``` text
 >  scaled_crps
 >               (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame
->               .DataFrame], models:List[str], quantiles:numpy.ndarray,
->               id_col:str='unique_id', target_col:str='y')
+>               .DataFrame], models:Dict[str,List[str]],
+>               quantiles:numpy.ndarray, id_col:str='unique_id',
+>               target_col:str='y')
 > ```
 
 Scaled Continues Ranked Probability Score
@@ -608,19 +599,19 @@ Calculates a scaled variation of the CRPS, as proposed by Rangapuram
 to the observation `y`. This metric averages percentual weighted
 absolute deviations as defined by the quantile losses.
 
-|             | **Type**  | **Default** | **Details**                                                 |
+|             | **Type**  | **Default** | **Details**                                                         |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Input dataframe with id, times, actuals and predictions.    |
-| models      | List      |             | Columns that identify the models predictions.               |
-| quantiles   | ndarray   |             | Quantiles to compare against.                               |
-| id_col      | str       | unique_id   | Column that identifies each serie.                          |
-| target_col  | str       | y           | Column that contains the target.                            |
-| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+| df          | Union     |             | Input dataframe with id, times, actuals and predictions.            |
+| models      | Dict      |             | Mapping from model name to the model predictions for each quantile. |
+| quantiles   | ndarray   |             | Quantiles to compare against.                                       |
+| id_col      | str       | unique_id   | Column that identifies each serie.                                  |
+| target_col  | str       | y           | Column that contains the target.                                    |
+| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.**         |
 
 ```python
 pd_vs_pl(
-    scaled_crps(series, models, [0.3, 0.5]),
-    scaled_crps(series_pl, models, [0.3, 0.5]),
+    scaled_crps(series, mq_models, quantiles),
+    scaled_crps(series_pl, mq_models, quantiles),
     models,
 )
 ```
