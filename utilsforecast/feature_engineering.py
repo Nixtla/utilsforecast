@@ -24,7 +24,7 @@ def _add_features(
     id_col: str,
     time_col: str,
     f: Callable[[np.ndarray, int], _Features],
-) -> None:
+) -> Tuple[DataFrame, DataFrame]:
     # validations
     if not isinstance(h, int) or h < 0:
         raise ValueError("`h` must be a non-negative integer")
@@ -37,7 +37,7 @@ def _add_features(
     sizes = id_counts["counts"].to_numpy()
 
     # compute values
-    cols, vals, future_vals = f(sizes=sizes, h=h)
+    cols, vals, future_vals = f(sizes=sizes, h=h)  # type: ignore
 
     # assign back to df
     sort_idxs = ufp.maybe_compute_sort_indices(df, id_col, time_col)
