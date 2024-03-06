@@ -5,7 +5,7 @@ __all__ = ['fourier', 'trend', 'pipeline']
 
 # %% ../nbs/feature_engineering.ipynb 3
 from functools import partial
-from typing import Callable, List, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 
