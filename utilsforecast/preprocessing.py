@@ -126,7 +126,7 @@ def fill_gaps(
         offset = pd.tseries.frequencies.to_offset(freq)
         if isinstance(offset.base, pd.offsets.Minute):
             # minutes are represented as 'm' in numpy
-            freq = freq.replace("min", "m")
+            freq = "m"
         elif isinstance(offset.base, pd.offsets.BusinessDay):
             if offset.n != 1:
                 raise NotImplementedError("Multiple of a business day")
