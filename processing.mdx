@@ -452,11 +452,11 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ```python
 pd.testing.assert_index_equal(
-    offset_times(pd.to_datetime(['2020-01-31', '2020-02-29', '2020-03-31']), 'M', 1),
+    offset_times(pd.to_datetime(['2020-01-31', '2020-02-29', '2020-03-31']), pd.offsets.MonthEnd(), 1),
     pd.Index(pd.to_datetime(['2020-02-29', '2020-03-31', '2020-04-30'])),
 )
 pd.testing.assert_index_equal(
-    offset_times(pd.to_datetime(['2020-01-01', '2020-02-01', '2020-03-01']), 'MS', 1),
+    offset_times(pd.to_datetime(['2020-01-01', '2020-02-01', '2020-03-01']), pd.offsets.MonthBegin(), 1),
     pd.Index(pd.to_datetime(['2020-02-01', '2020-03-01', '2020-04-01'])),
 )
 ```
@@ -520,15 +520,15 @@ pd.testing.assert_series_equal(
     pd.Series(pd.to_datetime(['2000-01-01', '2000-01-05', '2000-01-09', '2010-10-10', '2010-10-14', '2010-10-18']))
 )
 pd.testing.assert_series_equal(
-    time_ranges(pd.to_datetime(['2000-01-01', '2010-10-01']), freq='2MS', periods=2),
+    time_ranges(pd.to_datetime(['2000-01-01', '2010-10-01']), freq=2 * pd.offsets.MonthBegin(), periods=2),
     pd.Series(pd.to_datetime(['2000-01-01', '2000-03-01', '2010-10-01', '2010-12-01']))
 )
 pd.testing.assert_series_equal(
-    time_ranges(pd.to_datetime(['2000-01-01', '2010-01-01']), freq='2YS', periods=2),
+    time_ranges(pd.to_datetime(['2000-01-01', '2010-01-01']), freq=2 * pd.offsets.YearBegin(), periods=2),
     pd.Series(pd.to_datetime(['2000-01-01', '2002-01-01', '2010-01-01', '2012-01-01']))
 )
 pd.testing.assert_series_equal(
-    time_ranges(pd.to_datetime(['2000-12-31', '2010-12-31']), freq='2Y', periods=2),
+    time_ranges(pd.to_datetime(['2000-12-31', '2010-12-31']), freq=2 * pd.offsets.YearEnd(), periods=2),
     pd.Series(pd.to_datetime(['2000-12-31', '2002-12-31', '2010-12-31', '2012-12-31']))
 )
 # ints
@@ -873,13 +873,13 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >  value_cols_to_numpy
 >                       (df:Union[pandas.core.frame.DataFrame,polars.datafra
 >                       me.frame.DataFrame], id_col:str, time_col:str,
->                       target_col:str)
+>                       target_col:Optional[str])
 > ```
 
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L564"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L568"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### make_future_dataframe
@@ -927,7 +927,7 @@ pl.testing.assert_frame_equal(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L585"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L589"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### anti_join
@@ -965,7 +965,7 @@ test_eq(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L600"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L604"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### process_df
@@ -973,7 +973,8 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 > ``` text
 >  process_df
 >              (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.
->              DataFrame], id_col:str, time_col:str, target_col:str)
+>              DataFrame], id_col:str, time_col:str,
+>              target_col:Optional[str])
 > ```
 
 Extract components from dataframe
@@ -983,13 +984,13 @@ Extract components from dataframe
 | df          | Union     | Input dataframe with id, times and target values.         |
 | id_col      | str       |                                                           |
 | time_col    | str       |                                                           |
-| target_col  | str       |                                                           |
+| target_col  | Optional  |                                                           |
 | **Returns** | **Tuple** | **serie with the sorted unique ids present in the data.** |
 
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L648"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L655"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### DataFrameProcessor
@@ -1039,7 +1040,7 @@ for n_static_features in [0, 2]:
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L730"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L737"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### backtest_splits
@@ -1056,7 +1057,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L762"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L769"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### add_insample_levels
