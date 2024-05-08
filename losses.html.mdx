@@ -55,11 +55,11 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >       me], models:List[str], id_col:str='unique_id', target_col:str='y')
 > ```
 
-Mean Absolute Error (MAE)
+\*Mean Absolute Error (MAE)
 
 MAE measures the relative prediction accuracy of a forecasting method by
 calculating the deviation of the prediction and the true value at a
-given time and averages these devations over the length of the series.
+given time and averages these devations over the length of the series.\*
 
 |             | **Type**  | **Default** | **Details**                                                 |
 |------|------------------|-------------------------|-------------------------|
@@ -110,12 +110,12 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >       me], models:List[str], id_col:str='unique_id', target_col:str='y')
 > ```
 
-Mean Squared Error (MSE)
+\*Mean Squared Error (MSE)
 
 MSE measures the relative prediction accuracy of a forecasting method by
 calculating the squared deviation of the prediction and the true value
 at a given time, and averages these devations over the length of the
-series.
+series.\*
 
 |             | **Type**  | **Default** | **Details**                                                 |
 |------|------------------|-------------------------|-------------------------|
@@ -157,14 +157,14 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >        ame], models:List[str], id_col:str='unique_id', target_col:str='y')
 > ```
 
-Root Mean Squared Error (RMSE)
+\*Root Mean Squared Error (RMSE)
 
 RMSE measures the relative prediction accuracy of a forecasting method
 by calculating the squared deviation of the prediction and the observed
 value at a given time and averages these devations over the length of
 the series. Finally the RMSE will be in the same scale as the original
 time series so its comparison with other series is possible only if they
-share a common scale. RMSE has a direct connection to the L2 norm.
+share a common scale. RMSE has a direct connection to the L2 norm.\*
 
 |             | **Type**  | **Default** | **Details**                                                 |
 |------|------------------|-------------------------|-------------------------|
@@ -208,13 +208,13 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >        ame], models:List[str], id_col:str='unique_id', target_col:str='y')
 > ```
 
-Mean Absolute Percentage Error (MAPE)
+\*Mean Absolute Percentage Error (MAPE)
 
 MAPE measures the relative prediction accuracy of a forecasting method
 by calculating the percentual deviation of the prediction and the
 observed value at a given time and averages these devations over the
 length of the series. The closer to zero an observed value is, the
-higher penalty MAPE loss assigns to the corresponding error.
+higher penalty MAPE loss assigns to the corresponding error.\*
 
 |             | **Type**  | **Default** | **Details**                                                 |
 |------|------------------|-------------------------|-------------------------|
@@ -255,7 +255,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >         target_col:str='y')
 > ```
 
-Symmetric Mean Absolute Percentage Error (SMAPE)
+\*Symmetric Mean Absolute Percentage Error (SMAPE)
 
 SMAPE measures the relative prediction accuracy of a forecasting method
 by calculating the relative deviation of the prediction and the observed
@@ -263,7 +263,7 @@ value scaled by the sum of the absolute values for the prediction and
 observed value at a given time, then averages these devations over the
 length of the series. This allows the SMAPE to have bounds between 0%
 and 100% which is desirable compared to normal MAPE that may be
-undetermined when the target is zero.
+undetermined when the target is zero.\*
 
 |             | **Type**  | **Default** | **Details**                                                 |
 |------|------------------|-------------------------|-------------------------|
@@ -294,11 +294,6 @@ $$
 
 ![](/utilsforecast/imgs/losses/mase_loss.png)
 
-``` text
-/opt/hostedtoolcache/Python/3.10.14/x64/lib/python3.10/site-packages/fastcore/docscrape.py:225: UserWarning: Unknown section References
-  else: warn(msg)
-```
-
 ------------------------------------------------------------------------
 
 <a
@@ -315,13 +310,13 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >        id_col:str='unique_id', target_col:str='y')
 > ```
 
-Mean Absolute Scaled Error (MASE)
+\*Mean Absolute Scaled Error (MASE)
 
 MASE measures the relative prediction accuracy of a forecasting method
 by comparinng the mean absolute errors of the prediction and the
 observed value against the mean absolute errors of the seasonal naive
 model. The MASE partially composed the Overall Weighted Average (OWA),
-used in the M4 Competition.
+used in the M4 Competition.\*
 
 |             | **Type**  | **Default** | **Details**                                                                                             |
 |------|------------------|-------------------------|-------------------------|
@@ -366,12 +361,12 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >        id_col:str='unique_id', target_col:str='y')
 > ```
 
-Relative Mean Absolute Error (RMAE)
+\*Relative Mean Absolute Error (RMAE)
 
 Calculates the RAME between two sets of forecasts (from two different
 forecasting methods). A number smaller than one implies that the
 forecast in the numerator is better than the forecast in the
-denominator.
+denominator.\*
 
 |                 | **Type**  | **Default** | **Details**                                                 |
 |------|------------------|-------------------------|-------------------------|
@@ -420,12 +415,12 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >                 id_col:str='unique_id', target_col:str='y')
 > ```
 
-Quantile Loss (QL)
+\*Quantile Loss (QL)
 
 QL measures the deviation of a quantile forecast. By weighting the
 absolute deviation in a non symmetric way, the loss pays more attention
 to under or over estimation.  
-A common value for q is 0.5 for the deviation from the median.
+A common value for q is 0.5 for the deviation from the median.\*
 
 |             | **Type**  | **Default** | **Details**                                                                  |
 |------|------------------|-------------------------|-------------------------|
@@ -463,7 +458,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >          id_col:str='unique_id', target_col:str='y')
 > ```
 
-Multi-Quantile loss (MQL)
+\*Multi-Quantile loss (MQL)
 
 MQL calculates the average multi-quantile Loss for a given set of
 quantiles, based on the absolute difference between predicted quantiles
@@ -474,7 +469,7 @@ predictive distribution $\mathbf{\hat{F}}_{\tau}$ with the continuous
 ranked probability score (CRPS). This can be achieved through a
 numerical integration technique, that discretizes the quantiles and
 treats the CRPS integral with a left Riemann approximation, averaging
-over uniformly distanced quantiles.
+over uniformly distanced quantiles.\*
 
 |             | **Type**  | **Default** | **Details**                                                         |
 |------|------------------|-------------------------|-------------------------|
@@ -510,7 +505,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >            target_col:str='y')
 > ```
 
-Coverage of y with y_hat_lo and y_hat_hi.
+*Coverage of y with y_hat_lo and y_hat_hi.*
 
 |             | **Type**  | **Default** | **Details**                                                 |
 |------|------------------|-------------------------|-------------------------|
@@ -546,7 +541,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >               target_col:str='y')
 > ```
 
-Fraction of y that is lower than the model’s predictions.
+*Fraction of y that is lower than the model’s predictions.*
 
 |             | **Type**  | **Default** | **Details**                                                 |
 |------|------------------|-------------------------|-------------------------|
@@ -592,12 +587,12 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >               target_col:str='y')
 > ```
 
-Scaled Continues Ranked Probability Score
+\*Scaled Continues Ranked Probability Score
 
 Calculates a scaled variation of the CRPS, as proposed by Rangapuram
 (2021), to measure the accuracy of predicted quantiles `y_hat` compared
 to the observation `y`. This metric averages percentual weighted
-absolute deviations as defined by the quantile losses.
+absolute deviations as defined by the quantile losses.\*
 
 |             | **Type**  | **Default** | **Details**                                                         |
 |------|------------------|-------------------------|-------------------------|

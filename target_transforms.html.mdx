@@ -16,7 +16,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >  BaseTargetTransform (stats_fn)
 > ```
 
-Base class used for target transformations.
+*Base class used for target transformations.*
 
 ------------------------------------------------------------------------
 
@@ -30,8 +30,8 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >  LocalStandardScaler ()
 > ```
 
-Standardizes each serie by subtracting its mean and dividing by its
-standard deviation.
+*Standardizes each serie by subtracting its mean and dividing by its
+standard deviation.*
 
 ```python
 sizes = np.random.randint(low=50, high=100, size=10)
@@ -76,7 +76,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >  LocalMinMaxScaler ()
 > ```
 
-Scales each serie to be in the \[0, 1\] interval.
+*Scales each serie to be in the \[0, 1\] interval.*
 
 ```python
 test_transform(LocalMinMaxScaler(), ga)
@@ -94,7 +94,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >  LocalRobustScaler (scale:str='iqr')
 > ```
 
-Scaler robust to outliers.
+*Scaler robust to outliers.*
 
 |       | **Type** | **Default** | **Details**                                                                                                   |
 |------|------------------|-------------------------|-------------------------|
@@ -117,7 +117,8 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >  LocalBoxCox ()
 > ```
 
-Finds optimum lambda for each serie and applies Box-Cox transformation.
+*Finds optimum lambda for each serie and applies Box-Cox
+transformation.*
 
 ```python
 test_transform(LocalBoxCox(), ga)
@@ -135,8 +136,8 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >  GlobalFuncTransformer (func:Callable, inverse_func:Callable)
 > ```
 
-Uses `func` and `inverse_func` for applying the same transformation to
-all series.
+*Uses `func` and `inverse_func` for applying the same transformation to
+all series.*
 
 |              | **Type** | **Details**                                |
 |--------------|----------|--------------------------------------------|
