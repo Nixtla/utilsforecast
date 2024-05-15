@@ -433,7 +433,7 @@ def time_ranges(
             out = np.vstack(out).ravel(order="F")
         else:
             raise ValueError(
-                f"`starts` must be integers or timestamps, got '{starts_dtype}'."
+                f"`starts` must be integers or timestamps, got '{starts.dtype}'."
             )
         out = pd.Series(out, dtype=starts.dtype)
     else:
