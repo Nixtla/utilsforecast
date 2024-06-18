@@ -59,7 +59,7 @@ jobs:
         run: pip install uv && uv pip install ".[dev]" --system
 
       - name: Run tests
-        run: nbdev_test --do_print --timing --flags 'datasets matplotlib polars pyarrow scipy'
+        run: nbdev_test --n_workers 0 --do_print --timing --flags 'datasets matplotlib polars pyarrow scipy'
 
   minimal-tests:
     runs-on: ${{ matrix.os }}
