@@ -50,7 +50,6 @@ setuptools.setup(
     install_requires = requirements,
     extras_require={
         'plotting': plotting_requirements,
-        'scalers': scalers_requirements,
         'polars': polars_requirements,
         'dev': dev_requirements,
     },
