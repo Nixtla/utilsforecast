@@ -92,7 +92,7 @@ if POLARS_INSTALLED:
 ```python
 for engine in engines:
     series = generate_series(2, engine=engine)
-    x = np.random.rand(series.shape[0])    
+    x = np.random.rand(series.shape[0])
     series = assign_columns(series, 'x', x)
     series = assign_columns(series, ['y', 'z'], np.vstack([x, x]).T)
     series = assign_columns(series, 'ones', 1)
@@ -968,6 +968,20 @@ test_eq(
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L629"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
+### ensure_sorted
+
+> ``` text
+>  ensure_sorted
+>                 (df:Union[pandas.core.frame.DataFrame,polars.dataframe.fra
+>                 me.DataFrame], id_col:str, time_col:str)
+> ```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L644"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
 ### process_df
 
 > ``` text
@@ -979,18 +993,18 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 *Extract components from dataframe*
 
-|             | **Type**  | **Details**                                               |
+|             | **Type**              | **Details**                                               |
 |--------|---------------------------|-------------------------------------|
-| df          | Union     | Input dataframe with id, times and target values.         |
-| id_col      | str       |                                                           |
-| time_col    | str       |                                                           |
-| target_col  | Optional  |                                                           |
-| **Returns** | **Tuple** | **serie with the sorted unique ids present in the data.** |
+| df          | Union                 | Input dataframe with id, times and target values.         |
+| id_col      | str                   |                                                           |
+| time_col    | str                   |                                                           |
+| target_col  | Optional              |                                                           |
+| **Returns** | \*\*\_ProcessedDF\*\* | **serie with the sorted unique ids present in the data.** |
 
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L680"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L695"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### DataFrameProcessor
@@ -1040,7 +1054,7 @@ for n_static_features in [0, 2]:
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L762"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L777"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### backtest_splits
@@ -1057,7 +1071,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L794"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L809"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### add_insample_levels
