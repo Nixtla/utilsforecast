@@ -995,13 +995,28 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 *Extract components from dataframe*
 
-|             | **Type**              | **Details**                                               |
+|             | **Type**        | **Details**                                               |
 |--------|---------------------------|-------------------------------------|
-| df          | Union                 | Input dataframe with id, times and target values.         |
-| id_col      | str                   |                                                           |
-| time_col    | str                   |                                                           |
-| target_col  | Optional              |                                                           |
-| **Returns** | \*\*\_ProcessedDF\*\* | **serie with the sorted unique ids present in the data.** |
+| df          | Union           | Input dataframe with id, times and target values.         |
+| id_col      | str             |                                                           |
+| time_col    | str             |                                                           |
+| target_col  | Optional        |                                                           |
+| **Returns** | **ProcessedDF** | **serie with the sorted unique ids present in the data.** |
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L644"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### ProcessedDF
+
+> ``` text
+>  ProcessedDF
+>               (uids:Union[pandas.core.series.Series,polars.series.series.S
+>               eries], last_times:numpy.ndarray, data:numpy.ndarray,
+>               indptr:numpy.ndarray, sort_idxs:Optional[numpy.ndarray])
+> ```
 
 ------------------------------------------------------------------------
 
