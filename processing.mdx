@@ -79,7 +79,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >                  (df:Union[pandas.core.frame.DataFrame,polars.dataframe.fr
 >                  ame.DataFrame], names:Union[str,List[str]], values:Union[
 >                  numpy.ndarray,pandas.core.series.Series,polars.series.ser
->                  ies.Series])
+>                  ies.Series,List[float]])
 > ```
 
 ```python
@@ -98,18 +98,20 @@ for engine in engines:
     series = assign_columns(series, 'ones', 1)
     series = assign_columns(series, 'zeros', np.zeros(series.shape[0]))
     series = assign_columns(series, 'as', 'a')
+    series = assign_columns(series, 'bs', series.shape[0] * ['b'])
     np.testing.assert_allclose(
         series[['x', 'y', 'z']],
         np.vstack([x, x, x]).T
     )
     np.testing.assert_equal(series['ones'], np.ones(series.shape[0]))
     np.testing.assert_equal(series['as'], np.full(series.shape[0], 'a'))
+    np.testing.assert_equal(series['bs'], np.full(series.shape[0], 'b'))
 ```
 
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L143"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L151"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### drop_columns
@@ -123,7 +125,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L151"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L159"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### take_rows
@@ -144,7 +146,7 @@ for engine in engines:
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L159"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L167"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### filter_with_mask
@@ -160,7 +162,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L170"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L178"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### is_nan
@@ -184,7 +186,7 @@ if POLARS_INSTALLED:
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L178"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L186"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### is_none
@@ -208,7 +210,7 @@ if POLARS_INSTALLED:
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L186"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L194"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### is_nan_or_none
@@ -234,7 +236,7 @@ if POLARS_INSTALLED:
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L190"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L198"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### match_if_categorical
@@ -249,7 +251,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L222"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L230"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### vertical_concat
@@ -292,7 +294,7 @@ for engine in engines:
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L275"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L283"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### horizontal_concat
@@ -317,7 +319,7 @@ for engine in engines:
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L287"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L295"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### copy_if_pandas
@@ -331,7 +333,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L293"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L301"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### join
@@ -347,7 +349,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L310"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L318"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### drop_index_if_pandas
@@ -361,7 +363,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L316"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L324"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### rename
@@ -375,7 +377,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L324"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L332"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### sort
@@ -438,7 +440,7 @@ pl.testing.assert_series_equal(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L367"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L375"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### offset_times
@@ -476,7 +478,7 @@ pl.testing.assert_series_equal(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L397"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L405"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### offset_dates
@@ -492,7 +494,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L408"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L416"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### time_ranges
@@ -595,7 +597,7 @@ pl.testing.assert_series_equal(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L459"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L467"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### repeat
@@ -652,7 +654,7 @@ pl.testing.assert_series_equal(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L478"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L486"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### cv_times
@@ -712,7 +714,7 @@ pd.testing.assert_frame_equal(actual, expected)
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L523"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L531"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### group_by
@@ -726,7 +728,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L536"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L544"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### group_by_agg
@@ -755,7 +757,7 @@ pd.testing.assert_frame_equal(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L546"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L554"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### is_in
@@ -777,7 +779,7 @@ np.testing.assert_equal(is_in(pl.Series([1, 2, 3]), [1]), np.array([True, False,
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L554"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L562"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### between
@@ -807,7 +809,7 @@ np.testing.assert_equal(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L562"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L570"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### fill_null
@@ -836,7 +838,7 @@ pl.testing.assert_frame_equal(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L570"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L578"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### cast
@@ -864,7 +866,7 @@ pd.testing.assert_series_equal(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L578"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L586"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### value_cols_to_numpy
@@ -879,7 +881,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L593"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L601"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### make_future_dataframe
@@ -927,7 +929,7 @@ pl.testing.assert_frame_equal(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L614"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L622"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### anti_join
@@ -965,7 +967,7 @@ test_eq(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L629"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L637"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### ensure_sorted
@@ -979,7 +981,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L644"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L652"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### process_df
@@ -1004,7 +1006,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L695"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L703"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### DataFrameProcessor
@@ -1054,7 +1056,7 @@ for n_static_features in [0, 2]:
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L777"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L785"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### backtest_splits
@@ -1071,7 +1073,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L809"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/processing.py#L817"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### add_insample_levels
