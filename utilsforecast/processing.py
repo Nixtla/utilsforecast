@@ -643,7 +643,7 @@ def ensure_sorted(df: DataFrame, id_col: str, time_col: str) -> DataFrame:
 # %% ../nbs/processing.ipynb 75
 class ProcessedDF(NamedTuple):
     uids: Series
-    times: np.ndarray
+    last_times: np.ndarray
     data: np.ndarray
     indptr: np.ndarray
     sort_idxs: Optional[np.ndarray]
