@@ -14,6 +14,7 @@ import pandas as pd
 
 import utilsforecast.processing as ufp
 from .compat import DataFrame, pl
+from .losses import AGG_BY, NOT_SET
 
 # %% ../nbs/evaluation.ipynb 4
 def _function_name(f: Callable):
@@ -49,6 +50,7 @@ def evaluate(
     id_col: str = "unique_id",
     time_col: str = "ds",
     target_col: str = "y",
+    agg_by: AGG_BY = NOT_SET,
 ) -> DataFrame:
     """Evaluate forecast using different metrics.
 
@@ -72,6 +74,8 @@ def evaluate(
         Column that identifies each timestep, its values can be timestamps or integers.
     target_col : str (default='y')
         Column that contains the target.
+    agg_by : str, list of str, list of list of str or `None`
+        Aggregations to perform on the metrics. If not set will aggregate by id.
 
     Returns
     -------
@@ -127,10 +131,7 @@ def evaluate(
                 f"The following metrics require y_train: {y_train_metrics}. "
                 "Please provide `train_df`."
             )
-        if isinstance(train_df, pd.DataFrame):
-            train_df = train_df.sort_values([id_col, time_col])
-        else:
-            train_df = train_df.sort([id_col, time_col])
+        train_df = ufp.sort(df, by=[id_col, time_col])
         missing_series = set(df[id_col].unique()) - set(train_df[id_col].unique())
         if missing_series:
             raise ValueError(
@@ -140,7 +141,13 @@ def evaluate(
     results_per_metric = []
     for metric in metrics:
         metric_name = _function_name(metric)
-        kwargs = dict(df=df, models=model_cols, id_col=id_col, target_col=target_col)
+        kwargs = dict(
+            df=df,
+            models=model_cols,
+            id_col=id_col,
+            target_col=target_col,
+            agg_by=agg_by,
+        )
         if metric_requires_y_train[metric_name]:
             kwargs["train_df"] = train_df
         metric_params = inspect.signature(metric).parameters
@@ -184,10 +191,8 @@ def evaluate(
             results_per_metric.append(result)
     if isinstance(df, pd.DataFrame):
         df = pd.concat(results_per_metric).reset_index(drop=True)
-        out_cols = [c for c in df.columns if c not in (id_col, "metric")]
-        df = df[[id_col, "metric", *out_cols]]
     else:
         df = pl.concat(results_per_metric, how="diagonal")
-        out_cols = [c for c in df.columns if c not in (id_col, "metric")]
-        df = df.select([id_col, "metric", *out_cols])
-    return df
+    metric_cols = [c for c in df.columns if c not in (id_col, "metric")]
+    id_cols = [c for c in df.columns if c not in metric_cols]
+    return df[id_cols + metric_cols]

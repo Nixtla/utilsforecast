@@ -56,19 +56,23 @@ def _aggregate(
     aggs = {m: "mean" for m in models}
     if agg_by == NOT_SET:
         res = ufp.group_by_agg(df, id_col, aggs, maintain_order=True)
+    elif isinstance(agg_by, str) or (
+        isinstance(agg_by, list) and isinstance(agg_by[0], str)
+    ):
+        res = ufp.group_by_agg(df, agg_by, aggs, maintain_order=True)
+    elif isinstance(agg_by, list):
+        res = df
+        for by in agg_by:
+            res = _aggregate(res, models, id_col, by)
     elif agg_by is None:
         res = df[models].mean()
-    elif isinstance(agg_by, (str, list)):
-        if isinstance(agg_by[0], str):
-            res = ufp.group_by_agg(df, agg_by, aggs, maintain_order=True)
-        elif isinstance(agg_by[0], list):
-            assert isinstance(agg_by[0][0], str)
-            res = df
-            for by in agg_by:
-                if by is not None:
-                    res = ufp.group_by_agg(res, by, aggs, maintain_order=True)
-                else:
-                    res = res[models].mean()
+        if isinstance(res, pd.Series):
+            res = res.to_frame().T
+    else:
+        raise ValueError(
+            "`agg_by` must be str, list of str, list of list of str or `None`. "
+            f"got: {type(agg_by)}"
+        )
     return res
 
 # %% ../nbs/losses.ipynb 15
@@ -144,19 +148,25 @@ def rmse(
     as the original time series so its comparison with other
     series is possible only if they share a common scale.
     RMSE has a direct connection to the L2 norm."""
-    if isinstance(agg_by, list) and isinstance(agg_by[0], list):
-        raise NotImplementedError(
-            "RMSE is not implemented for multiple aggregations. "
-            "Please use MSE instead or provide a single aggregation."
-        )
-    res = mse(df, models, id_col, target_col, agg_by)
+    if (
+        agg_by == NOT_SET
+        or agg_by is None
+        or (isinstance(agg_by, list) and not isinstance(agg_by[0], list))
+    ):
+        res = mse(df, models, id_col, target_col, agg_by)
+        remaining_aggs = []
+    else:
+        res = mse(df, models, id_col, target_col, agg_by[0])
+        remaining_aggs = agg_by[1:]
     if isinstance(res, (pd.DataFrame, pd.Series)):
         res[models] = res[models].pow(0.5)
     else:
         res = res.with_columns(*[pl.col(c).pow(0.5) for c in models])
+    if remaining_aggs:
+        res = _aggregate(res, models, id_col, remaining_aggs)
     return res
 
-# %% ../nbs/losses.ipynb 44
+# %% ../nbs/losses.ipynb 45
 def _zero_to_nan(series: Union[pd.Series, "pl.Expr"]) -> Union[pd.Series, "pl.Expr"]:
     if isinstance(series, pd.Series):
         res = series.replace(0, np.nan)
@@ -164,7 +174,7 @@ def _zero_to_nan(series: Union[pd.Series, "pl.Expr"]) -> Union[pd.Series, "pl.Ex
         res = pl.when(series == 0).then(float("nan")).otherwise(series.abs())
     return res
 
-# %% ../nbs/losses.ipynb 45
+# %% ../nbs/losses.ipynb 46
 @_base_docstring
 def mape(
     df: DataFrame,
@@ -200,7 +210,7 @@ def mape(
         df = df.with_columns(*[gen_expr(m) for m in models])
     return _aggregate(df=df, models=models, id_col=id_col, agg_by=agg_by)
 
-# %% ../nbs/losses.ipynb 49
+# %% ../nbs/losses.ipynb 50
 @_base_docstring
 def smape(
     df: DataFrame,
@@ -237,7 +247,7 @@ def smape(
         df = df.with_columns(*[gen_expr(m) for m in models])
     return _aggregate(df=df, models=models, id_col=id_col, agg_by=agg_by)
 
-# %% ../nbs/losses.ipynb 55
+# %% ../nbs/losses.ipynb 56
 def mase(
     df: DataFrame,
     models: List[str],
@@ -281,32 +291,31 @@ def mase(
     ----------
     [1] https://robjhyndman.com/papers/mase.pdf
     """
-    mean_abs_err = mae(df, models, id_col, target_col)
+    mean_abs_err = mae(df, models, id_col, target_col, agg_by)
     if isinstance(train_df, pd.DataFrame):
-        mean_abs_err = mean_abs_err.set_index(id_col)
         # assume train_df is sorted
         lagged = train_df.groupby(id_col, observed=True)[target_col].shift(seasonality)
-        scale = train_df[target_col].sub(lagged).abs()
-        scale = scale.groupby(train_df[id_col], observed=True).mean()
-        res = mean_abs_err.div(_zero_to_nan(scale), axis=0).fillna(0)
-        res.index.name = id_col
-        res = res.reset_index()
+        scale = ufp.ensure_shallow_copy(train_df.copy(deep=False))
+        scale["_scale"] = scale[target_col].sub(lagged).abs()
     else:
         # assume train_df is sorted
         lagged = pl.col(target_col).shift(seasonality).over(id_col)
-        scale_expr = pl.col(target_col).sub(lagged).abs().alias("scale")
-        scale = train_df.select([id_col, scale_expr])
-        scale = ufp.group_by(scale, id_col).mean()
-        scale = scale.with_columns(_zero_to_nan(pl.col("scale")))
+        scale = train_df.with_columns(
+            pl.col(target_col).sub(lagged).abs().alias("_scale")
+        )
+    scale = _aggregate(scale, models=["_scale"], id_col=id_col, agg_by=agg_by)
+    join_cols = [c for c in mean_abs_err.columns if c not in models]
+    if join_cols:
+        res = ufp.join(mean_abs_err, scale, on=join_cols)
+    else:
+        res = ufp.horizontal_concat([mean_abs_err, scale])
+    if isinstance(res, pd.DataFrame):
+        res[models] = res[models].div(res["_scale"], axis=0)
+    else:
+        res = res.with_columns(*[pl.col(m) / pl.col("_scale") for m in models])
+    return ufp.drop_columns(res, ["_scale"])
 
-        def gen_expr(model):
-            return pl.col(model).truediv(pl.col("scale")).fill_nan(0).alias(model)
-
-        full_df = mean_abs_err.join(scale, on=id_col, how="left")
-        res = _pl_agg_expr(full_df, models, id_col, gen_expr)
-    return res
-
-# %% ../nbs/losses.ipynb 60
+# %% ../nbs/losses.ipynb 64
 def rmae(
     df: DataFrame,
     models: List[str],
@@ -366,7 +375,7 @@ def rmae(
         res = res.select([id_col, *exprs])
     return res
 
-# %% ../nbs/losses.ipynb 66
+# %% ../nbs/losses.ipynb 70
 def quantile_loss(
     df: DataFrame,
     models: Dict[str, str],
@@ -428,7 +437,7 @@ def quantile_loss(
         res = _pl_agg_expr(df, list(models.items()), id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 72
+# %% ../nbs/losses.ipynb 76
 def mqloss(
     df: DataFrame,
     models: Dict[str, List[str]],
@@ -487,7 +496,7 @@ def mqloss(
             res = ufp.assign_columns(res, model, model_res[model])
     return res
 
-# %% ../nbs/losses.ipynb 78
+# %% ../nbs/losses.ipynb 82
 def coverage(
     df: DataFrame,
     models: List[str],
@@ -546,7 +555,7 @@ def coverage(
         res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 82
+# %% ../nbs/losses.ipynb 86
 def calibration(
     df: DataFrame,
     models: Dict[str, str],
@@ -596,7 +605,7 @@ def calibration(
         res = _pl_agg_expr(df, list(models.items()), id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 86
+# %% ../nbs/losses.ipynb 90
 def scaled_crps(
     df: DataFrame,
     models: Dict[str, List[str]],
