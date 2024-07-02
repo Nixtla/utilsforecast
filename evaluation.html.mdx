@@ -25,17 +25,17 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 *Evaluate forecast using different metrics.*
 
-|             | **Type**  | **Default** | **Details**                                                                                                              |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Forecasts to evaluate.<br/>Must have `id_col`, `time_col`, `target_col` and models’ predictions.                          |
-| metrics     | List      |             | Functions with arguments `df`, `models`, `id_col`, `target_col` and optionally `train_df`.                               |
-| models      | Optional  | None        | Names of the models to evaluate.<br/>If `None` will use every column in the dataframe after removing id, time and target. |
-| train_df    | Union     | None        | Training set. Used to evaluate metrics such as [`mase`](https://Nixtla.github.io/utilsforecast/losses.html#mase).        |
-| level       | Optional  | None        | Prediction interval levels. Used to compute losses that rely on quantiles.                                               |
-| id_col      | str       | unique_id   | Column that identifies each serie.                                                                                       |
-| time_col    | str       | ds          | Column that identifies each timestep, its values can be timestamps or integers.                                          |
-| target_col  | str       | y           | Column that contains the target.                                                                                         |
-| **Returns** | **Union** |             | **Metrics with one row per (id, metric) combination and one column per model.**                                          |
+| df | Union |  | Forecasts to evaluate.<br/>Must have `id_col`, `time_col`, `target_col` and models’ predictions. |
+| metrics | List |  | Functions with arguments `df`, `models`, `id_col`, `target_col` and optionally `train_df`. |
+| models | Optional | None | Names of the models to evaluate.<br/>If `None` will use every column in the dataframe after removing id, time and target. |
+| train_df | Union | None | Training set. Used to evaluate metrics such as [`mase`](https://Nixtla.github.io/utilsforecast/losses.html#mase). |
+| level | Optional | None | Prediction interval levels. Used to compute losses that rely on quantiles. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **Union** |  | **Metrics with one row per (id, metric) combination and one column per model.** |
 
 ```python
 from functools import partial

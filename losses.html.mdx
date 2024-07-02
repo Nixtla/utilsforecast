@@ -61,13 +61,13 @@ MAE measures the relative prediction accuracy of a forecasting method by
 calculating the deviation of the prediction and the true value at a
 given time and averages these devations over the length of the series.\*
 
-|             | **Type**  | **Default** | **Details**                                                 |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Input dataframe with id, actual values and predictions.     |
-| models      | List      |             | Columns that identify the models predictions.               |
-| id_col      | str       | unique_id   | Column that identifies each serie.                          |
-| target_col  | str       | y           | Column that contains the target.                            |
-| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+| df | Union |  | Input dataframe with id, actual values and predictions. |
+| models | List |  | Columns that identify the models predictions. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 def pd_vs_pl(pd_df, pl_df, models):
@@ -117,13 +117,13 @@ calculating the squared deviation of the prediction and the true value
 at a given time, and averages these devations over the length of the
 series.\*
 
-|             | **Type**  | **Default** | **Details**                                                 |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Input dataframe with id, actual values and predictions.     |
-| models      | List      |             | Columns that identify the models predictions.               |
-| id_col      | str       | unique_id   | Column that identifies each serie.                          |
-| target_col  | str       | y           | Column that contains the target.                            |
-| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+| df | Union |  | Input dataframe with id, actual values and predictions. |
+| models | List |  | Columns that identify the models predictions. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -166,13 +166,13 @@ the series. Finally the RMSE will be in the same scale as the original
 time series so its comparison with other series is possible only if they
 share a common scale. RMSE has a direct connection to the L2 norm.\*
 
-|             | **Type**  | **Default** | **Details**                                                 |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Input dataframe with id, actual values and predictions.     |
-| models      | List      |             | Columns that identify the models predictions.               |
-| id_col      | str       | unique_id   | Column that identifies each serie.                          |
-| target_col  | str       | y           | Column that contains the target.                            |
-| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+| df | Union |  | Input dataframe with id, actual values and predictions. |
+| models | List |  | Columns that identify the models predictions. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -216,13 +216,13 @@ observed value at a given time and averages these devations over the
 length of the series. The closer to zero an observed value is, the
 higher penalty MAPE loss assigns to the corresponding error.\*
 
-|             | **Type**  | **Default** | **Details**                                                 |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Input dataframe with id, actual values and predictions.     |
-| models      | List      |             | Columns that identify the models predictions.               |
-| id_col      | str       | unique_id   | Column that identifies each serie.                          |
-| target_col  | str       | y           | Column that contains the target.                            |
-| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+| df | Union |  | Input dataframe with id, actual values and predictions. |
+| models | List |  | Columns that identify the models predictions. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -265,13 +265,13 @@ length of the series. This allows the SMAPE to have bounds between 0%
 and 100% which is desirable compared to normal MAPE that may be
 undetermined when the target is zero.\*
 
-|             | **Type**  | **Default** | **Details**                                                 |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Input dataframe with id, actual values and predictions.     |
-| models      | List      |             | Columns that identify the models predictions.               |
-| id_col      | str       | unique_id   | Column that identifies each serie.                          |
-| target_col  | str       | y           | Column that contains the target.                            |
-| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+| df | Union |  | Input dataframe with id, actual values and predictions. |
+| models | List |  | Columns that identify the models predictions. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -318,15 +318,15 @@ observed value against the mean absolute errors of the seasonal naive
 model. The MASE partially composed the Overall Weighted Average (OWA),
 used in the M4 Competition.\*
 
-|             | **Type**  | **Default** | **Details**                                                                                             |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Input dataframe with id, actuals and predictions.                                                       |
-| models      | List      |             | Columns that identify the models predictions.                                                           |
-| seasonality | int       |             | Main frequency of the time series;<br/>Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1. |
-| train_df    | Union     |             | Training dataframe with id and actual values. Must be sorted by time.                                   |
-| id_col      | str       | unique_id   | Column that identifies each serie.                                                                      |
-| target_col  | str       | y           | Column that contains the target.                                                                        |
-| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.**                                             |
+| df | Union |  | Input dataframe with id, actuals and predictions. |
+| models | List |  | Columns that identify the models predictions. |
+| seasonality | int |  | Main frequency of the time series;<br/>Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1. |
+| train_df | Union |  | Training dataframe with id and actual values. Must be sorted by time. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -368,14 +368,14 @@ forecasting methods). A number smaller than one implies that the
 forecast in the numerator is better than the forecast in the
 denominator.\*
 
-|                 | **Type**  | **Default** | **Details**                                                 |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df              | Union     |             | Input dataframe with id, times, actuals and predictions.    |
-| models          | List      |             | Columns that identify the models predictions.               |
-| baseline_models | List      |             | Columns that identify the baseline models predictions.      |
-| id_col          | str       | unique_id   | Column that identifies each serie.                          |
-| target_col      | str       | y           | Column that contains the target.                            |
-| **Returns**     | **Union** |             | **dataframe with one row per id and one column per model.** |
+| df | Union |  | Input dataframe with id, times, actuals and predictions. |
+| models | List |  | Columns that identify the models predictions. |
+| baseline_models | List |  | Columns that identify the baseline models predictions. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -422,14 +422,14 @@ absolute deviation in a non symmetric way, the loss pays more attention
 to under or over estimation.  
 A common value for q is 0.5 for the deviation from the median.\*
 
-|             | **Type**  | **Default** | **Details**                                                                  |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Input dataframe with id, times, actuals and predictions.                     |
-| models      | Dict      |             | Mapping from model name to the model predictions for the specified quantile. |
-| q           | float     | 0.5         | Quantile for the predictions’ comparison.                                    |
-| id_col      | str       | unique_id   | Column that identifies each serie.                                           |
-| target_col  | str       | y           | Column that contains the target.                                             |
-| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.**                  |
+| df | Union |  | Input dataframe with id, times, actuals and predictions. |
+| models | Dict |  | Mapping from model name to the model predictions for the specified quantile. |
+| q | float | 0.5 | Quantile for the predictions’ comparison. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
 
 ### Multi-Quantile Loss
 
@@ -471,14 +471,14 @@ numerical integration technique, that discretizes the quantiles and
 treats the CRPS integral with a left Riemann approximation, averaging
 over uniformly distanced quantiles.\*
 
-|             | **Type**  | **Default** | **Details**                                                         |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Input dataframe with id, times, actuals and predictions.            |
-| models      | Dict      |             | Mapping from model name to the model predictions for each quantile. |
-| quantiles   | ndarray   |             | Quantiles to compare against.                                       |
-| id_col      | str       | unique_id   | Column that identifies each serie.                                  |
-| target_col  | str       | y           | Column that contains the target.                                    |
-| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.**         |
+| df | Union |  | Input dataframe with id, times, actuals and predictions. |
+| models | Dict |  | Mapping from model name to the model predictions for each quantile. |
+| quantiles | ndarray |  | Quantiles to compare against. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -507,14 +507,14 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 *Coverage of y with y_hat_lo and y_hat_hi.*
 
-|             | **Type**  | **Default** | **Details**                                                 |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Input dataframe with id, times, actuals and predictions.    |
-| models      | List      |             | Columns that identify the models predictions.               |
-| level       | int       |             | Confidence level used for intervals.                        |
-| id_col      | str       | unique_id   | Column that identifies each serie.                          |
-| target_col  | str       | y           | Column that contains the target.                            |
-| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+| df | Union |  | Input dataframe with id, times, actuals and predictions. |
+| models | List |  | Columns that identify the models predictions. |
+| level | int |  | Confidence level used for intervals. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -543,13 +543,13 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 *Fraction of y that is lower than the model’s predictions.*
 
-|             | **Type**  | **Default** | **Details**                                                 |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Input dataframe with id, times, actuals and predictions.    |
-| models      | Dict      |             | Mapping from model name to the model predictions.           |
-| id_col      | str       | unique_id   | Column that identifies each serie.                          |
-| target_col  | str       | y           | Column that contains the target.                            |
-| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.** |
+| df | Union |  | Input dataframe with id, times, actuals and predictions. |
+| models | Dict |  | Mapping from model name to the model predictions. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -594,14 +594,14 @@ Calculates a scaled variation of the CRPS, as proposed by Rangapuram
 to the observation `y`. This metric averages percentual weighted
 absolute deviations as defined by the quantile losses.\*
 
-|             | **Type**  | **Default** | **Details**                                                         |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Input dataframe with id, times, actuals and predictions.            |
-| models      | Dict      |             | Mapping from model name to the model predictions for each quantile. |
-| quantiles   | ndarray   |             | Quantiles to compare against.                                       |
-| id_col      | str       | unique_id   | Column that identifies each serie.                                  |
-| target_col  | str       | y           | Column that contains the target.                                    |
-| **Returns** | **Union** |             | **dataframe with one row per id and one column per model.**         |
+| df | Union |  | Input dataframe with id, times, actuals and predictions. |
+| models | Dict |  | Mapping from model name to the model predictions for each quantile. |
+| quantiles | ndarray |  | Quantiles to compare against. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(

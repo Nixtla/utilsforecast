@@ -22,16 +22,16 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 *Compute fourier seasonal terms for training and forecasting*
 
-|               | **Type**  | **Default** | **Details**                                                                          |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df            | Union     |             | Dataframe with ids, times and values for the exogenous regressors.                   |
-| freq          | str       |             | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
-| season_length | int       |             | Number of observations per unit of time. Ex: 24 Hourly data.                         |
-| k             | int       |             | Maximum order of the fourier terms                                                   |
-| h             | int       | 0           | Forecast horizon.                                                                    |
-| id_col        | str       | unique_id   | Column that identifies each serie.                                                   |
-| time_col      | str       | ds          | Column that identifies each timestep, its values can be timestamps or integers.      |
-| **Returns**   | **Tuple** |             | **Original DataFrame with the computed features**                                    |
+| df | Union |  | Dataframe with ids, times and values for the exogenous regressors. |
+| freq | str |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
+| season_length | int |  | Number of observations per unit of time. Ex: 24 Hourly data. |
+| k | int |  | Maximum order of the fourier terms |
+| h | int | 0 | Forecast horizon. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
+| **Returns** | **Tuple** |  | **Original DataFrame with the computed features** |
 
 ```python
 import pandas as pd
@@ -90,14 +90,14 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 *Add a trend column with consecutive integers for training and
 forecasting*
 
-|             | **Type**  | **Default** | **Details**                                                                          |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Dataframe with ids, times and values for the exogenous regressors.                   |
-| freq        | str       |             | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
-| h           | int       | 0           | Forecast horizon.                                                                    |
-| id_col      | str       | unique_id   | Column that identifies each serie.                                                   |
-| time_col    | str       | ds          | Column that identifies each timestep, its values can be timestamps or integers.      |
-| **Returns** | **Tuple** |             | **Original DataFrame with the computed features**                                    |
+| df | Union |  | Dataframe with ids, times and values for the exogenous regressors. |
+| freq | str |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
+| h | int | 0 | Forecast horizon. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
+| **Returns** | **Tuple** |  | **Original DataFrame with the computed features** |
 
 ```python
 series = generate_series(5, equal_ends=True)
@@ -148,15 +148,15 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 *Compute several features for training and forecasting*
 
-|             | **Type**  | **Default** | **Details**                                                                                                   |
+|  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df          | Union     |             | Dataframe with ids, times and values for the exogenous regressors.                                            |
-| features    | List      |             | List of features to compute. Must take only df, freq, h, id_col and time_col (other arguments must be fixed). |
-| freq        | str       |             | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer.                          |
-| h           | int       | 0           | Forecast horizon.                                                                                             |
-| id_col      | str       | unique_id   | Column that identifies each serie.                                                                            |
-| time_col    | str       | ds          | Column that identifies each timestep, its values can be timestamps or integers.                               |
-| **Returns** | **Tuple** |             | **Original DataFrame with the computed features**                                                             |
+| df | Union |  | Dataframe with ids, times and values for the exogenous regressors. |
+| features | List |  | List of features to compute. Must take only df, freq, h, id_col and time_col (other arguments must be fixed). |
+| freq | str |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
+| h | int | 0 | Forecast horizon. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
+| **Returns** | **Tuple** |  | **Original DataFrame with the computed features** |
 
 ```python
 features = [
@@ -173,19 +173,19 @@ transformed_df, future_df = pipeline(
 transformed_df
 ```
 
-|      | unique_id | ds         | y        | trend | sin1_7    | cos1_7    | sin1_28   | cos1_28       |
-|------|-----------|------------|----------|-------|-----------|-----------|-----------|---------------|
-| 0    | 0         | 2000-10-05 | 0.428973 | 152.0 | -0.974927 | -0.222526 | 0.433885  | -9.009683e-01 |
-| 1    | 0         | 2000-10-06 | 1.423626 | 153.0 | -0.781835 | 0.623486  | 0.222522  | -9.749276e-01 |
-| 2    | 0         | 2000-10-07 | 2.311782 | 154.0 | -0.000005 | 1.000000  | 0.000001  | -1.000000e+00 |
-| 3    | 0         | 2000-10-08 | 3.192191 | 155.0 | 0.781829  | 0.623493  | -0.222520 | -9.749281e-01 |
-| 4    | 0         | 2000-10-09 | 4.148767 | 156.0 | 0.974929  | -0.222517 | -0.433883 | -9.009693e-01 |
-| ...  | ...       | ...        | ...      | ...   | ...       | ...       | ...       | ...           |
-| 1096 | 4         | 2001-05-10 | 4.058910 | 369.0 | -0.974927 | -0.222523 | 0.900969  | 4.338843e-01  |
-| 1097 | 4         | 2001-05-11 | 5.178157 | 370.0 | -0.781823 | 0.623500  | 0.974929  | 2.225177e-01  |
-| 1098 | 4         | 2001-05-12 | 6.133142 | 371.0 | -0.000002 | 1.000000  | 1.000000  | 4.251100e-07  |
-| 1099 | 4         | 2001-05-13 | 0.403709 | 372.0 | 0.781840  | 0.623479  | 0.974927  | -2.225243e-01 |
-| 1100 | 4         | 2001-05-14 | 1.081779 | 373.0 | 0.974928  | -0.222520 | 0.900969  | -4.338835e-01 |
+|  | unique_id | ds | y | trend | sin1_7 | cos1_7 | sin1_28 | cos1_28 |
+|----|----|----|----|----|----|----|----|----|
+| 0 | 0 | 2000-10-05 | 0.428973 | 152.0 | -0.974927 | -0.222526 | 0.433885 | -9.009683e-01 |
+| 1 | 0 | 2000-10-06 | 1.423626 | 153.0 | -0.781835 | 0.623486 | 0.222522 | -9.749276e-01 |
+| 2 | 0 | 2000-10-07 | 2.311782 | 154.0 | -0.000005 | 1.000000 | 0.000001 | -1.000000e+00 |
+| 3 | 0 | 2000-10-08 | 3.192191 | 155.0 | 0.781829 | 0.623493 | -0.222520 | -9.749281e-01 |
+| 4 | 0 | 2000-10-09 | 4.148767 | 156.0 | 0.974929 | -0.222517 | -0.433883 | -9.009693e-01 |
+| ... | ... | ... | ... | ... | ... | ... | ... | ... |
+| 1096 | 4 | 2001-05-10 | 4.058910 | 369.0 | -0.974927 | -0.222523 | 0.900969 | 4.338843e-01 |
+| 1097 | 4 | 2001-05-11 | 5.178157 | 370.0 | -0.781823 | 0.623500 | 0.974929 | 2.225177e-01 |
+| 1098 | 4 | 2001-05-12 | 6.133142 | 371.0 | -0.000002 | 1.000000 | 1.000000 | 4.251100e-07 |
+| 1099 | 4 | 2001-05-13 | 0.403709 | 372.0 | 0.781840 | 0.623479 | 0.974927 | -2.225243e-01 |
+| 1100 | 4 | 2001-05-14 | 1.081779 | 373.0 | 0.974928 | -0.222520 | 0.900969 | -4.338835e-01 |
 
 ```python
 future_df
