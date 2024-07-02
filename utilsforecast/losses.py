@@ -5,13 +5,13 @@ __all__ = ['NOT_SET', 'AGG_BY', 'NotSet', 'mae', 'mse', 'rmse', 'mape', 'smape',
            'coverage', 'calibration', 'scaled_crps']
 
 # %% ../nbs/losses.ipynb 3
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
 
 import utilsforecast.processing as ufp
-from .compat import DataFrame, pl_DataFrame, pl
+from .compat import DataFrame, pl
 
 # %% ../nbs/losses.ipynb 12
 def _base_docstring(*args, **kwargs) -> Callable:
@@ -42,8 +42,7 @@ def _base_docstring(*args, **kwargs) -> Callable:
     return docstring_decorator(*args, **kwargs)
 
 # %% ../nbs/losses.ipynb 13
-class NotSet:
-    ...
+class NotSet: ...
 
 
 NOT_SET = NotSet()
@@ -91,8 +90,8 @@ def mae(
     deviation of the prediction and the true
     value at a given time and averages these devations
     over the length of the series."""
+    df = ufp.copy_if_pandas(df, deep=False)
     if isinstance(df, pd.DataFrame):
-        df = ufp.ensure_shallow_copy(df.copy(deep=False))
         df[models] = df[models].sub(df[target_col], axis=0).abs()
     else:
 
@@ -118,8 +117,8 @@ def mse(
     squared deviation of the prediction and the true
     value at a given time, and averages these devations
     over the length of the series."""
+    df = ufp.copy_if_pandas(df, deep=False)
     if isinstance(df, pd.DataFrame):
-        df = ufp.ensure_shallow_copy(df.copy(deep=False))
         df[models] = df[models].sub(df[target_col], axis=0).pow(2)
     else:
 
@@ -191,8 +190,8 @@ def mape(
     averages these devations over the length of the series.
     The closer to zero an observed value is, the higher penalty MAPE loss
     assigns to the corresponding error."""
+    df = ufp.copy_if_pandas(df, deep=False)
     if isinstance(df, pd.DataFrame):
-        df = ufp.ensure_shallow_copy(df.copy(deep=False))
         df[models] = (
             df[models]
             .sub(df[target_col], axis=0)
@@ -229,8 +228,8 @@ def smape(
     of the series. This allows the SMAPE to have bounds between
     0% and 100% which is desirable compared to normal MAPE that
     may be undetermined when the target is zero."""
+    df = ufp.copy_if_pandas(df, deep=False)
     if isinstance(df, pd.DataFrame):
-        df = ufp.ensure_shallow_copy(df.copy(deep=False))
         delta_y = df[models].sub(df[target_col], axis=0).abs()
         scale = df[models].abs().add(df[target_col].abs(), axis=0)
         df[models] = delta_y.div(scale).fillna(0)
@@ -295,7 +294,7 @@ def mase(
     if isinstance(train_df, pd.DataFrame):
         # assume train_df is sorted
         lagged = train_df.groupby(id_col, observed=True)[target_col].shift(seasonality)
-        scale = ufp.ensure_shallow_copy(train_df.copy(deep=False))
+        scale = ufp.copy_if_pandas(train_df, deep=False)
         scale["_scale"] = scale[target_col].sub(lagged).abs()
     else:
         # assume train_df is sorted
@@ -322,6 +321,7 @@ def rmae(
     baseline_models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
+    agg_by: AGG_BY = NOT_SET,
 ) -> DataFrame:
     """Relative Mean Absolute Error (RMAE)
 
@@ -347,18 +347,21 @@ def rmae(
     pandas or polars Dataframe
         dataframe with one row per id and one column per model.
     """
-    numerator = mae(df, models, id_col, target_col)
-    denominator = mae(df, baseline_models, id_col, target_col)
+    numerator = mae(df, models, id_col, target_col, agg_by)
+    denominator = mae(df, baseline_models, id_col, target_col, agg_by)
+    denom_rename = {m: f"{m}_denominator" for m in models}
+    denominator = ufp.rename(denominator, denom_rename)
+    join_cols = [c for c in numerator.columns if c not in models]
+    if join_cols:
+        res = ufp.join(numerator, denominator, on=join_cols)
+    else:
+        res = ufp.horizontal_concat([numerator, denominator])
     if isinstance(numerator, pd.DataFrame):
-        res = numerator.merge(denominator, on=id_col, suffixes=("", "_denominator"))
-        out_cols = [id_col]
         for model, baseline in zip(models, baseline_models):
             col_name = f"{model}_div_{baseline}"
             res[col_name] = (
                 res[model].div(_zero_to_nan(res[f"{baseline}_denominator"])).fillna(0)
             )
-            out_cols.append(col_name)
-        res = res[out_cols]
     else:
 
         def gen_expr(model, baseline):
@@ -370,10 +373,12 @@ def rmae(
                 .alias(f"{model}_div_{baseline}")
             )
 
-        res = numerator.join(denominator, on=id_col, suffix="_denominator")
         exprs = [gen_expr(m1, m2) for m1, m2 in zip(models, baseline_models)]
-        res = res.select([id_col, *exprs])
-    return res
+        res = res.with_columns(*exprs)
+    model_cols = [
+        f"{model}_div_{baseline}" for model, baseline in zip(models, baseline_models)
+    ]
+    return res[join_cols + model_cols]
 
 # %% ../nbs/losses.ipynb 70
 def quantile_loss(
@@ -382,6 +387,7 @@ def quantile_loss(
     q: float = 0.5,
     id_col: str = "unique_id",
     target_col: str = "y",
+    agg_by: AGG_BY = NOT_SET,
 ) -> DataFrame:
     """Quantile Loss (QL)
 
@@ -408,25 +414,15 @@ def quantile_loss(
     pandas or polars Dataframe
         dataframe with one row per id and one column per model.
     """
+    model_names = list(models.keys())
+    model_preds = list(models.values())
+    df = ufp.copy_if_pandas(df, deep=False)
     if isinstance(df, pd.DataFrame):
-        res: Optional[pd.DataFrame] = None
-        for model_name, pred_col in models.items():
-            delta_y = df[target_col].sub(df[pred_col], axis=0)
-            model_res = (
-                np.maximum(q * delta_y, (q - 1) * delta_y)
-                .groupby(df[id_col], observed=True)
-                .mean()
-                .rename(model_name)
-                .reset_index()
-            )
-            if res is None:
-                res = model_res
-            else:
-                res[model_name] = model_res[model_name]
+        df[model_preds] = -df[model_preds].sub(df[target_col], axis=0)
+        df[model_names] = np.maximum(q * df[model_preds], (q - 1) * df[model_preds])
     else:
 
-        def gen_expr(model):
-            model_name, pred_col = model
+        def gen_expr(model_name, pred_col):
             delta_y = pl.col(target_col).sub(pl.col(pred_col))
             try:
                 col_max = pl.max_horizontal([q * delta_y, (q - 1) * delta_y])
@@ -434,8 +430,8 @@ def quantile_loss(
                 col_max = pl.max([q * delta_y, (q - 1) * delta_y])
             return col_max.alias(model_name)
 
-        res = _pl_agg_expr(df, list(models.items()), id_col, gen_expr)
-    return res
+        df = df.with_columns(*[gen_expr(name, pred) for name, pred in models.items()])
+    return _aggregate(df, model_names, id_col, agg_by)
 
 # %% ../nbs/losses.ipynb 76
 def mqloss(
@@ -444,6 +440,7 @@ def mqloss(
     quantiles: np.ndarray,
     id_col: str = "unique_id",
     target_col: str = "y",
+    agg_by: AGG_BY = NOT_SET,
 ) -> DataFrame:
     """Multi-Quantile loss (MQL)
 
@@ -480,21 +477,14 @@ def mqloss(
     ----------
     [1] https://www.jstor.org/stable/2629907
     """
-    res: Optional[DataFrame] = None
     error = np.empty((df.shape[0], quantiles.size))
+    df = ufp.copy_if_pandas(df)
     for model, predictions in models.items():
         for j, q_preds in enumerate(predictions):
             error[:, j] = (df[target_col] - df[q_preds]).to_numpy()
         loss = np.maximum(error * quantiles, error * (quantiles - 1)).mean(axis=1)
-        model_res = type(df)({id_col: df[id_col], model: loss})
-        model_res = ufp.group_by_agg(
-            model_res, by=id_col, aggs={model: "mean"}, maintain_order=True
-        )
-        if res is None:
-            res = model_res
-        else:
-            res = ufp.assign_columns(res, model, model_res[model])
-    return res
+        df = ufp.assign_columns(df, model, loss)
+    return _aggregate(df, list(models.keys()), id_col, agg_by)
 
 # %% ../nbs/losses.ipynb 82
 def coverage(
@@ -503,6 +493,7 @@ def coverage(
     level: int,
     id_col: str = "unique_id",
     target_col: str = "y",
+    agg_by: AGG_BY = NOT_SET,
 ) -> DataFrame:
     """Coverage of y with y_hat_lo and y_hat_hi.
 
@@ -528,19 +519,12 @@ def coverage(
     ----------
     [1] https://www.jstor.org/stable/2629907
     """
+    df = ufp.copy_if_pandas(df, deep=False)
     if isinstance(df, pd.DataFrame):
-        out = np.empty((df.shape[0], len(models)))
-        for j, model in enumerate(models):
-            out[:, j] = df[target_col].between(
+        for model in models:
+            df[model] = df[target_col].between(
                 df[f"{model}-lo-{level}"], df[f"{model}-hi-{level}"]
             )
-        res = (
-            pd.DataFrame(out, columns=models, index=df.index)
-            .groupby(df[id_col], observed=True)
-            .mean()
-        )
-        res.index.name = id_col
-        res = res.reset_index()
     else:
 
         def gen_expr(model):
@@ -552,8 +536,8 @@ def coverage(
                 .alias(model)
             )
 
-        res = _pl_agg_expr(df, models, id_col, gen_expr)
-    return res
+        df = df.with_columns(*[gen_expr(m) for m in models])
+    return _aggregate(df, models, id_col, agg_by)
 
 # %% ../nbs/losses.ipynb 86
 def calibration(
@@ -561,6 +545,7 @@ def calibration(
     models: Dict[str, str],
     id_col: str = "unique_id",
     target_col: str = "y",
+    agg_by: AGG_BY = NOT_SET,
 ) -> DataFrame:
     """
     Fraction of y that is lower than the model's predictions.
@@ -585,25 +570,17 @@ def calibration(
     ----------
     [1] https://www.jstor.org/stable/2629907
     """
+    df = ufp.copy_if_pandas(df, deep=False)
     if isinstance(df, pd.DataFrame):
-        out = np.empty((df.shape[0], len(models)))
-        for j, q_preds in enumerate(models.values()):
-            out[:, j] = df[target_col].le(df[q_preds])
-        res = (
-            pd.DataFrame(out, columns=models.keys(), index=df.index)
-            .groupby(df[id_col], observed=True)
-            .mean()
-        )
-        res.index.name = id_col
-        res = res.reset_index()
+        for name, preds in models.items():
+            df[name] = df[target_col].le(df[preds])
     else:
 
-        def gen_expr(model):
-            model_name, q_preds = model
+        def gen_expr(model_name, q_preds):
             return pl.col(target_col).le(pl.col(q_preds)).alias(model_name)
 
-        res = _pl_agg_expr(df, list(models.items()), id_col, gen_expr)
-    return res
+        df = df.with_columns(*[gen_expr(name, pred) for name, pred in models.items()])
+    return _aggregate(df, list(models.keys()), id_col, agg_by)
 
 # %% ../nbs/losses.ipynb 90
 def scaled_crps(
@@ -612,6 +589,7 @@ def scaled_crps(
     quantiles: np.ndarray,
     id_col: str = "unique_id",
     target_col: str = "y",
+    agg_by: AGG_BY = NOT_SET,
 ) -> DataFrame:
     """Scaled Continues Ranked Probability Score
 
@@ -644,7 +622,7 @@ def scaled_crps(
     """
     eps = np.finfo(float).eps
     quantiles = np.asarray(quantiles)
-    loss = mqloss(df, models, quantiles, id_col, target_col)
+    loss = mqloss(df, models, quantiles, id_col, target_col, NOT_SET)
     sizes = ufp.counts_by_id(df, id_col)
     if isinstance(loss, pd.DataFrame):
         loss = loss.set_index(id_col)
@@ -652,8 +630,6 @@ def scaled_crps(
         assert isinstance(df, pd.DataFrame)
         norm = df[target_col].abs().groupby(df[id_col], observed=True).sum()
         res = 2 * loss.mul(sizes["counts"], axis=0).div(norm + eps, axis=0)
-        res.index.name = id_col
-        res = res.reset_index()
     else:
 
         def gen_expr(model):
@@ -663,10 +639,8 @@ def scaled_crps(
 
         grouped_df = ufp.group_by(df, id_col)
         norm = grouped_df.agg(pl.col(target_col).abs().sum().alias("norm"))
-        res = _pl_agg_expr(
-            loss.join(sizes, on=id_col).join(norm, on=id_col),
-            list(models.keys()),
-            id_col,
-            gen_expr,
-        )
-    return res
+        exprs = [gen_expr(m) for m in models.keys()]
+        res = loss.join(sizes, on=id_col).join(norm, on=id_col)
+        res = res.select([id_col, *exprs])
+        res = ufp.group_by(res, id_col, maintain_order=True).mean()
+    return _aggregate(res, list(models.keys()), id_col, agg_by)
