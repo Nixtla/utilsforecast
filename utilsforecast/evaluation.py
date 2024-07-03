@@ -80,7 +80,7 @@ def evaluate(
     -------
     pandas or polars DataFrame
         Metrics with one row per (id, metric) combination and one column per model.
-        If `reduce_stat` is not `None`, there is only one row per metric.
+        If `agg_fn` is not `None`, there is only one row per metric.
     """
     if models is None:
         model_cols = [
