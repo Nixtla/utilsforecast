@@ -49,7 +49,7 @@ def evaluate(
     id_col: str = "unique_id",
     time_col: str = "ds",
     target_col: str = "y",
-    reduce_stat: Optional[str] = None,
+    agg_fn: Optional[str] = None,
 ) -> DataFrame:
     """Evaluate forecast using different metrics.
 
@@ -73,7 +73,7 @@ def evaluate(
         Column that identifies each timestep, its values can be timestamps or integers.
     target_col : str (default='y')
         Column that contains the target.
-    reduce_stat : str, optional (default=None)
+    agg_fn : str, optional (default=None)
         Statistic to compute on the scores by id to reduce them to a single number.
 
     Returns
@@ -193,11 +193,11 @@ def evaluate(
     id_cols = [id_col, "metric"]
     model_cols = [c for c in df.columns if c not in id_cols]
     df = df[id_cols + model_cols]
-    if reduce_stat is not None:
+    if agg_fn is not None:
         df = ufp.group_by_agg(
             df,
             by="metric",
-            aggs={m: reduce_stat for m in model_cols},
+            aggs={m: agg_fn for m in model_cols},
             maintain_order=True,
         )
     return df
