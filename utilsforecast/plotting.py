@@ -11,7 +11,6 @@ try:
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import matplotlib.colors as cm
-    from matplotlib.colors import LinearSegmentedColormap
 except ImportError:
     raise ImportError(
         "matplotlib is not installed. Please install it and try again.\n"
@@ -87,7 +86,7 @@ def plot_series(
     engine : str (default='matplotlib')
         Library used to plot. 'plotly', 'plotly-resampler' or 'matplotlib'.
     palette : str (default=None)
-        Name of the matplotlib colormap to use for the plots. If not None, overrides the current style.
+        Name of the matplotlib colormap to use for the plots. If None, uses the current style.
     id_col : str (default='unique_id')
         Column that identifies each serie.
     time_col : str (default='ds')
@@ -206,9 +205,9 @@ def plot_series(
         colors = [cm.to_hex(color) for color in cmap.colors]
     else:
         colors_stylesheet = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-        cmap = LinearSegmentedColormap.from_list("mymap", colors_stylesheet).resampled(
-            len(models) + 1
-        )
+        cmap = cm.LinearSegmentedColormap.from_list(
+            "mymap", colors_stylesheet
+        ).resampled(len(models) + 1)
         rgb_colors = cmap(np.linspace(0, 1, len(models) + 1))
         colors = [cm.to_hex(color) for color in rgb_colors]
 
@@ -362,7 +361,10 @@ def plot_series(
             xticklabels = ax[row, col].get_xticklabels()
             xticks = ax[row, col].get_xticks()
             ax[row, col].set_xticks(
-                rotation=30, ticks=xticks, labels=xticklabels, ha="right"
+                rotation=30,
+                ticks=xticks,
+                labels=xticklabels,
+                ha="right",
             )
 
     if engine == "matplotlib":
@@ -371,7 +373,6 @@ def plot_series(
             handles,
             labels,
             loc="upper left",
-            # borderaxespad=2,
             bbox_to_anchor=(1.01, 0.97),
         )
         plt.close(fig)
