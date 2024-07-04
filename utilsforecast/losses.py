@@ -330,12 +330,13 @@ def rmae(
     if isinstance(numerator, pd.DataFrame):
         res = numerator.merge(denominator, on=id_col, suffixes=("", "_denominator"))
         out_cols = [id_col]
-        for model, baseline in zip(models, baseline_models):
-            col_name = f"{model}_div_{baseline}"
-            res[col_name] = (
-                res[model].div(_zero_to_nan(res[f"{baseline}_denominator"])).fillna(0)
-            )
-            out_cols.append(col_name)
+        for model in models:
+            for baseline in baseline_models:
+                col_name = f"{model}_div_{baseline}"
+                res[col_name] = (
+                    res[model].div(_zero_to_nan(res[f"{baseline}_denominator"])).fillna(0)
+                )
+                out_cols.append(col_name)
         res = res[out_cols]
     else:
 
