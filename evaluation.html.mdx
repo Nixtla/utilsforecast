@@ -20,7 +20,8 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >            models:Optional[List[str]]=None, train_df:Union[pandas.core.fra
 >            me.DataFrame,polars.dataframe.frame.DataFrame,NoneType]=None,
 >            level:Optional[List[int]]=None, id_col:str='unique_id',
->            time_col:str='ds', target_col:str='y')
+>            time_col:str='ds', target_col:str='y',
+>            agg_fn:Optional[str]=None)
 > ```
 
 *Evaluate forecast using different metrics.*
@@ -35,7 +36,8 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | id_col | str | unique_id | Column that identifies each serie. |
 | time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
 | target_col | str | y | Column that contains the target. |
-| **Returns** | **Union** |  | **Metrics with one row per (id, metric) combination and one column per model.** |
+| agg_fn | Optional | None | Statistic to compute on the scores by id to reduce them to a single number. |
+| **Returns** | **Union** |  | **Metrics with one row per (id, metric) combination and one column per model.<br/>If `agg_fn` is not `None`, there is only one row per metric.** |
 
 ```python
 from functools import partial
