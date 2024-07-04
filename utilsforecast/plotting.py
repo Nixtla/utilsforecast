@@ -55,7 +55,6 @@ def plot_series(
     plot_anomalies: bool = False,
     engine: str = "matplotlib",
     palette: Optional[str] = None,
-    stylesheet: str = "seaborn-v0_8-darkgrid",
     id_col: str = "unique_id",
     time_col: str = "ds",
     target_col: str = "y",
@@ -87,10 +86,8 @@ def plot_series(
         Plot anomalies for each prediction interval.
     engine : str (default='matplotlib')
         Library used to plot. 'plotly', 'plotly-resampler' or 'matplotlib'.
-    palette : str (default='None')
-        Name of the matplotlib colormap to use for the plots. If not None, overrides colors given in the 'stylesheet'.
-    stylesheet: str (default='seaborn-v0_8-darkgrid')
-        Name of the matplotlib stylesheet to use.
+    palette : str (default=None)
+        Name of the matplotlib colormap to use for the plots. If not None, overrides the current style.
     id_col : str (default='unique_id')
         Column that identifies each serie.
     time_col : str (default='ds')
@@ -201,191 +198,190 @@ def plot_series(
     n_rows = quot + resid
     xlabel = f"Time [{time_col}]"
     ylabel = f"Target [{target_col}]"
-    with plt.style.context(stylesheet, after_reset=True):
-        if palette is not None:
-            if parse_version(mpl.__version__) < Version("3.6"):
-                cmap = plt.cm.get_cmap(palette, len(models) + 1)
-            else:
-                cmap = mpl.colormaps[palette].resampled(len(models) + 1)
-            colors = [cm.to_hex(color) for color in cmap.colors]
+    if palette is not None:
+        if parse_version(mpl.__version__) < Version("3.6"):
+            cmap = plt.cm.get_cmap(palette, len(models) + 1)
         else:
-            colors_stylesheet = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-            cmap = LinearSegmentedColormap.from_list(
-                "mymap", colors_stylesheet
-            ).resampled(len(models) + 1)
-            rgb_colors = cmap(np.linspace(0, 1, len(models) + 1))
-            colors = [cm.to_hex(color) for color in rgb_colors]
+            cmap = mpl.colormaps[palette].resampled(len(models) + 1)
+        colors = [cm.to_hex(color) for color in cmap.colors]
+    else:
+        colors_stylesheet = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+        cmap = LinearSegmentedColormap.from_list("mymap", colors_stylesheet).resampled(
+            len(models) + 1
+        )
+        rgb_colors = cmap(np.linspace(0, 1, len(models) + 1))
+        colors = [cm.to_hex(color) for color in rgb_colors]
 
-        # define plot grid
-        if engine.startswith("plotly"):
+    # define plot grid
+    if engine.startswith("plotly"):
+        try:
+            import plotly.graph_objects as go
+            from plotly.subplots import make_subplots
+        except ImportError:
+            raise ImportError(
+                "plotly is not installed. Please install it and try again.\n"
+                "You can find detailed instructions at https://github.com/plotly/plotly.py#installation"
+            )
+        fig = make_subplots(
+            rows=n_rows,
+            cols=n_cols,
+            vertical_spacing=0.15,
+            horizontal_spacing=0.07,
+            x_title=xlabel,
+            y_title=ylabel,
+            subplot_titles=[f"{id_col}={uid}" for uid in uids],
+        )
+        if engine == "plotly-resampler":
             try:
-                import plotly.graph_objects as go
-                from plotly.subplots import make_subplots
+                from plotly_resampler import FigureResampler
             except ImportError:
                 raise ImportError(
-                    "plotly is not installed. Please install it and try again.\n"
-                    "You can find detailed instructions at https://github.com/plotly/plotly.py#installation"
+                    "plotly-resampler is not installed.\n"
+                    "Please install it with `pip install plotly-resampler` or `conda install -c conda-forge plotly-resampler`"
                 )
-            fig = make_subplots(
-                rows=n_rows,
-                cols=n_cols,
-                vertical_spacing=0.15,
-                horizontal_spacing=0.07,
-                x_title=xlabel,
-                y_title=ylabel,
-                subplot_titles=[f"{id_col}={uid}" for uid in uids],
-            )
-            if engine == "plotly-resampler":
-                try:
-                    from plotly_resampler import FigureResampler
-                except ImportError:
-                    raise ImportError(
-                        "plotly-resampler is not installed.\n"
-                        "Please install it with `pip install plotly-resampler` or `conda install -c conda-forge plotly-resampler`"
-                    )
-                resampler_kwargs = {} if resampler_kwargs is None else resampler_kwargs
-                fig = FigureResampler(fig, **resampler_kwargs)
-        else:
-            fig, ax = plt.subplots(
-                nrows=n_rows,
-                ncols=n_cols,
-                figsize=(16, 3.5 * n_rows),
-                squeeze=False,
-                constrained_layout=True,
-            )
+            resampler_kwargs = {} if resampler_kwargs is None else resampler_kwargs
+            fig = FigureResampler(fig, **resampler_kwargs)
+    else:
+        fig, ax = plt.subplots(
+            nrows=n_rows,
+            ncols=n_cols,
+            figsize=(16, 3.5 * n_rows),
+            squeeze=False,
+            constrained_layout=True,
+        )
 
-        def _add_mpl_plot(axi, df, y_col, levels):
-            axi.plot(df[time_col], df[y_col], label=y_col, color=color)
-            if y_col == target_col:
-                return
-            times = df[time_col]
-            for level in levels:
-                lo = df[f"{y_col}-lo-{level}"]
-                hi = df[f"{y_col}-hi-{level}"]
-                axi.fill_between(
-                    times,
-                    lo,
-                    hi,
-                    alpha=-float(level) / 100 + 1,
+    def _add_mpl_plot(axi, df, y_col, levels):
+        axi.plot(df[time_col], df[y_col], label=y_col, color=color)
+        if y_col == target_col:
+            return
+        times = df[time_col]
+        for level in levels:
+            lo = df[f"{y_col}-lo-{level}"]
+            hi = df[f"{y_col}-hi-{level}"]
+            axi.fill_between(
+                times,
+                lo,
+                hi,
+                alpha=-float(level) / 100 + 1,
+                color=color,
+                label=f"{y_col}_level_{level}",
+            )
+            if plot_anomalies:
+                anomalies = df[target_col].lt(lo) | df[target_col].gt(hi)
+                anomalies = anomalies.to_numpy().astype("bool")
+                if not anomalies.any():
+                    continue
+                axi.scatter(
+                    x=times.to_numpy()[anomalies],
+                    y=df[target_col].to_numpy()[anomalies],
                     color=color,
-                    label=f"{y_col}_level_{level}",
+                    s=30,
+                    alpha=float(level) / 100,
+                    label=f"{y_col}_anomalies_level_{level}",
+                    linewidths=0.5,
+                    edgecolors="red",
                 )
-                if plot_anomalies:
-                    anomalies = df[target_col].lt(lo) | df[target_col].gt(hi)
-                    anomalies = anomalies.to_numpy().astype("bool")
-                    if not anomalies.any():
-                        continue
-                    axi.scatter(
-                        x=times.to_numpy()[anomalies],
-                        y=df[target_col].to_numpy()[anomalies],
-                        color=color,
-                        s=30,
-                        alpha=float(level) / 100,
-                        label=f"{y_col}_anomalies_level_{level}",
-                        linewidths=0.5,
-                        edgecolors="red",
-                    )
 
-        def _add_plotly_plot(fig, df, y_col, levels):
-            show_legend = row == 0 and col == 0
+    def _add_plotly_plot(fig, df, y_col, levels):
+        show_legend = row == 0 and col == 0
+        fig.add_trace(
+            go.Scatter(
+                x=df[time_col],
+                y=df[y_col],
+                mode="lines",
+                name=y_col,
+                legendgroup=y_col,
+                line=dict(color=color, width=1),
+                showlegend=show_legend,
+            ),
+            row=row + 1,
+            col=col + 1,
+        )
+        if y_col == target_col:
+            return
+        x = np.concatenate([df[time_col], df[time_col][::-1]])
+        for level in levels:
+            name = f"{y_col}_level_{level}"
+            lo = df[f"{y_col}-lo-{level}"]
+            hi = df[f"{y_col}-hi-{level}"]
+            y = np.concatenate([hi, lo[::-1]])
             fig.add_trace(
                 go.Scatter(
-                    x=df[time_col],
-                    y=df[y_col],
+                    x=x,
+                    y=y,
+                    fill="toself",
                     mode="lines",
-                    name=y_col,
-                    legendgroup=y_col,
+                    fillcolor=color,
+                    opacity=-float(level) / 100 + 1,
+                    name=name,
+                    legendgroup=name,
                     line=dict(color=color, width=1),
                     showlegend=show_legend,
                 ),
                 row=row + 1,
                 col=col + 1,
             )
-            if y_col == target_col:
-                return
-            x = np.concatenate([df[time_col], df[time_col][::-1]])
-            for level in levels:
-                name = f"{y_col}_level_{level}"
-                lo = df[f"{y_col}-lo-{level}"]
-                hi = df[f"{y_col}-hi-{level}"]
-                y = np.concatenate([hi, lo[::-1]])
+            if plot_anomalies:
+                anomalies = df[target_col].lt(lo) | df[target_col].gt(hi)
+                anomalies = anomalies.to_numpy().astype("bool")
+                if not anomalies.any():
+                    continue
+                name = f"{y_col}_anomalies_level_{level}"
                 fig.add_trace(
                     go.Scatter(
-                        x=x,
-                        y=y,
-                        fill="toself",
-                        mode="lines",
+                        x=df[time_col].to_numpy()[anomalies],
+                        y=df[target_col].to_numpy()[anomalies],
                         fillcolor=color,
-                        opacity=-float(level) / 100 + 1,
+                        mode="markers",
+                        opacity=float(level) / 100,
                         name=name,
                         legendgroup=name,
-                        line=dict(color=color, width=1),
+                        line=dict(color=color, width=0.7),
+                        marker=dict(size=4, line=dict(color="red", width=0.5)),
                         showlegend=show_legend,
                     ),
                     row=row + 1,
                     col=col + 1,
                 )
-                if plot_anomalies:
-                    anomalies = df[target_col].lt(lo) | df[target_col].gt(hi)
-                    anomalies = anomalies.to_numpy().astype("bool")
-                    if not anomalies.any():
-                        continue
-                    name = f"{y_col}_anomalies_level_{level}"
-                    fig.add_trace(
-                        go.Scatter(
-                            x=df[time_col].to_numpy()[anomalies],
-                            y=df[target_col].to_numpy()[anomalies],
-                            fillcolor=color,
-                            mode="markers",
-                            opacity=float(level) / 100,
-                            name=name,
-                            legendgroup=name,
-                            line=dict(color=color, width=0.7),
-                            marker=dict(size=4, line=dict(color="red", width=0.5)),
-                            showlegend=show_legend,
-                        ),
-                        row=row + 1,
-                        col=col + 1,
-                    )
 
-        for i, uid in enumerate(uids):
-            mask = df[id_col].eq(uid)
-            uid_df = ufp.filter_with_mask(df, mask)
-            row, col = divmod(i, n_cols)
-            for y_col, color in zip([target_col] + models, colors):
-                if engine == "matplotlib":
-                    _add_mpl_plot(ax[row, col], uid_df, y_col, level)
-                else:
-                    _add_plotly_plot(fig, uid_df, y_col, level)
+    for i, uid in enumerate(uids):
+        mask = df[id_col].eq(uid)
+        uid_df = ufp.filter_with_mask(df, mask)
+        row, col = divmod(i, n_cols)
+        for y_col, color in zip([target_col] + models, colors):
             if engine == "matplotlib":
-                ax[row, col].set_title(f"{id_col}={uid}")
-                if col == 0:
-                    ax[row, col].set_ylabel(ylabel)
-                if row == n_rows - 1:
-                    ax[row, col].set_xlabel(xlabel)
-                xticklabels = ax[row, col].get_xticklabels()
-                xticks = ax[row, col].get_xticks()
-                ax[row, col].set_xticks(
-                    rotation=30, ticks=xticks, labels=xticklabels, ha="right"
-                )
-
+                _add_mpl_plot(ax[row, col], uid_df, y_col, level)
+            else:
+                _add_plotly_plot(fig, uid_df, y_col, level)
         if engine == "matplotlib":
-            handles, labels = ax[0, 0].get_legend_handles_labels()
-            fig.legend(
-                handles,
-                labels,
-                loc="upper left",
-                # borderaxespad=2,
-                bbox_to_anchor=(1.01, 0.97),
+            ax[row, col].set_title(f"{id_col}={uid}")
+            if col == 0:
+                ax[row, col].set_ylabel(ylabel)
+            if row == n_rows - 1:
+                ax[row, col].set_xlabel(xlabel)
+            xticklabels = ax[row, col].get_xticklabels()
+            xticks = ax[row, col].get_xticks()
+            ax[row, col].set_xticks(
+                rotation=30, ticks=xticks, labels=xticklabels, ha="right"
             )
-            plt.close(fig)
-            if len(ax.flat) > n_series:
-                for axi in ax.flat[n_series:]:
-                    axi.set_axis_off()
-        else:
-            fig.update_xaxes(matches=None, showticklabels=True, visible=True)
-            fig.update_layout(margin=dict(l=60, r=10, t=20, b=50))
-            fig.update_layout(template="plotly_white", font=dict(size=10))
-            fig.update_annotations(font_size=10)
-            fig.update_layout(autosize=True, height=200 * n_rows)
-        return fig
+
+    if engine == "matplotlib":
+        handles, labels = ax[0, 0].get_legend_handles_labels()
+        fig.legend(
+            handles,
+            labels,
+            loc="upper left",
+            # borderaxespad=2,
+            bbox_to_anchor=(1.01, 0.97),
+        )
+        plt.close(fig)
+        if len(ax.flat) > n_series:
+            for axi in ax.flat[n_series:]:
+                axi.set_axis_off()
+    else:
+        fig.update_xaxes(matches=None, showticklabels=True, visible=True)
+        fig.update_layout(margin=dict(l=60, r=10, t=20, b=50))
+        fig.update_layout(template="plotly_white", font=dict(size=10))
+        fig.update_annotations(font_size=10)
+        fig.update_layout(autosize=True, height=200 * n_rows)
+    return fig
