@@ -22,7 +22,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >               level:Optional[List[float]]=None,
 >               max_insample_length:Optional[int]=None,
 >               plot_anomalies:bool=False, engine:str='matplotlib',
->               palette:str='viridis', id_col:str='unique_id',
+>               palette:Optional[str]=None, id_col:str='unique_id',
 >               time_col:str='ds', target_col:str='y', seed:int=0,
 >               resampler_kwargs:Optional[Dict]=None)
 > ```
@@ -41,7 +41,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | max_insample_length | Optional | None | Maximum number of train/insample observations to be plotted. |
 | plot_anomalies | bool | False | Plot anomalies for each prediction interval. |
 | engine | str | matplotlib | Library used to plot. ‘plotly’, ‘plotly-resampler’ or ‘matplotlib’. |
-| palette | str | viridis | Name of the matplotlib colormap to use. |
+| palette | Optional | None | Name of the matplotlib colormap to use for the plots. If None, uses the current style. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
 | target_col | str | y | Column that contains the target. |
@@ -63,6 +63,7 @@ train_pd = series.drop(test_pd.index)
 
 
 ```python
+plt.style.use('ggplot')
 fig = plot_series(
     train_pd,
     forecasts_df=test_pd,
