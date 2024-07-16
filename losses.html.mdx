@@ -357,8 +357,8 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 > ``` text
 >  rmae
 >        (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFr
->        ame], models:List[str], baseline_models:List[str],
->        id_col:str='unique_id', target_col:str='y')
+>        ame], models:List[str], baseline:str, id_col:str='unique_id',
+>        target_col:str='y')
 > ```
 
 \*Relative Mean Absolute Error (RMAE)
@@ -372,16 +372,16 @@ denominator.\*
 |------|------------------|-------------------------|-------------------------|
 | df | Union |  | Input dataframe with id, times, actuals and predictions. |
 | models | List |  | Columns that identify the models predictions. |
-| baseline_models | List |  | Columns that identify the baseline models predictions. |
+| baseline | str |  | Column that identifies the baseline model predictions. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
-    rmae(series, models, list(reversed(models))),
-    rmae(series_pl, models, list(reversed(models))),
-    [f'{m1}_div_{m2}' for m1, m2 in zip(models, reversed(models))],
+    rmae(series, models, models[0]),
+    rmae(series_pl, models, models[0]),
+    models,
 )
 ```
 
@@ -403,7 +403,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L357"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L351"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### quantile_loss
@@ -446,7 +446,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L419"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L413"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mqloss
@@ -493,7 +493,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L478"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L472"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### coverage
@@ -529,7 +529,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L537"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L531"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### calibration
@@ -574,7 +574,7 @@ and $y_{i,\tau}$ are its realizations.
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L587"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L581"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### scaled_crps
