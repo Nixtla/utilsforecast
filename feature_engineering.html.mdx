@@ -8,7 +8,7 @@ title: Feature engineering
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/feature_engineering.py#L110"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/feature_engineering.py#L111"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### fourier
@@ -75,7 +75,7 @@ future_df
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/feature_engineering.py#L156"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/feature_engineering.py#L157"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### trend
@@ -134,7 +134,62 @@ future_df
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/feature_engineering.py#L195"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/feature_engineering.py#L238"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### time_features
+
+> ``` text
+>  time_features
+>                 (df:Union[pandas.core.frame.DataFrame,polars.dataframe.fra
+>                 me.DataFrame], freq:str,
+>                 features:List[Union[str,Callable]], h:int=0,
+>                 id_col:str='unique_id', time_col:str='ds')
+> ```
+
+*Compute timestamp-based features for training and forecasting*
+
+|  | **Type** | **Default** | **Details** |
+|------|------------------|-------------------------|-------------------------|
+| df | Union |  | Dataframe with ids, times and values for the exogenous regressors. |
+| freq | str |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
+| features | List |  | Features to compute. Can be string aliases of timestamp attributes or functions to apply to the times. |
+| h | int | 0 | Forecast horizon. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
+| **Returns** | **Tuple** |  | **Original DataFrame with the computed features** |
+
+```python
+time_features(series, freq='D', features=['month', 'day'], h=1)
+```
+
+``` text
+(     unique_id         ds         y  month  day
+ 0            0 2000-10-05  0.428973     10    5
+ 1            0 2000-10-06  1.423626     10    6
+ 2            0 2000-10-07  2.311782     10    7
+ 3            0 2000-10-08  3.192191     10    8
+ 4            0 2000-10-09  4.148767     10    9
+ ...        ...        ...       ...    ...  ...
+ 1096         4 2001-05-10  4.058910      5   10
+ 1097         4 2001-05-11  5.178157      5   11
+ 1098         4 2001-05-12  6.133142      5   12
+ 1099         4 2001-05-13  0.403709      5   13
+ 1100         4 2001-05-14  1.081779      5   14
+ 
+ [1101 rows x 5 columns],
+   unique_id         ds  month  day
+ 0         0 2001-05-15      5   15
+ 1         1 2001-05-15      5   15
+ 2         2 2001-05-15      5   15
+ 3         3 2001-05-15      5   15
+ 4         4 2001-05-15      5   15)
+```
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/feature_engineering.py#L287"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### pipeline
@@ -159,10 +214,18 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | **Returns** | **Tuple** |  | **Original DataFrame with the computed features** |
 
 ```python
+def is_weekend(times):
+    if isinstance(times, pd.Index):
+        dow = times.weekday + 1  # monday=0 in pandas and 1 in polars
+    else:
+        dow = times.dt.weekday()
+    return dow >= 6
+
 features = [
     trend,
     partial(fourier, season_length=7, k=1),
     partial(fourier, season_length=28, k=1),
+    partial(time_features, features=['day', is_weekend]),
 ]
 transformed_df, future_df = pipeline(
     series,
@@ -173,29 +236,29 @@ transformed_df, future_df = pipeline(
 transformed_df
 ```
 
-|  | unique_id | ds | y | trend | sin1_7 | cos1_7 | sin1_28 | cos1_28 |
-|----|----|----|----|----|----|----|----|----|
-| 0 | 0 | 2000-10-05 | 0.428973 | 152.0 | -0.974927 | -0.222526 | 0.433885 | -9.009683e-01 |
-| 1 | 0 | 2000-10-06 | 1.423626 | 153.0 | -0.781835 | 0.623486 | 0.222522 | -9.749276e-01 |
-| 2 | 0 | 2000-10-07 | 2.311782 | 154.0 | -0.000005 | 1.000000 | 0.000001 | -1.000000e+00 |
-| 3 | 0 | 2000-10-08 | 3.192191 | 155.0 | 0.781829 | 0.623493 | -0.222520 | -9.749281e-01 |
-| 4 | 0 | 2000-10-09 | 4.148767 | 156.0 | 0.974929 | -0.222517 | -0.433883 | -9.009693e-01 |
-| ... | ... | ... | ... | ... | ... | ... | ... | ... |
-| 1096 | 4 | 2001-05-10 | 4.058910 | 369.0 | -0.974927 | -0.222523 | 0.900969 | 4.338843e-01 |
-| 1097 | 4 | 2001-05-11 | 5.178157 | 370.0 | -0.781823 | 0.623500 | 0.974929 | 2.225177e-01 |
-| 1098 | 4 | 2001-05-12 | 6.133142 | 371.0 | -0.000002 | 1.000000 | 1.000000 | 4.251100e-07 |
-| 1099 | 4 | 2001-05-13 | 0.403709 | 372.0 | 0.781840 | 0.623479 | 0.974927 | -2.225243e-01 |
-| 1100 | 4 | 2001-05-14 | 1.081779 | 373.0 | 0.974928 | -0.222520 | 0.900969 | -4.338835e-01 |
+|  | unique_id | ds | y | trend | sin1_7 | cos1_7 | sin1_28 | cos1_28 | day | is_weekend |
+|----|----|----|----|----|----|----|----|----|----|----|
+| 0 | 0 | 2000-10-05 | 0.428973 | 152.0 | -0.974927 | -0.222526 | 0.433885 | -9.009683e-01 | 5 | False |
+| 1 | 0 | 2000-10-06 | 1.423626 | 153.0 | -0.781835 | 0.623486 | 0.222522 | -9.749276e-01 | 6 | False |
+| 2 | 0 | 2000-10-07 | 2.311782 | 154.0 | -0.000005 | 1.000000 | 0.000001 | -1.000000e+00 | 7 | True |
+| 3 | 0 | 2000-10-08 | 3.192191 | 155.0 | 0.781829 | 0.623493 | -0.222520 | -9.749281e-01 | 8 | True |
+| 4 | 0 | 2000-10-09 | 4.148767 | 156.0 | 0.974929 | -0.222517 | -0.433883 | -9.009693e-01 | 9 | False |
+| ... | ... | ... | ... | ... | ... | ... | ... | ... | ... | ... |
+| 1096 | 4 | 2001-05-10 | 4.058910 | 369.0 | -0.974927 | -0.222523 | 0.900969 | 4.338843e-01 | 10 | False |
+| 1097 | 4 | 2001-05-11 | 5.178157 | 370.0 | -0.781823 | 0.623500 | 0.974929 | 2.225177e-01 | 11 | False |
+| 1098 | 4 | 2001-05-12 | 6.133142 | 371.0 | -0.000002 | 1.000000 | 1.000000 | 4.251100e-07 | 12 | True |
+| 1099 | 4 | 2001-05-13 | 0.403709 | 372.0 | 0.781840 | 0.623479 | 0.974927 | -2.225243e-01 | 13 | True |
+| 1100 | 4 | 2001-05-14 | 1.081779 | 373.0 | 0.974928 | -0.222520 | 0.900969 | -4.338835e-01 | 14 | False |
 
 ```python
 future_df
 ```
 
-|     | unique_id | ds         | trend | sin1_7   | cos1_7    | sin1_28  | cos1_28   |
-|-----|-----------|------------|-------|----------|-----------|----------|-----------|
-| 0   | 0         | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 |
-| 1   | 1         | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 |
-| 2   | 2         | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 |
-| 3   | 3         | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 |
-| 4   | 4         | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 |
+|  | unique_id | ds | trend | sin1_7 | cos1_7 | sin1_28 | cos1_28 | day | is_weekend |
+|----|----|----|----|----|----|----|----|----|----|
+| 0 | 0 | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 | 15 | False |
+| 1 | 1 | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 | 15 | False |
+| 2 | 2 | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 | 15 | False |
+| 3 | 3 | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 | 15 | False |
+| 4 | 4 | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 | 15 | False |
 
