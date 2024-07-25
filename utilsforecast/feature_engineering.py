@@ -220,7 +220,7 @@ def _add_time_features(
     unique_times = df[time_col].unique()
     if isinstance(df, pd.DataFrame):
         times = pd.Index(unique_times)
-        time2pos = {times: i for i, times in enumerate(times)}
+        time2pos = {time: i for i, time in enumerate(times)}
         restore_idxs = df[time_col].map(time2pos)
         for feature in features:
             name, vals = _compute_time_feature(times, feature)
@@ -252,7 +252,7 @@ def time_features(
     freq : str or int
         Frequency of the data. Must be a valid pandas or polars offset alias, or an integer.
     features : list of str or callable
-        Features to compute. Can be string aliases or functions to apply to the times.
+        Features to compute. Can be string aliases of timestamp attributes or functions to apply to the times.
     h : int (default=0)
         Forecast horizon.
     id_col : str (default='unique_id')
