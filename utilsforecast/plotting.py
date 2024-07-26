@@ -174,7 +174,6 @@ def plot_series(
             gs = ax.flat[0].get_gridspec()
             n_rows, n_cols = gs.nrows, gs.ncols
             ax = ax.reshape(n_rows, n_cols)
-            max_ids = ax.size
         elif engine.startswith("plotly") and isinstance(ax, go.Figure):
             rows, cols = ax._get_subplot_rows_columns()
             # rows and cols are ranges
