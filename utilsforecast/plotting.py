@@ -109,7 +109,7 @@ def plot_series(
 
     Returns
     -------
-    matplotlib Axes or plotly figure
+    fig : matplotlib or plotly figure
         Plot's figure
     """
     # checks
@@ -418,4 +418,4 @@ def plot_series(
             fig.update_layout(margin=dict(l=60, r=10, t=20, b=50))
             fig.update_layout(template="plotly_white", font=dict(size=10))
             fig.update_layout(autosize=True, height=200 * n_rows)
-    return ax if engine == "matplotlib" else fig
+    return fig
