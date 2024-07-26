@@ -8,7 +8,7 @@ title: Plotting
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/plotting.py#L45"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/plotting.py#L48"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### plot_series
@@ -24,7 +24,9 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >               plot_anomalies:bool=False, engine:str='matplotlib',
 >               palette:Optional[str]=None, id_col:str='unique_id',
 >               time_col:str='ds', target_col:str='y', seed:int=0,
->               resampler_kwargs:Optional[Dict]=None)
+>               resampler_kwargs:Optional[Dict]=None, ax:Union[matplotlib.ax
+>               es._axes.Axes,ForwardRef('plotly.graph_objects.Figure'),None
+>               Type]=None)
 > ```
 
 *Plot forecasts and insample values.*
@@ -47,6 +49,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | target_col | str | y | Column that contains the target. |
 | seed | int | 0 | Seed used for the random number generator. Only used if plot_random is True. |
 | resampler_kwargs | Optional | None | Keyword arguments to be passed to plotly-resampler constructor.<br/>For further custumization (“show_dash”) call the method,<br/>store the plotting object and add the extra arguments to<br/>its `show_dash` method. |
+| ax | Union | None | Object where plots will be added. |
 | **Returns** | **matplotlib or plotly figure** |  | **Plot’s figure** |
 
 ```python
