@@ -6,6 +6,7 @@ __all__ = ['fill_gaps']
 # %% ../nbs/preprocessing.ipynb 2
 import warnings
 from datetime import date, datetime
+from functools import partial
 from typing import Union
 
 import numpy as np
@@ -113,7 +114,10 @@ def fill_gaps(
             if starts.dtype == pl.Date:
                 ranges_fn = pl.date_ranges
             else:
-                ranges_fn = pl.datetime_ranges
+                ranges_fn = partial(
+                    pl.datetime_ranges,
+                    time_unit=df.schema[time_col].unit,
+                )
             grid = grid.with_columns(
                 ranges_fn(
                     starts,
