@@ -8,7 +8,7 @@ title: Preprocessing
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/preprocessing.py#L58"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/preprocessing.py#L59"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### fill_gaps
@@ -231,17 +231,19 @@ df
 | 1         | 2022-01-01 00:00:00 | 4   |
 
 ```python
-fill_gaps(
-    df,
+polars_ms = fill_gaps(
+    df.with_columns(pl.col('ds').cast(pl.Datetime(time_unit='ms'))),
     freq='1y',
     start=datetime(2019, 1, 1),
     end=datetime(2024, 1, 1),
 )
+assert polars_ms.schema['ds'].time_unit == 'ms'
+polars_ms
 ```
 
 | unique_id | ds                  | y    |
 |-----------|---------------------|------|
-| i64       | datetime\[μs\]      | i64  |
+| i64       | datetime\[ms\]      | i64  |
 | 0         | 2019-01-01 00:00:00 | null |
 | 0         | 2020-01-01 00:00:00 | 0    |
 | 0         | 2021-01-01 00:00:00 | null |
