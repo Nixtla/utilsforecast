@@ -62,7 +62,7 @@ def plot_series(
     target_col: str = "y",
     seed: int = 0,
     resampler_kwargs: Optional[Dict] = None,
-    ax: Optional[Union[np.ndarray, plt.Axes, "plotly.graph_objects.Figure"]] = None,
+    ax: Optional[Union[plt.Axes, np.ndarray, "plotly.graph_objects.Figure"]] = None,
 ):
     """Plot forecasts and insample values.
 
