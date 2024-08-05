@@ -8,7 +8,7 @@ title: Data
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/data.py#L15"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/data.py#L47"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### generate_series
@@ -18,8 +18,8 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >                   max_length:int=500, n_static_features:int=0,
 >                   equal_ends:bool=False, with_trend:bool=False,
 >                   static_as_categorical:bool=True, n_models:int=0,
->                   level:Optional[List[float]]=None, engine:str='pandas',
->                   seed:int=0)
+>                   level:Optional[List[float]]=None,
+>                   engine:Literal['pandas','polars']='pandas', seed:int=0)
 > ```
 
 *Generate Synthetic Panel Series.*
@@ -36,7 +36,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | static_as_categorical | bool | True | Static features should have a categorical data type. |
 | n_models | int | 0 | Number of models predictions to simulate. |
 | level | Optional | None | Confidence level for intervals to simulate for each model. |
-| engine | str | pandas | Output Dataframe type. |
+| engine | Literal | pandas | Output Dataframe type. |
 | seed | int | 0 | Random seed used for generating the data. |
 | **Returns** | **Union** |  | **Synthetic panel with columns \[`unique_id`, `ds`, `y`\] and exogenous features.** |
 

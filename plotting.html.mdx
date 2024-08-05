@@ -14,10 +14,9 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ### plot_series
 
 > ``` text
->  plot_series (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.
->               DataFrame,NoneType]=None, forecasts_df:Union[pandas.core.fra
->               me.DataFrame,polars.dataframe.frame.DataFrame,NoneType]=None
->               , ids:Optional[List[str]]=None, plot_random:bool=True,
+>  plot_series (df:Optional[~DFType]=None,
+>               forecasts_df:Optional[~DFType]=None,
+>               ids:Optional[List[str]]=None, plot_random:bool=True,
 >               max_ids:int=8, models:Optional[List[str]]=None,
 >               level:Optional[List[float]]=None,
 >               max_insample_length:Optional[int]=None,
@@ -33,8 +32,8 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union | None | DataFrame with columns \[`id_col`, `time_col`, `target_col`\]. |
-| forecasts_df | Union | None | DataFrame with columns \[`id_col`, `time_col`\] and models. |
+| df | Optional | None | DataFrame with columns \[`id_col`, `time_col`, `target_col`\]. |
+| forecasts_df | Optional | None | DataFrame with columns \[`id_col`, `time_col`\] and models. |
 | ids | Optional | None | Time Series to plot.<br/>If None, time series are selected randomly. |
 | plot_random | bool | True | Select time series to plot randomly. |
 | max_ids | int | 8 | Maximum number of ids to plot. |

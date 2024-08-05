@@ -14,10 +14,9 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ### fill_gaps
 
 > ``` text
->  fill_gaps
->             (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.D
->             ataFrame], freq:Union[str,int], start:Union[str,int,datetime.d
->             ate,datetime.datetime]='per_serie',
+>  fill_gaps (df:~DFType, freq:Union[str,int],
+>             start:Union[str,int,datetime.date,datetime.datetime]='per_seri
+>             e',
 >             end:Union[str,int,datetime.date,datetime.datetime]='global',
 >             id_col:str='unique_id', time_col:str='ds')
 > ```
@@ -26,13 +25,13 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Input data |
+| df | DFType |  | Input data |
 | freq | Union |  | Series’ frequency |
 | start | Union | per_serie | Initial timestamp for the series.<br/> \* ‘per_serie’ uses each serie’s first timestamp<br/> \* ‘global’ uses the first timestamp seen in the data<br/> \* Can also be a specific timestamp or integer, e.g. ‘2000-01-01’, 2000 or datetime(2000, 1, 1) |
 | end | Union | global | Initial timestamp for the series.<br/> \* ‘per_serie’ uses each serie’s last timestamp<br/> \* ‘global’ uses the last timestamp seen in the data<br/> \* Can also be a specific timestamp or integer, e.g. ‘2000-01-01’, 2000 or datetime(2000, 1, 1) |
 | id_col | str | unique_id | Column that identifies each serie. |
 | time_col | str | ds | Column that identifies each timestamp. |
-| **Returns** | **DataFrame** |  | **Dataframe with gaps filled.** |
+| **Returns** | **DFType** |  | **Dataframe with gaps filled.** |
 
 ```python
 df = pd.DataFrame(

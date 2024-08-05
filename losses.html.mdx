@@ -50,9 +50,8 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 #### mae
 
 > ``` text
->  mae
->       (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFra
->       me], models:List[str], id_col:str='unique_id', target_col:str='y')
+>  mae (df:~DFType, models:List[str], id_col:str='unique_id',
+>       target_col:str='y')
 > ```
 
 \*Mean Absolute Error (MAE)
@@ -63,11 +62,11 @@ given time and averages these devations over the length of the series.\*
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Input dataframe with id, actual values and predictions. |
+| df | DFType |  | Input dataframe with id, actual values and predictions. |
 | models | List |  | Columns that identify the models predictions. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
-| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 def pd_vs_pl(pd_df, pl_df, models):
@@ -105,9 +104,8 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 #### mse
 
 > ``` text
->  mse
->       (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFra
->       me], models:List[str], id_col:str='unique_id', target_col:str='y')
+>  mse (df:~DFType, models:List[str], id_col:str='unique_id',
+>       target_col:str='y')
 > ```
 
 \*Mean Squared Error (MSE)
@@ -119,11 +117,11 @@ series.\*
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Input dataframe with id, actual values and predictions. |
+| df | DFType |  | Input dataframe with id, actual values and predictions. |
 | models | List |  | Columns that identify the models predictions. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
-| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -152,9 +150,8 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 #### rmse
 
 > ``` text
->  rmse
->        (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFr
->        ame], models:List[str], id_col:str='unique_id', target_col:str='y')
+>  rmse (df:~DFType, models:List[str], id_col:str='unique_id',
+>        target_col:str='y')
 > ```
 
 \*Root Mean Squared Error (RMSE)
@@ -168,11 +165,11 @@ share a common scale. RMSE has a direct connection to the L2 norm.\*
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Input dataframe with id, actual values and predictions. |
+| df | DFType |  | Input dataframe with id, actual values and predictions. |
 | models | List |  | Columns that identify the models predictions. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
-| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -203,9 +200,8 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 #### mape
 
 > ``` text
->  mape
->        (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFr
->        ame], models:List[str], id_col:str='unique_id', target_col:str='y')
+>  mape (df:~DFType, models:List[str], id_col:str='unique_id',
+>        target_col:str='y')
 > ```
 
 \*Mean Absolute Percentage Error (MAPE)
@@ -218,11 +214,11 @@ higher penalty MAPE loss assigns to the corresponding error.\*
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Input dataframe with id, actual values and predictions. |
+| df | DFType |  | Input dataframe with id, actual values and predictions. |
 | models | List |  | Columns that identify the models predictions. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
-| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -249,9 +245,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 #### smape
 
 > ``` text
->  smape
->         (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataF
->         rame], models:List[str], id_col:str='unique_id',
+>  smape (df:~DFType, models:List[str], id_col:str='unique_id',
 >         target_col:str='y')
 > ```
 
@@ -267,11 +261,11 @@ undetermined when the target is zero.\*
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Input dataframe with id, actual values and predictions. |
+| df | DFType |  | Input dataframe with id, actual values and predictions. |
 | models | List |  | Columns that identify the models predictions. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
-| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -303,10 +297,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 #### mase
 
 > ``` text
->  mase
->        (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFr
->        ame], models:List[str], seasonality:int, train_df:Union[pandas.core
->        .frame.DataFrame,polars.dataframe.frame.DataFrame],
+>  mase (df:~DFType, models:List[str], seasonality:int, train_df:~DFType,
 >        id_col:str='unique_id', target_col:str='y')
 > ```
 
@@ -320,13 +311,13 @@ used in the M4 Competition.\*
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Input dataframe with id, actuals and predictions. |
+| df | DFType |  | Input dataframe with id, actuals and predictions. |
 | models | List |  | Columns that identify the models predictions. |
 | seasonality | int |  | Main frequency of the time series;<br/>Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1. |
-| train_df | Union |  | Training dataframe with id and actual values. Must be sorted by time. |
+| train_df | DFType |  | Training dataframe with id and actual values. Must be sorted by time. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
-| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -355,9 +346,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 #### rmae
 
 > ``` text
->  rmae
->        (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataFr
->        ame], models:List[str], baseline:str, id_col:str='unique_id',
+>  rmae (df:~DFType, models:List[str], baseline:str, id_col:str='unique_id',
 >        target_col:str='y')
 > ```
 
@@ -370,12 +359,12 @@ denominator.\*
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Input dataframe with id, times, actuals and predictions. |
+| df | DFType |  | Input dataframe with id, times, actuals and predictions. |
 | models | List |  | Columns that identify the models predictions. |
 | baseline | str |  | Column that identifies the baseline model predictions. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
-| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -409,9 +398,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 #### quantile_loss
 
 > ``` text
->  quantile_loss
->                 (df:Union[pandas.core.frame.DataFrame,polars.dataframe.fra
->                 me.DataFrame], models:Dict[str,str], q:float=0.5,
+>  quantile_loss (df:~DFType, models:Dict[str,str], q:float=0.5,
 >                 id_col:str='unique_id', target_col:str='y')
 > ```
 
@@ -424,12 +411,12 @@ A common value for q is 0.5 for the deviation from the median.\*
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Input dataframe with id, times, actuals and predictions. |
+| df | DFType |  | Input dataframe with id, times, actuals and predictions. |
 | models | Dict |  | Mapping from model name to the model predictions for the specified quantile. |
 | q | float | 0.5 | Quantile for the predictions’ comparison. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
-| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
 ### Multi-Quantile Loss
 
@@ -452,9 +439,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 #### mqloss
 
 > ``` text
->  mqloss
->          (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.Data
->          Frame], models:Dict[str,List[str]], quantiles:numpy.ndarray,
+>  mqloss (df:~DFType, models:Dict[str,List[str]], quantiles:numpy.ndarray,
 >          id_col:str='unique_id', target_col:str='y')
 > ```
 
@@ -473,12 +458,12 @@ over uniformly distanced quantiles.\*
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Input dataframe with id, times, actuals and predictions. |
+| df | DFType |  | Input dataframe with id, times, actuals and predictions. |
 | models | Dict |  | Mapping from model name to the model predictions for each quantile. |
 | quantiles | ndarray |  | Quantiles to compare against. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
-| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -499,22 +484,20 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 #### coverage
 
 > ``` text
->  coverage
->            (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.Da
->            taFrame], models:List[str], level:int, id_col:str='unique_id',
->            target_col:str='y')
+>  coverage (df:~DFType, models:List[str], level:int,
+>            id_col:str='unique_id', target_col:str='y')
 > ```
 
 *Coverage of y with y_hat_lo and y_hat_hi.*
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Input dataframe with id, times, actuals and predictions. |
+| df | DFType |  | Input dataframe with id, times, actuals and predictions. |
 | models | List |  | Columns that identify the models predictions. |
 | level | int |  | Confidence level used for intervals. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
-| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -535,9 +518,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 #### calibration
 
 > ``` text
->  calibration
->               (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame
->               .DataFrame], models:Dict[str,str], id_col:str='unique_id',
+>  calibration (df:~DFType, models:Dict[str,str], id_col:str='unique_id',
 >               target_col:str='y')
 > ```
 
@@ -545,11 +526,11 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Input dataframe with id, times, actuals and predictions. |
+| df | DFType |  | Input dataframe with id, times, actuals and predictions. |
 | models | Dict |  | Mapping from model name to the model predictions. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
-| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(
@@ -580,9 +561,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 #### scaled_crps
 
 > ``` text
->  scaled_crps
->               (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame
->               .DataFrame], models:Dict[str,List[str]],
+>  scaled_crps (df:~DFType, models:Dict[str,List[str]],
 >               quantiles:numpy.ndarray, id_col:str='unique_id',
 >               target_col:str='y')
 > ```
@@ -596,12 +575,12 @@ absolute deviations as defined by the quantile losses.\*
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Input dataframe with id, times, actuals and predictions. |
+| df | DFType |  | Input dataframe with id, times, actuals and predictions. |
 | models | Dict |  | Mapping from model name to the model predictions for each quantile. |
 | quantiles | ndarray |  | Quantiles to compare against. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
-| **Returns** | **Union** |  | **dataframe with one row per id and one column per model.** |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
 ```python
 pd_vs_pl(

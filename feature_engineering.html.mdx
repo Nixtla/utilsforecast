@@ -14,9 +14,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ### fourier
 
 > ``` text
->  fourier
->           (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.Dat
->           aFrame], freq:str, season_length:int, k:int, h:int=0,
+>  fourier (df:~DFType, freq:str, season_length:int, k:int, h:int=0,
 >           id_col:str='unique_id', time_col:str='ds')
 > ```
 
@@ -24,7 +22,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Dataframe with ids, times and values for the exogenous regressors. |
+| df | DFType |  | Dataframe with ids, times and values for the exogenous regressors. |
 | freq | str |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
 | season_length | int |  | Number of observations per unit of time. Ex: 24 Hourly data. |
 | k | int |  | Maximum order of the fourier terms |
@@ -81,9 +79,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ### trend
 
 > ``` text
->  trend
->         (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.DataF
->         rame], freq:str, h:int=0, id_col:str='unique_id',
+>  trend (df:~DFType, freq:str, h:int=0, id_col:str='unique_id',
 >         time_col:str='ds')
 > ```
 
@@ -92,7 +88,7 @@ forecasting*
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Dataframe with ids, times and values for the exogenous regressors. |
+| df | DFType |  | Dataframe with ids, times and values for the exogenous regressors. |
 | freq | str |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
 | h | int | 0 | Forecast horizon. |
 | id_col | str | unique_id | Column that identifies each serie. |
@@ -140,18 +136,15 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ### time_features
 
 > ``` text
->  time_features
->                 (df:Union[pandas.core.frame.DataFrame,polars.dataframe.fra
->                 me.DataFrame], freq:str,
->                 features:List[Union[str,Callable]], h:int=0,
->                 id_col:str='unique_id', time_col:str='ds')
+>  time_features (df:~DFType, freq:str, features:List[Union[str,Callable]],
+>                 h:int=0, id_col:str='unique_id', time_col:str='ds')
 > ```
 
 *Compute timestamp-based features for training and forecasting*
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Dataframe with ids, times and values for the exogenous regressors. |
+| df | DFType |  | Dataframe with ids, times and values for the exogenous regressors. |
 | freq | str |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
 | features | List |  | Features to compute. Can be string aliases of timestamp attributes or functions to apply to the times. |
 | h | int | 0 | Forecast horizon. |
@@ -199,9 +192,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ### pipeline
 
 > ``` text
->  pipeline
->            (df:Union[pandas.core.frame.DataFrame,polars.dataframe.frame.Da
->            taFrame], features:List[Callable], freq:str, h:int=0,
+>  pipeline (df:~DFType, features:List[Callable], freq:str, h:int=0,
 >            id_col:str='unique_id', time_col:str='ds')
 > ```
 
@@ -209,7 +200,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | Union |  | Dataframe with ids, times and values for the exogenous regressors. |
+| df | DFType |  | Dataframe with ids, times and values for the exogenous regressors. |
 | features | List |  | List of features to compute. Must take only df, freq, h, id_col and time_col (other arguments must be fixed). |
 | freq | str |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
 | h | int | 0 | Forecast horizon. |
