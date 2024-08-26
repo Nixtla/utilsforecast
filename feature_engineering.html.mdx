@@ -14,8 +14,8 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ### fourier
 
 > ``` text
->  fourier (df:~DFType, freq:str, season_length:int, k:int, h:int=0,
->           id_col:str='unique_id', time_col:str='ds')
+>  fourier (df:~DFType, freq:Union[str,int], season_length:int, k:int,
+>           h:int=0, id_col:str='unique_id', time_col:str='ds')
 > ```
 
 *Compute fourier seasonal terms for training and forecasting*
@@ -23,7 +23,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
 | df | DFType |  | Dataframe with ids, times and values for the exogenous regressors. |
-| freq | str |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
+| freq | Union |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
 | season_length | int |  | Number of observations per unit of time. Ex: 24 Hourly data. |
 | k | int |  | Maximum order of the fourier terms |
 | h | int | 0 | Forecast horizon. |
@@ -79,7 +79,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ### trend
 
 > ``` text
->  trend (df:~DFType, freq:str, h:int=0, id_col:str='unique_id',
+>  trend (df:~DFType, freq:Union[str,int], h:int=0, id_col:str='unique_id',
 >         time_col:str='ds')
 > ```
 
@@ -89,7 +89,7 @@ forecasting*
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
 | df | DFType |  | Dataframe with ids, times and values for the exogenous regressors. |
-| freq | str |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
+| freq | Union |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
 | h | int | 0 | Forecast horizon. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
@@ -136,8 +136,9 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 ### time_features
 
 > ``` text
->  time_features (df:~DFType, freq:str, features:List[Union[str,Callable]],
->                 h:int=0, id_col:str='unique_id', time_col:str='ds')
+>  time_features (df:~DFType, freq:Union[str,int],
+>                 features:List[Union[str,Callable]], h:int=0,
+>                 id_col:str='unique_id', time_col:str='ds')
 > ```
 
 *Compute timestamp-based features for training and forecasting*
@@ -145,7 +146,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
 | df | DFType |  | Dataframe with ids, times and values for the exogenous regressors. |
-| freq | str |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
+| freq | Union |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
 | features | List |  | Features to compute. Can be string aliases of timestamp attributes or functions to apply to the times. |
 | h | int | 0 | Forecast horizon. |
 | id_col | str | unique_id | Column that identifies each serie. |
@@ -189,11 +190,98 @@ future_df
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/feature_engineering.py#L298"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
+### future_exog_to_historic
+
+> ``` text
+>  future_exog_to_historic (df:~DFType, freq:Union[str,int],
+>                           features:List[str], h:int=0,
+>                           id_col:str='unique_id', time_col:str='ds')
+> ```
+
+*Turn future exogenous features into historic by shifting them `h`
+steps.*
+
+|  | **Type** | **Default** | **Details** |
+|------|------------------|-------------------------|-------------------------|
+| df | DFType |  | Dataframe with ids, times and values for the exogenous regressors. |
+| freq | Union |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
+| features | List |  | Features to be converted into historic. |
+| h | int | 0 | Forecast horizon. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
+| **Returns** | **Tuple** |  | **Original DataFrame with the computed features** |
+
+```python
+series_with_prices = series.assign(price=np.random.rand(len(series))).sample(frac=1.0)
+series_with_prices
+```
+
+|     | unique_id | ds         | y        | price    |
+|-----|-----------|------------|----------|----------|
+| 436 | 2         | 2001-03-26 | 2.369113 | 0.774476 |
+| 312 | 1         | 2001-05-08 | 4.405212 | 0.557957 |
+| 536 | 3         | 2000-11-04 | 4.362074 | 0.745237 |
+| 34  | 0         | 2000-11-08 | 6.111161 | 0.809978 |
+| 652 | 3         | 2001-02-28 | 1.448291 | 0.685294 |
+| ... | ...       | ...        | ...      | ...      |
+| 609 | 3         | 2001-01-16 | 0.215892 | 0.699703 |
+| 873 | 4         | 2000-09-29 | 5.398198 | 0.677651 |
+| 268 | 1         | 2001-03-25 | 2.393771 | 0.735438 |
+| 171 | 0         | 2001-03-25 | 3.085493 | 0.463871 |
+| 931 | 4         | 2000-11-26 | 0.292296 | 0.691377 |
+
+```python
+transformed_df, future_df = future_exog_to_historic(
+    df=series_with_prices, 
+    freq='D',
+    features=['price'],
+    h=2,
+)
+transformed_df
+```
+
+|      | unique_id | ds         | y        | price    |
+|------|-----------|------------|----------|----------|
+| 0    | 2         | 2001-03-26 | 2.369113 | 0.870133 |
+| 1    | 1         | 2001-05-08 | 4.405212 | 0.869751 |
+| 2    | 3         | 2000-11-04 | 4.362074 | 0.877901 |
+| 3    | 0         | 2000-11-08 | 6.111161 | 0.629413 |
+| 4    | 3         | 2001-02-28 | 1.448291 | 0.088073 |
+| ...  | ...       | ...        | ...      | ...      |
+| 1096 | 3         | 2001-01-16 | 0.215892 | 0.472261 |
+| 1097 | 4         | 2000-09-29 | 5.398198 | 0.887531 |
+| 1098 | 1         | 2001-03-25 | 2.393771 | 0.481712 |
+| 1099 | 0         | 2001-03-25 | 3.085493 | 0.433153 |
+| 1100 | 4         | 2000-11-26 | 0.292296 | 0.620219 |
+
+```python
+future_df
+```
+
+|     | unique_id | ds         | price    |
+|-----|-----------|------------|----------|
+| 0   | 0         | 2001-05-15 | 0.874328 |
+| 1   | 0         | 2001-05-16 | 0.481385 |
+| 2   | 1         | 2001-05-15 | 0.009058 |
+| 3   | 1         | 2001-05-16 | 0.083749 |
+| 4   | 2         | 2001-05-15 | 0.726212 |
+| 5   | 2         | 2001-05-16 | 0.052221 |
+| 6   | 3         | 2001-05-15 | 0.942335 |
+| 7   | 3         | 2001-05-16 | 0.274816 |
+| 8   | 4         | 2001-05-15 | 0.267545 |
+| 9   | 4         | 2001-05-16 | 0.112129 |
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/feature_engineering.py#L354"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
 ### pipeline
 
 > ``` text
->  pipeline (df:~DFType, features:List[Callable], freq:str, h:int=0,
->            id_col:str='unique_id', time_col:str='ds')
+>  pipeline (df:~DFType, features:List[Callable], freq:Union[str,int],
+>            h:int=0, id_col:str='unique_id', time_col:str='ds')
 > ```
 
 *Compute several features for training and forecasting*
@@ -202,7 +290,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 |------|------------------|-------------------------|-------------------------|
 | df | DFType |  | Dataframe with ids, times and values for the exogenous regressors. |
 | features | List |  | List of features to compute. Must take only df, freq, h, id_col and time_col (other arguments must be fixed). |
-| freq | str |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
+| freq | Union |  | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. |
 | h | int | 0 | Forecast horizon. |
 | id_col | str | unique_id | Column that identifies each serie. |
 | time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
@@ -260,4 +348,16 @@ transformed_df
 | 1098 | 4 | 2001-05-12 | 6.133142 | 371.0 | -0.000002 | 1.000000 | 1.000000 | 4.251100e-07 | 12 | True | True | False |
 | 1099 | 4 | 2001-05-13 | 0.403709 | 372.0 | 0.781840 | 0.623479 | 0.974927 | -2.225243e-01 | 13 | True | False | False |
 | 1100 | 4 | 2001-05-14 | 1.081779 | 373.0 | 0.974928 | -0.222520 | 0.900969 | -4.338835e-01 | 14 | False | False | False |
+
+```python
+future_df
+```
+
+|  | unique_id | ds | trend | sin1_7 | cos1_7 | sin1_28 | cos1_28 | day | is_weekend | even_day | even_month |
+|----|----|----|----|----|----|----|----|----|----|----|----|
+| 0 | 0 | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 | 15 | False | True | False |
+| 1 | 1 | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 | 15 | False | True | False |
+| 2 | 2 | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 | 15 | False | True | False |
+| 3 | 3 | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 | 15 | False | True | False |
+| 4 | 4 | 2001-05-15 | 374.0 | 0.433871 | -0.900975 | 0.781829 | -0.623493 | 15 | False | True | False |
 
