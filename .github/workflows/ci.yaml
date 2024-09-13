@@ -27,18 +27,15 @@ jobs:
       - name: Clone repo
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
-      - name: Set up environment
-        uses: mamba-org/setup-micromamba@f8b8a1e23a26f60a44c853292711bacfd3eac822 # v1.9.0
+      - uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
         with:
-          environment-file: environment.yml
-          create-args: python=${{ matrix.python-version }}
-          cache-environment: true
+          python-version: ${{ matrix.python-version }}
 
       - name: Install the library
-        run: pip install ./
+        run: pip install uv && uv pip install --system ".[dev]" fugue[dask,spark]>=0.8.1
 
       - name: Run tests
-        run: nbdev_test --do_print --timing --flags 'matplotlib polars pyarrow scipy'
+        run: nbdev_test --do_print --timing --flags 'distributed matplotlib polars pyarrow scipy'
 
   windows-tests:
     runs-on: windows-latest
@@ -50,8 +47,7 @@ jobs:
       - name: Clone repo
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
-      - name: Set up environment
-        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+      - uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
         with:
           python-version: ${{ matrix.python-version }}
 
