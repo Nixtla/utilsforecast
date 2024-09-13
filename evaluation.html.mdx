@@ -8,15 +8,15 @@ title: Evaluation
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/evaluation.py#L43"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/evaluation.py#L154"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### evaluate
 
 > ``` text
->  evaluate (df:~DFType, metrics:List[Callable],
+>  evaluate (df:~AnyDFType, metrics:List[Callable],
 >            models:Optional[List[str]]=None,
->            train_df:Optional[~DFType]=None,
+>            train_df:Optional[~AnyDFType]=None,
 >            level:Optional[List[int]]=None, id_col:str='unique_id',
 >            time_col:str='ds', target_col:str='y',
 >            agg_fn:Optional[str]=None)
@@ -26,7 +26,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 |  | **Type** | **Default** | **Details** |
 |------|------------------|-------------------------|-------------------------|
-| df | DFType |  | Forecasts to evaluate.<br/>Must have `id_col`, `time_col`, `target_col` and models’ predictions. |
+| df | AnyDFType |  | Forecasts to evaluate.<br/>Must have `id_col`, `time_col`, `target_col` and models’ predictions. |
 | metrics | List |  | Functions with arguments `df`, `models`, `id_col`, `target_col` and optionally `train_df`. |
 | models | Optional | None | Names of the models to evaluate.<br/>If `None` will use every column in the dataframe after removing id, time and target. |
 | train_df | Optional | None | Training set. Used to evaluate metrics such as [`mase`](https://Nixtla.github.io/utilsforecast/losses.html#mase). |
@@ -35,7 +35,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
 | target_col | str | y | Column that contains the target. |
 | agg_fn | Optional | None | Statistic to compute on the scores by id to reduce them to a single number. |
-| **Returns** | **DFType** |  | **Metrics with one row per (id, metric) combination and one column per model.<br/>If `agg_fn` is not `None`, there is only one row per metric.** |
+| **Returns** | **AnyDFType** |  | **Metrics with one row per (id, metric) combination and one column per model.<br/>If `agg_fn` is not `None`, there is only one row per metric.** |
 
 ```python
 from functools import partial
