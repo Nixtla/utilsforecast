@@ -179,6 +179,39 @@ pd_vs_pl(
 )
 ```
 
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L146"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+#### bias
+
+> ``` text
+>  bias (df:~DFType, models:List[str], id_col:str='unique_id',
+>        target_col:str='y')
+> ```
+
+\*Forecast estimator bias.
+
+Defined as prediction - actual\*
+
+|  | **Type** | **Default** | **Details** |
+|------|------------------|-------------------------|-------------------------|
+| df | DFType |  | Input dataframe with id, actual values and predictions. |
+| models | List |  | Columns that identify the models predictions. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
+
+```python
+pd_vs_pl(
+    bias(series, models),
+    bias(series_pl, models),
+    models,
+)
+```
+
 ## 2. Percentage Errors
 
 ### Mean Absolute Percentage Error
@@ -194,7 +227,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L154"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L181"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mape
@@ -239,7 +272,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L192"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L219"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### smape
@@ -291,7 +324,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L229"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L256"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mase
@@ -340,7 +373,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L297"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L324"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### rmae
@@ -392,7 +425,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L351"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L378"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### quantile_loss
@@ -433,7 +466,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L413"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L440"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mqloss
@@ -478,7 +511,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L472"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L499"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### coverage
@@ -512,7 +545,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L531"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L558"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### calibration
@@ -555,7 +588,7 @@ and $y_{i,\tau}$ are its realizations.
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L581"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L608"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### scaled_crps
