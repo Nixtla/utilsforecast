@@ -11,6 +11,33 @@ title: Preprocessing
 href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/preprocessing.py#L59"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
+### id_time_grid
+
+> ``` text
+>  id_time_grid (df:~DFType, freq:Union[str,int],
+>                start:Union[str,int,datetime.date,datetime.datetime]='per_s
+>                erie', end:Union[str,int,datetime.date,datetime.datetime]='
+>                global', id_col:str='unique_id', time_col:str='ds')
+> ```
+
+*Generate all expected combiations of ids and times.*
+
+|  | **Type** | **Default** | **Details** |
+|------|------------------|-------------------------|-------------------------|
+| df | DFType |  | Input data |
+| freq | Union |  | Series’ frequency |
+| start | Union | per_serie | Initial timestamp for the series.<br/> \* ‘per_serie’ uses each serie’s first timestamp<br/> \* ‘global’ uses the first timestamp seen in the data<br/> \* Can also be a specific timestamp or integer, e.g. ‘2000-01-01’, 2000 or datetime(2000, 1, 1) |
+| end | Union | global | Initial timestamp for the series.<br/> \* ‘per_serie’ uses each serie’s last timestamp<br/> \* ‘global’ uses the last timestamp seen in the data<br/> \* Can also be a specific timestamp or integer, e.g. ‘2000-01-01’, 2000 or datetime(2000, 1, 1) |
+| id_col | str | unique_id | Column that identifies each serie. |
+| time_col | str | ds | Column that identifies each timestamp. |
+| **Returns** | **DFType** |  | **Dataframe with expected ids and times.** |
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/preprocessing.py#L189"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
 ### fill_gaps
 
 > ``` text
