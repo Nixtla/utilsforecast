@@ -407,6 +407,98 @@ pd_vs_pl(
 )
 ```
 
+### Mean Squared Scaled Error
+
+$$
+
+\mathrm{MSSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau}) = 
+\frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{(y_{\tau}-\hat{y}_{\tau})^2}{\mathrm{MSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}
+
+$$
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L378"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+#### msse
+
+> ``` text
+>  msse (df:~DFType, models:List[str], seasonality:int, train_df:~DFType,
+>        id_col:str='unique_id', target_col:str='y')
+> ```
+
+\*Mean Squared Scaled Error (MSSE)
+
+MSSE measures the relative prediction accuracy of a forecasting method
+by comparinng the mean squared errors of the prediction and the observed
+value against the mean squared errors of the seasonal naive model.\*
+
+|  | **Type** | **Default** | **Details** |
+|------|------------------|-------------------------|-------------------------|
+| df | DFType |  | Input dataframe with id, actuals and predictions. |
+| models | List |  | Columns that identify the models predictions. |
+| seasonality | int |  | Main frequency of the time series;<br/>Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1. |
+| train_df | DFType |  | Training dataframe with id and actual values. Must be sorted by time. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
+
+```python
+pd_vs_pl(
+    msse(series, models, 7, series),
+    msse(series_pl, models, 7, series_pl),
+    models,
+)
+```
+
+### Root Mean Squared Scaled Error
+
+$$
+
+\mathrm{RMSSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau}) = 
+\sqrt{\frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{(y_{\tau}-\hat{y}_{\tau})^2}{\mathrm{MSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}}
+
+$$
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L444"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+#### rmsse
+
+> ``` text
+>  rmsse (df:~DFType, models:List[str], seasonality:int, train_df:~DFType,
+>         id_col:str='unique_id', target_col:str='y')
+> ```
+
+\*Root Mean Squared Scaled Error (RMSSE)
+
+MSSE measures the relative prediction accuracy of a forecasting method
+by comparinng the mean squared errors of the prediction and the observed
+value against the mean squared errors of the seasonal naive model.\*
+
+|  | **Type** | **Default** | **Details** |
+|------|------------------|-------------------------|-------------------------|
+| df | DFType |  | Input dataframe with id, actuals and predictions. |
+| models | List |  | Columns that identify the models predictions. |
+| seasonality | int |  | Main frequency of the time series;<br/>Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1. |
+| train_df | DFType |  | Training dataframe with id and actual values. Must be sorted by time. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
+
+```python
+pd_vs_pl(
+    rmsse(series, models, 7, series),
+    rmsse(series_pl, models, 7, series_pl),
+    models,
+)
+```
+
 ## 4. Probabilistic Errors
 
 ### Quantile Loss
@@ -425,7 +517,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L378"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L472"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### quantile_loss
@@ -466,7 +558,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L440"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L534"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mqloss
@@ -511,7 +603,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L499"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L593"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### coverage
@@ -545,7 +637,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L558"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L652"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### calibration
@@ -588,7 +680,7 @@ and $y_{i,\tau}$ are its realizations.
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L608"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L702"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### scaled_crps
