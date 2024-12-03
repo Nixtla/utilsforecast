@@ -763,3 +763,69 @@ def scaled_crps(
             gen_expr,
         )
     return res
+
+# %% ../nbs/losses.ipynb 87
+def msse(
+    df: DFType,
+    models: List[str],
+    seasonality: int,
+    train_df: DFType,
+    id_col: str = "unique_id",
+    target_col: str = "y",
+) -> DFType:
+    """Mean Squared Scaled Error (MSSE)
+
+    MSSE measures the relative prediction
+    accuracy of a forecasting method by comparinng the mean squared errors
+    of the prediction and the observed value against the mean
+    squared errors of the seasonal naive model.
+
+    Parameters
+    ----------
+    df : pandas or polars DataFrame
+        Input dataframe with id, actuals and predictions.
+    models : list of str
+        Columns that identify the models predictions.
+    seasonality : int
+        Main frequency of the time series;
+        Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
+    train_df : pandas or polars DataFrame
+        Training dataframe with id and actual values. Must be sorted by time.
+    id_col : str (default='unique_id')
+        Column that identifies each serie.
+    target_col : str (default='y')
+        Column that contains the target.
+
+    Returns
+    -------
+    pandas or polars Dataframe
+        dataframe with one row per id and one column per model.
+
+    References
+    ----------
+    [1] https://www.sciencedirect.com/science/article/pii/S0169207006000239
+    """
+    mean_sq_err = mse(df, models, id_col, target_col)
+    if isinstance(train_df, pd.DataFrame):
+        mean_sq_err = mean_sq_err.set_index(id_col)
+        # assume train_df is sorted
+        lagged = train_df.groupby(id_col, observed=True)[target_col].shift(seasonality)
+        scale = train_df[target_col].sub(lagged).pow(2)
+        scale = scale.groupby(train_df[id_col], observed=True).mean()
+        res = mean_sq_err.div(_zero_to_nan(scale), axis=0).fillna(0)
+        res.index.name = id_col
+        res = res.reset_index()
+    else:
+        # assume train_df is sorted
+        lagged = pl.col(target_col).shift(seasonality).over(id_col)
+        scale_expr = pl.col(target_col).sub(lagged).pow(2).alias("scale")
+        scale = train_df.select([id_col, scale_expr])
+        scale = ufp.group_by(scale, id_col).mean()
+        scale = scale.with_columns(_zero_to_nan(pl.col("scale")))
+
+        def gen_expr(model):
+            return pl.col(model).truediv(pl.col("scale")).fill_nan(0).alias(model)
+
+        full_df = mean_sq_err.join(scale, on=id_col, how="left")
+        res = _pl_agg_expr(full_df, models, id_col, gen_expr)
+    return res
