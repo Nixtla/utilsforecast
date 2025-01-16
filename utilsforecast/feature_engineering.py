@@ -213,6 +213,8 @@ def _compute_time_feature(
             if feature in ("week", "weekofyear"):
                 times = times.isocalendar()
             feat_vals = getattr(times, feature)
+            if feature in ("week", "weekofyear"):
+                feat_vals = pd.Index(feat_vals)
         else:
             feat_vals = getattr(times.dt, feature)()
     return feat_name, feat_vals
