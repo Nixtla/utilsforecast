@@ -33,20 +33,6 @@ except ImportError:
     POLARS_INSTALLED = False
 
 try:
-    import plotly  # noqa: F401
-
-    PLOTLY_INSTALLED = True
-except ImportError:
-    PLOTLY_INSTALLED = False
-
-try:
-    import plotly_resampler  # noqa: F401
-
-    PLOTLY_RESAMPLER_INSTALLED = True
-except ImportError:
-    PLOTLY_RESAMPLER_INSTALLED = False
-
-try:
     from numba import njit  # noqa: F04
 except ImportError:
 
@@ -61,7 +47,7 @@ except ImportError:
         return new_dec
 
     @_doublewrap
-    def njit(f):
+    def njit(f, *_args, **_kwargs):
         @wraps(f)
         def wrapper(*args, **kwargs):
             warnings.warn(
