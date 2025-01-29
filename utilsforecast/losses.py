@@ -530,6 +530,78 @@ def quantile_loss(
         res = _pl_agg_expr(df, list(models.items()), id_col, gen_expr)
     return res
 
+def scaled_quantile_loss(
+    df: DFType,
+    models: List[str],
+    q: float = 0.5,
+    seasonality: int,
+    train_df: DFType,
+    id_col: str = "unique_id",
+    target_col: str = "y",
+) -> DFType:
+    """Scaled Quantile Loss (SQL)
+
+    SQL measures the deviation of a quantile forecast scaled by
+    the mean absolute errors of the seasonal naive model.
+    By weighting the absolute deviation in a non symmetric way, the
+    loss pays more attention to under or over estimation.
+    A common value for q is 0.5 for the deviation from the median.
+    This was the official measure used in the M5 Uncertainty competition
+    with seasonality = 1.    
+
+    Parameters
+    ----------
+    df : pandas or polars DataFrame
+        Input dataframe with id, times, actuals and predictions.
+    models : dict from str to str
+        Mapping from model name to the model predictions for the specified quantile.
+    q : float (default=0.5)
+        Quantile for the predictions' comparison.
+    seasonality : int
+        Main frequency of the time series;
+        Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
+    train_df : pandas or polars DataFrame
+        Training dataframe with id and actual values. Must be sorted by time.
+    id_col : str (default='unique_id')
+        Column that identifies each serie.
+    target_col : str (default='y')
+        Column that contains the target.
+
+    Returns
+    -------
+    pandas or polars Dataframe
+        dataframe with one row per id and one column per model.
+
+    References
+    ----------
+    [1] https://www.sciencedirect.com/science/article/pii/S0169207021001722
+    """     
+    q_loss = quantile_loss(df=df, models=models, q=q, id_col=id_col, target_col=target_col)
+    if isinstance(train_df, pd.DataFrame):
+        q_loss = q_loss.set_index(id_col)
+        # assume train_df is sorted
+        lagged = train_df.groupby(id_col, observed=True)[target_col].shift(seasonality)
+        scale = train_df[target_col].sub(lagged).abs()
+        scale = scale.groupby(train_df[id_col], observed=True).mean()
+        res = q_loss.div(_zero_to_nan(scale), axis=0).fillna(0)
+        res.index.name = id_col
+        res = res.reset_index()
+    else:
+        # assume train_df is sorted
+        lagged = pl.col(target_col).shift(seasonality).over(id_col)
+        scale_expr = pl.col(target_col).sub(lagged).abs().alias("scale")
+        scale = train_df.select([id_col, scale_expr])
+        scale = ufp.group_by(scale, id_col).mean()
+        scale = scale.with_columns(_zero_to_nan(pl.col("scale")))
+
+        def gen_expr(model):
+            return pl.col(model).truediv(pl.col("scale")).fill_nan(0).alias(model)
+
+        full_df = q_loss.join(scale, on=id_col, how="left")
+        res = _pl_agg_expr(full_df, models, id_col, gen_expr)     
+    return res
+
+
 # %% ../nbs/losses.ipynb 69
 def mqloss(
     df: DFType,
@@ -587,6 +659,83 @@ def mqloss(
             res = model_res
         else:
             res = ufp.assign_columns(res, model, model_res[model])
+    return res
+
+def scaled_mqloss(
+    df: DFType,
+    models: Dict[str, List[str]],
+    quantiles: np.ndarray,
+    seasonality: int,
+    train_df: DFType,
+    id_col: str = "unique_id",
+    target_col: str = "y",
+) -> DFType:
+    """Scaled Multi-Quantile loss (SMQL)
+
+    SMQL calculates the average multi-quantile Loss for
+    a given set of quantiles, based on the absolute
+    difference between predicted quantiles and observed values 
+    scaled by the mean absolute errors of the seasonal naive model. 
+
+    The limit behavior of MQL allows to measure the accuracy
+    of a full predictive distribution with
+    the continuous ranked probability score (CRPS). This can be achieved
+    through a numerical integration technique, that discretizes the quantiles
+    and treats the CRPS integral with a left Riemann approximation, averaging over
+    uniformly distanced quantiles.
+    This was the official measure used in the M5 Uncertainty competition
+    with seasonality = 1.     
+
+    Parameters
+    ----------
+    df : pandas or polars DataFrame
+        Input dataframe with id, times, actuals and predictions.
+    models : dict from str to list of str
+        Mapping from model name to the model predictions for each quantile.
+    quantiles : numpy array
+        Quantiles to compare against.
+    seasonality : int
+        Main frequency of the time series;
+        Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
+    train_df : pandas or polars DataFrame
+        Training dataframe with id and actual values. Must be sorted by time.
+    id_col : str (default='unique_id')
+        Column that identifies each serie.
+    target_col : str (default='y')
+        Column that contains the target.
+
+    Returns
+    -------
+    pandas or polars Dataframe
+        dataframe with one row per id and one column per model.
+
+    References
+    ----------
+    [1] https://www.sciencedirect.com/science/article/pii/S0169207021001722
+    """
+    mq_loss = mqloss(df=df, models=models, quantiles=quantiles, id_col=id_col, target_col=target_col)
+    if isinstance(train_df, pd.DataFrame):
+        mq_loss = mq_loss.set_index(id_col)
+        # assume train_df is sorted
+        lagged = train_df.groupby(id_col, observed=True)[target_col].shift(seasonality)
+        scale = train_df[target_col].sub(lagged).abs()
+        scale = scale.groupby(train_df[id_col], observed=True).mean()
+        res = mq_loss.div(_zero_to_nan(scale), axis=0).fillna(0)
+        res.index.name = id_col
+        res = res.reset_index()
+    else:
+        # assume train_df is sorted
+        lagged = pl.col(target_col).shift(seasonality).over(id_col)
+        scale_expr = pl.col(target_col).sub(lagged).abs().alias("scale")
+        scale = train_df.select([id_col, scale_expr])
+        scale = ufp.group_by(scale, id_col).mean()
+        scale = scale.with_columns(_zero_to_nan(pl.col("scale")))
+
+        def gen_expr(model):
+            return pl.col(model).truediv(pl.col("scale")).fill_nan(0).alias(model)
+
+        full_df = mq_loss.join(scale, on=id_col, how="left")
+        res = _pl_agg_expr(full_df, models, id_col, gen_expr)      
     return res
 
 # %% ../nbs/losses.ipynb 75
