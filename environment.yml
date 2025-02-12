@@ -2,6 +2,7 @@ name: utilsforecast
 channels:
   - conda-forge
 dependencies:
+  - python=3.10
   - matplotlib
   - nbformat
   - numba
@@ -12,7 +13,7 @@ dependencies:
   - pyarrow
   - scipy
   - pip:
-    - datasetsforecast==0.0.8
-    - nbdev
-    - plotly-resampler
-    - polars
+      - datasetsforecast==0.0.8
+      - nbdev
+      - plotly-resampler
+      - polars
