@@ -13,7 +13,7 @@ dependencies:
   - pyarrow
   - scipy
   - pip:
-      - datasetsforecast==0.0.8
-      - nbdev
-      - plotly-resampler
-      - polars
+    - datasetsforecast==0.0.8
+    - nbdev
+    - plotly-resampler
+    - polars
