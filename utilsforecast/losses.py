@@ -52,6 +52,75 @@ def _pl_agg_expr(
     df = df.select([id_col, *exprs])
     return ufp.group_by(df, id_col, maintain_order=True).mean()
 
+def _scale_loss(
+    loss_df: DFType,
+    scale_type: str = "absolute_error", 
+    models: List[str],
+    seasonality: int,
+    train_df: DFType,
+    id_col: str = "unique_id",
+    target_col: str = "y",
+) -> DFType:
+    """
+    Parameters
+    ----------
+    loss_df : pandas or polars DataFrame
+        Input dataframe with id, actuals, predictions and losses results.
+    scale_type : str (default='absolute_error')
+        Type of scaling. Possible values are 'absolute_error' or 'squared_error'.
+    models : list of str
+        Columns that identify the models predictions.
+    seasonality : int
+        Main frequency of the time series;
+        Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
+    train_df : pandas or polars DataFrame
+        Training dataframe with id and actual values. Must be sorted by time.
+    id_col : str (default='unique_id')
+        Column that identifies each serie.
+    target_col : str (default='y')
+        Column that contains the target.
+
+    Returns
+    -------
+    pandas or polars Dataframe
+        dataframe with one row per id and one column per model.
+
+    References
+    ----------
+    [1] https://robjhyndman.com/papers/mase.pdf
+    """
+
+    if isinstance(train_df, pd.DataFrame):
+        loss_df = loss_df.set_index(id_col)
+        # assume train_df is sorted
+        lagged = train_df.groupby(id_col, observed=True)[target_col].shift(seasonality)
+        if scale_type == "absolute_error":
+            scale = train_df[target_col].sub(lagged).abs()
+        else:
+            scale = train_df[target_col].sub(lagged).pow(2)
+        scale = scale.groupby(train_df[id_col], observed=True).mean()
+        res = loss_df.div(_zero_to_nan(scale), axis=0).fillna(0)
+        res.index.name = id_col
+        res = res.reset_index()
+    else:
+        # assume train_df is sorted
+        lagged = pl.col(target_col).shift(seasonality).over(id_col)
+        if scale_type == "absolute_error":
+            scale_expr = pl.col(target_col).sub(lagged).abs().alias("scale")
+        else:
+            scale_expr = pl.col(target_col).sub(lagged).pow(2).alias("scale")
+        scale = train_df.select([id_col, scale_expr])
+        scale = ufp.group_by(scale, id_col).mean()
+        scale = scale.with_columns(_zero_to_nan(pl.col("scale")))
+
+        def gen_expr(model):
+            return pl.col(model).truediv(pl.col("scale")).fill_nan(0).alias(model)
+
+        full_df = loss_df.join(scale, on=id_col, how="left")
+        res = _pl_agg_expr(full_df, models, id_col, gen_expr)
+
+    return res
+
 # %% ../nbs/losses.ipynb 13
 @_base_docstring
 def mae(
@@ -296,29 +365,7 @@ def mase(
     [1] https://robjhyndman.com/papers/mase.pdf
     """
     mean_abs_err = mae(df, models, id_col, target_col)
-    if isinstance(train_df, pd.DataFrame):
-        mean_abs_err = mean_abs_err.set_index(id_col)
-        # assume train_df is sorted
-        lagged = train_df.groupby(id_col, observed=True)[target_col].shift(seasonality)
-        scale = train_df[target_col].sub(lagged).abs()
-        scale = scale.groupby(train_df[id_col], observed=True).mean()
-        res = mean_abs_err.div(_zero_to_nan(scale), axis=0).fillna(0)
-        res.index.name = id_col
-        res = res.reset_index()
-    else:
-        # assume train_df is sorted
-        lagged = pl.col(target_col).shift(seasonality).over(id_col)
-        scale_expr = pl.col(target_col).sub(lagged).abs().alias("scale")
-        scale = train_df.select([id_col, scale_expr])
-        scale = ufp.group_by(scale, id_col).mean()
-        scale = scale.with_columns(_zero_to_nan(pl.col("scale")))
-
-        def gen_expr(model):
-            return pl.col(model).truediv(pl.col("scale")).fill_nan(0).alias(model)
-
-        full_df = mean_abs_err.join(scale, on=id_col, how="left")
-        res = _pl_agg_expr(full_df, models, id_col, gen_expr)
-    return res
+    return _scale_loss(mean_abs_err, "absolute_error", models, seasonality, train_df, id_col, target_col)
 
 # %% ../nbs/losses.ipynb 49
 def rmae(
@@ -416,29 +463,7 @@ def msse(
     [1] https://otexts.com/fpp3/accuracy.html
     """
     mean_sq_err = mse(df=df, models=models, id_col=id_col, target_col=target_col)
-    if isinstance(train_df, pd.DataFrame):
-        mean_sq_err = mean_sq_err.set_index(id_col)
-        # assume train_df is sorted
-        lagged = train_df.groupby(id_col, observed=True)[target_col].shift(seasonality)
-        scale = train_df[target_col].sub(lagged).pow(2)
-        scale = scale.groupby(train_df[id_col], observed=True).mean()
-        res = mean_sq_err.div(_zero_to_nan(scale), axis=0).fillna(0)
-        res.index.name = id_col
-        res = res.reset_index()
-    else:
-        # assume train_df is sorted
-        lagged = pl.col(target_col).shift(seasonality).over(id_col)
-        scale_expr = pl.col(target_col).sub(lagged).pow(2).alias("scale")
-        scale = train_df.select([id_col, scale_expr])
-        scale = ufp.group_by(scale, id_col).mean()
-        scale = scale.with_columns(_zero_to_nan(pl.col("scale")))
-
-        def gen_expr(model):
-            return pl.col(model).truediv(pl.col("scale")).fill_nan(0).alias(model)
-
-        full_df = mean_sq_err.join(scale, on=id_col, how="left")
-        res = _pl_agg_expr(full_df, models, id_col, gen_expr)
-    return res
+    return _scale_loss(mean_sq_err, "squared_error", models, seasonality, train_df, id_col, target_col)
 
 # %% ../nbs/losses.ipynb 57
 def rmsse(
@@ -577,30 +602,7 @@ def scaled_quantile_loss(
     [1] https://www.sciencedirect.com/science/article/pii/S0169207021001722
     """     
     q_loss = quantile_loss(df=df, models=models, q=q, id_col=id_col, target_col=target_col)
-    if isinstance(train_df, pd.DataFrame):
-        q_loss = q_loss.set_index(id_col)
-        # assume train_df is sorted
-        lagged = train_df.groupby(id_col, observed=True)[target_col].shift(seasonality)
-        scale = train_df[target_col].sub(lagged).abs()
-        scale = scale.groupby(train_df[id_col], observed=True).mean()
-        res = q_loss.div(_zero_to_nan(scale), axis=0).fillna(0)
-        res.index.name = id_col
-        res = res.reset_index()
-    else:
-        # assume train_df is sorted
-        lagged = pl.col(target_col).shift(seasonality).over(id_col)
-        scale_expr = pl.col(target_col).sub(lagged).abs().alias("scale")
-        scale = train_df.select([id_col, scale_expr])
-        scale = ufp.group_by(scale, id_col).mean()
-        scale = scale.with_columns(_zero_to_nan(pl.col("scale")))
-
-        def gen_expr(model):
-            return pl.col(model).truediv(pl.col("scale")).fill_nan(0).alias(model)
-
-        full_df = q_loss.join(scale, on=id_col, how="left")
-        res = _pl_agg_expr(full_df, models, id_col, gen_expr)     
-    return res
-
+    return _scale_loss(q_loss, "absolute_error", models, seasonality, train_df, id_col, target_col)
 
 # %% ../nbs/losses.ipynb 69
 def mqloss(
@@ -714,29 +716,7 @@ def scaled_mqloss(
     [1] https://www.sciencedirect.com/science/article/pii/S0169207021001722
     """
     mq_loss = mqloss(df=df, models=models, quantiles=quantiles, id_col=id_col, target_col=target_col)
-    if isinstance(train_df, pd.DataFrame):
-        mq_loss = mq_loss.set_index(id_col)
-        # assume train_df is sorted
-        lagged = train_df.groupby(id_col, observed=True)[target_col].shift(seasonality)
-        scale = train_df[target_col].sub(lagged).abs()
-        scale = scale.groupby(train_df[id_col], observed=True).mean()
-        res = mq_loss.div(_zero_to_nan(scale), axis=0).fillna(0)
-        res.index.name = id_col
-        res = res.reset_index()
-    else:
-        # assume train_df is sorted
-        lagged = pl.col(target_col).shift(seasonality).over(id_col)
-        scale_expr = pl.col(target_col).sub(lagged).abs().alias("scale")
-        scale = train_df.select([id_col, scale_expr])
-        scale = ufp.group_by(scale, id_col).mean()
-        scale = scale.with_columns(_zero_to_nan(pl.col("scale")))
-
-        def gen_expr(model):
-            return pl.col(model).truediv(pl.col("scale")).fill_nan(0).alias(model)
-
-        full_df = mq_loss.join(scale, on=id_col, how="left")
-        res = _pl_agg_expr(full_df, models, id_col, gen_expr)      
-    return res
+    return _scale_loss(mq_loss, "absolute_error", models, seasonality, train_df, id_col, target_col)
 
 # %% ../nbs/losses.ipynb 75
 def coverage(
