@@ -44,7 +44,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L57"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L125"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mae
@@ -98,7 +98,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L89"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L157"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mse
@@ -144,7 +144,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L121"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L189"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### rmse
@@ -182,7 +182,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L146"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L214"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### bias
@@ -227,7 +227,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L181"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L249"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mape
@@ -272,7 +272,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L219"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L287"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### smape
@@ -324,7 +324,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L256"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L324"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mase
@@ -373,7 +373,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L324"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L378"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### rmae
@@ -419,7 +419,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L378"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L432"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### msse
@@ -465,7 +465,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L444"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L484"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### rmsse
@@ -517,7 +517,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L472"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L512"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### quantile_loss
@@ -543,6 +543,51 @@ A common value for q is 0.5 for the deviation from the median.\*
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
+### Scaled Quantile Loss
+
+$$
+
+\mathrm{SQL}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{(q)}_{\tau}) = 
+\frac{1}{H} \sum^{t+H}_{\tau=t+1} 
+\frac{(1-q)\,( \hat{y}^{(q)}_{\tau} - y_{\tau} )_{+} 
++ q\,( y_{\tau} - \hat{y}^{(q)}_{\tau} )_{+}}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}
+
+$$
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L574"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### scaled_quantile_loss
+
+> ``` text
+>  scaled_quantile_loss (df:~DFType, models:Dict[str,str], seasonality:int,
+>                        train_df:~DFType, q:float=0.5,
+>                        id_col:str='unique_id', target_col:str='y')
+> ```
+
+\*Scaled Quantile Loss (SQL)
+
+SQL measures the deviation of a quantile forecast scaled by the mean
+absolute errors of the seasonal naive model. By weighting the absolute
+deviation in a non symmetric way, the loss pays more attention to under
+or over estimation. A common value for q is 0.5 for the deviation from
+the median. This was the official measure used in the M5 Uncertainty
+competition with seasonality = 1.\*
+
+|  | **Type** | **Default** | **Details** |
+|------|------------------|-------------------------|-------------------------|
+| df | DFType |  | Input dataframe with id, times, actuals and predictions. |
+| models | Dict |  | Mapping from model name to the model predictions for the specified quantile. |
+| seasonality | int |  | Main frequency of the time series;<br/>Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1. |
+| train_df | DFType |  | Training dataframe with id and actual values. Must be sorted by time. |
+| q | float | 0.5 | Quantile for the predictions’ comparison. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
+
 ### Multi-Quantile Loss
 
 $$
@@ -558,7 +603,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L534"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L634"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mqloss
@@ -597,12 +642,69 @@ pd_vs_pl(
 )
 ```
 
+### Scaled Multi-Quantile Loss
+
+$$
+
+\mathrm{MQL}(\mathbf{y}_{\tau},
+[\mathbf{\hat{y}}^{(q_{1})}_{\tau}, ... ,\hat{y}^{(q_{n})}_{\tau}]) = 
+\frac{1}{n} \sum_{q_{i}} \frac{\mathrm{QL}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{(q_{i})}_{\tau})}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}
+
+$$
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L693"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+### scaled_mqloss
+
+> ``` text
+>  scaled_mqloss (df:~DFType, models:Dict[str,List[str]],
+>                 quantiles:numpy.ndarray, seasonality:int,
+>                 train_df:~DFType, id_col:str='unique_id',
+>                 target_col:str='y')
+> ```
+
+\*Scaled Multi-Quantile loss (SMQL)
+
+SMQL calculates the average multi-quantile Loss for a given set of
+quantiles, based on the absolute difference between predicted quantiles
+and observed values scaled by the mean absolute errors of the seasonal
+naive model. The limit behavior of MQL allows to measure the accuracy of
+a full predictive distribution with the continuous ranked probability
+score (CRPS). This can be achieved through a numerical integration
+technique, that discretizes the quantiles and treats the CRPS integral
+with a left Riemann approximation, averaging over uniformly distanced
+quantiles. This was the official measure used in the M5 Uncertainty
+competition with seasonality = 1.\*
+
+|  | **Type** | **Default** | **Details** |
+|------|------------------|-------------------------|-------------------------|
+| df | DFType |  | Input dataframe with id, times, actuals and predictions. |
+| models | Dict |  | Mapping from model name to the model predictions for each quantile. |
+| quantiles | ndarray |  | Quantiles to compare against. |
+| seasonality | int |  | Main frequency of the time series;<br/>Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1. |
+| train_df | DFType |  | Training dataframe with id and actual values. Must be sorted by time. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
+
+```python
+pd_vs_pl(
+    scaled_mqloss(series, mq_models, quantiles=quantiles, seasonality=1, train_df=series),
+    scaled_mqloss(series_pl, mq_models, quantiles=quantiles, seasonality=1, train_df=series_pl),
+    models,
+)
+```
+
 ### Coverage
 
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L593"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L758"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### coverage
@@ -636,7 +738,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L652"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L817"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### calibration
@@ -679,7 +781,7 @@ and $y_{i,\tau}$ are its realizations.
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L702"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L867"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### scaled_crps
