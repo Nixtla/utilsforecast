@@ -155,6 +155,10 @@ def id_time_grid(
             freq = "us"
         elif isinstance(offset.base, pd.offsets.Nano):
             freq = "ns"
+        elif isinstance(offset.base, (pd.offsets.MonthBegin, pd.offsets.MonthEnd)):
+            freq = "M"
+        elif isinstance(offset.base, pd.offsets.Week):
+            freq = "W"
         if n > 1:
             freq = freq.replace(str(n), "")
         try:
