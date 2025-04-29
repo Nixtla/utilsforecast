@@ -40,6 +40,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | seed | int | 0 | Random seed used for generating the data. |
 | **Returns** | **Union** |  | **Synthetic panel with columns \[`unique_id`, `ds`, `y`\] and exogenous features.** |
 
+
 ```python
 synthetic_panel = generate_series(n_series=2)
 synthetic_panel.groupby('unique_id', observed=True).head(4)

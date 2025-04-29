@@ -18,6 +18,7 @@ $$
 The train loss summarizes the forecast errors in different evaluation
 metrics.
 
+
 ```python
 from utilsforecast.data import generate_series
 ```
@@ -67,6 +68,7 @@ given time and averages these devations over the length of the series.\*
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
+
 
 ```python
 def pd_vs_pl(pd_df, pl_df, models):
@@ -123,6 +125,7 @@ series.\*
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
+
 ```python
 pd_vs_pl(
     mse(series, models),
@@ -171,6 +174,7 @@ share a common scale. RMSE has a direct connection to the L2 norm.\*
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
+
 ```python
 pd_vs_pl(
     rmse(series, models),
@@ -203,6 +207,7 @@ Defined as prediction - actual\*
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
+
 
 ```python
 pd_vs_pl(
@@ -253,6 +258,7 @@ higher penalty MAPE loss assigns to the corresponding error.\*
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
+
 ```python
 pd_vs_pl(
     mape(series, models),
@@ -299,6 +305,7 @@ undetermined when the target is zero.\*
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
+
 
 ```python
 pd_vs_pl(
@@ -352,6 +359,7 @@ used in the M4 Competition.\*
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
+
 ```python
 pd_vs_pl(
     mase(series, models, 7, series),
@@ -399,6 +407,7 @@ denominator.\*
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
+
 ```python
 pd_vs_pl(
     rmae(series, models, models[0]),
@@ -445,6 +454,7 @@ value against the mean squared errors of the seasonal naive model.\*
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
+
 ```python
 pd_vs_pl(
     msse(series, models, 7, series),
@@ -490,6 +500,7 @@ value against the mean squared errors of the seasonal naive model.\*
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
+
 
 ```python
 pd_vs_pl(
@@ -634,6 +645,7 @@ Riemann approximation, averaging over uniformly distanced quantiles.\*
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
+
 ```python
 pd_vs_pl(
     mqloss(series, mq_models, quantiles=quantiles),
@@ -691,6 +703,7 @@ competition with seasonality = 1.\*
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
+
 ```python
 pd_vs_pl(
     scaled_mqloss(series, mq_models, quantiles=quantiles, seasonality=1, train_df=series),
@@ -725,6 +738,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
 
+
 ```python
 pd_vs_pl(
     coverage(series, models, 80),
@@ -757,6 +771,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
+
 
 ```python
 pd_vs_pl(
@@ -807,6 +822,7 @@ absolute deviations as defined by the quantile losses.\*
 | id_col | str | unique_id | Column that identifies each serie. |
 | target_col | str | y | Column that contains the target. |
 | **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
+
 
 ```python
 pd_vs_pl(

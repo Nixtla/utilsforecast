@@ -5,6 +5,7 @@ title: Validation
 ---
 
 
+
 ```python
 import datetime
 
@@ -42,6 +43,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 *Make sure that `time_col` contains timestamps or integers. If it
 contains strings, try to cast them as timestamps.*
+
 
 ```python
 pd.testing.assert_frame_equal(
@@ -95,6 +97,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | target_col  | Optional | y           | Column that contains the target.           |
 | **Returns** | **None** |             |                                            |
 
+
 ```python
 import datetime
 
@@ -131,6 +134,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >                 (times:Union[pandas.core.series.Series,polars.series.serie
 >                 s.Series], freq:Union[str,int])
 > ```
+
 
 ```python
 test_fail(lambda: validate_freq(pd.Series([1, 2]), 'D'), contains='provide a valid integer')

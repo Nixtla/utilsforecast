@@ -60,6 +60,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | time_col | str | ds | Column that identifies each timestamp. |
 | **Returns** | **DFType** |  | **Dataframe with gaps filled.** |
 
+
 ```python
 df = pd.DataFrame(
     {
@@ -82,6 +83,7 @@ df
 The default functionality is taking the current starts and only
 extending the end date to be the same for all series.
 
+
 ```python
 fill_gaps(
     df,
@@ -102,6 +104,7 @@ fill_gaps(
 We can also specify `end='per_serie'` to only fill possible gaps within
 each serie.
 
+
 ```python
 fill_gaps(
     df,
@@ -120,6 +123,7 @@ fill_gaps(
 | 5   | 1         | 2022-01-01 | 4.0 |
 
 We can also specify an end date in the future.
+
 
 ```python
 fill_gaps(
@@ -143,6 +147,7 @@ fill_gaps(
 
 We can set all series to start at the same time.
 
+
 ```python
 fill_gaps(
     df,
@@ -164,6 +169,7 @@ fill_gaps(
 
 We can also set a common start date for all series (which can be earlier
 than their current starts).
+
 
 ```python
 fill_gaps(
@@ -189,6 +195,7 @@ fill_gaps(
 In case the times are integers the frequency, start and end must also be
 integers.
 
+
 ```python
 df = pd.DataFrame(
     {
@@ -207,6 +214,7 @@ df
 | 2   | 0         | 2023 | 2   |
 | 3   | 1         | 2021 | 3   |
 | 4   | 1         | 2022 | 4   |
+
 
 ```python
 fill_gaps(
@@ -234,6 +242,7 @@ fill_gaps(
 
 The function also accepts polars dataframes
 
+
 ```python
 df = pl.DataFrame(
     {
@@ -255,6 +264,7 @@ df
 | 0         | 2023-01-01 00:00:00 | 2   |
 | 1         | 2021-01-01 00:00:00 | 3   |
 | 1         | 2022-01-01 00:00:00 | 4   |
+
 
 ```python
 polars_ms = fill_gaps(
@@ -282,6 +292,7 @@ polars_ms
 | 1         | 2023-01-01 00:00:00 | null |
 | 1         | 2024-01-01 00:00:00 | null |
 
+
 ```python
 df = pl.DataFrame(
     {
@@ -303,6 +314,7 @@ df
 | 0         | 2023-01-01 | 2   |
 | 1         | 2021-01-01 | 3   |
 | 1         | 2022-01-01 | 4   |
+
 
 ```python
 fill_gaps(
@@ -327,6 +339,7 @@ fill_gaps(
 | 1         | 2023-01-01 | null |
 | 1         | 2024-01-01 | null |
 
+
 ```python
 df = pl.DataFrame(
     {
@@ -346,6 +359,7 @@ df
 | 0         | 2023 | 2   |
 | 1         | 2021 | 3   |
 | 1         | 2022 | 4   |
+
 
 ```python
 fill_gaps(

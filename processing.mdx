@@ -1,3 +1,4 @@
+
 ```python
 import datetime
 from datetime import datetime as dt
@@ -82,6 +83,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >                  ies.Series,List[float]])
 > ```
 
+
 ```python
 engines = ['pandas']
 if POLARS_INSTALLED:
@@ -136,6 +138,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >             numpy.ndarray], idxs:numpy.ndarray)
 > ```
 
+
 ```python
 for engine in engines:
     series = generate_series(2, engine=engine)
@@ -171,6 +174,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >  is_nan (s:Union[pandas.core.series.Series,polars.series.series.Series])
 > ```
 
+
 ```python
 np.testing.assert_equal(
     is_nan(pd.Series([np.nan, 1.0, None])).to_numpy(),
@@ -194,6 +198,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 > ``` text
 >  is_none (s:Union[pandas.core.series.Series,polars.series.series.Series])
 > ```
+
 
 ```python
 np.testing.assert_equal(
@@ -220,6 +225,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >                  (s:Union[pandas.core.series.Series,polars.series.series.S
 >                  eries])
 > ```
+
 
 ```python
 np.testing.assert_equal(
@@ -262,6 +268,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >                   ies.series.Series]], match_categories:bool=True)
 > ```
 
+
 ```python
 df1 = pd.DataFrame({'x': ['a', 'b', 'c']}, dtype='category')
 df2 = pd.DataFrame({'x': ['f', 'b', 'a']}, dtype='category')
@@ -303,6 +310,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >  horizontal_concat (dfs:List[Union[pandas.core.frame.DataFrame,polars.data
 >                     frame.frame.DataFrame]])
 > ```
+
 
 ```python
 for engine in engines:
@@ -388,6 +396,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >        ame], by:Union[str,List[str],NoneType]=None)
 > ```
 
+
 ```python
 pd.testing.assert_frame_equal(
     sort(pd.DataFrame({'x': [3, 1, 2]}), 'x'),
@@ -452,6 +461,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >                n:Union[int,numpy.ndarray])
 > ```
 
+
 ```python
 pd.testing.assert_index_equal(
     offset_times(pd.to_datetime(['2020-01-31', '2020-02-29', '2020-03-31']), pd.offsets.MonthEnd(), 1),
@@ -505,6 +515,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >               freq:Union[int,str,pandas._libs.tslibs.offsets.BaseOffset],
 >               periods:int)
 > ```
+
 
 ```python
 # datetimes
@@ -608,6 +619,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >          rray,pandas.core.series.Series,polars.series.series.Series])
 > ```
 
+
 ```python
 pd.testing.assert_index_equal(
     repeat(pd.CategoricalIndex(['a', 'b', 'c'], categories=['a', 'b', 'c']), 2),
@@ -665,6 +677,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >            indptr:numpy.ndarray, h:int, test_size:int, step_size:int,
 >            id_col:str='unique_id', time_col:str='ds')
 > ```
+
 
 ```python
 times = np.arange(51, dtype=np.int64)
@@ -739,6 +752,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >                e.DataFrame], by, aggs, maintain_order=False)
 > ```
 
+
 ```python
 pd.testing.assert_frame_equal(
     group_by_agg(pd.DataFrame({'x': [1, 1, 2], 'y': [1, 1, 1]}), 'x', {'y': 'sum'}),
@@ -767,6 +781,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >         collection)
 > ```
 
+
 ```python
 np.testing.assert_equal(is_in(pd.Series([1, 2, 3]), [1]), np.array([True, False, False]))
 ```
@@ -790,6 +805,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >           s], upper:Union[pandas.core.series.Series,polars.series.series.S
 >           eries])
 > ```
+
 
 ```python
 np.testing.assert_equal(
@@ -820,6 +836,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >             ataFrame], mapping:Dict[str,Any])
 > ```
 
+
 ```python
 pd.testing.assert_frame_equal(
     fill_null(pd.DataFrame({'x': [1, np.nan], 'y': [np.nan, 2]}), {'x': 2, 'y': 1}),
@@ -847,6 +864,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >  cast (s:Union[pandas.core.series.Series,polars.series.series.Series],
 >        dtype:type)
 > ```
+
 
 ```python
 pd.testing.assert_series_equal(
@@ -896,6 +914,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >                         id_col:str='unique_id', time_col:str='ds')
 > ```
 
+
 ```python
 pd.testing.assert_frame_equal(
     make_future_dataframe(
@@ -940,6 +959,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >             DataFrame], df2:Union[pandas.core.frame.DataFrame,polars.dataf
 >             rame.frame.DataFrame], on:Union[str,List[str]])
 > ```
+
 
 ```python
 pd.testing.assert_frame_equal(
@@ -1033,6 +1053,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 *Initialize self. See help(type(self)) for accurate signature.*
 
+
 ```python
 static_features = ['static_0', 'static_1']
 ```
@@ -1100,6 +1121,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 >                       level:List[Union[int,float]],
 >                       id_col:str='unique_id', target_col:str='y')
 > ```
+
 
 ```python
 series = generate_series(100, n_models=2)

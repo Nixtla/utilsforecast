@@ -31,6 +31,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
 | **Returns** | **Tuple** |  | **Original DataFrame with the computed features** |
 
+
 ```python
 import pandas as pd
 
@@ -57,6 +58,7 @@ transformed_df
 | 1098 | 4         | 2001-05-12 | 6.133142 | -0.000002 | -0.000003 | 1.000000  | 1.000000  |
 | 1099 | 4         | 2001-05-13 | 0.403709 | 0.781840  | 0.974922  | 0.623479  | -0.222548 |
 | 1100 | 4         | 2001-05-14 | 1.081779 | 0.974928  | -0.433882 | -0.222520 | -0.900970 |
+
 
 ```python
 future_df
@@ -95,6 +97,7 @@ forecasting*
 | time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
 | **Returns** | **Tuple** |  | **Original DataFrame with the computed features** |
 
+
 ```python
 series = generate_series(5, equal_ends=True)
 transformed_df, future_df = trend(series, freq='D', h=1)
@@ -114,6 +117,7 @@ transformed_df
 | 1098 | 4         | 2001-05-12 | 6.133142 | 371.0 |
 | 1099 | 4         | 2001-05-13 | 0.403709 | 372.0 |
 | 1100 | 4         | 2001-05-14 | 1.081779 | 373.0 |
+
 
 ```python
 future_df
@@ -153,6 +157,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
 | **Returns** | **Tuple** |  | **Original DataFrame with the computed features** |
 
+
 ```python
 transformed_df, future_df = time_features(series, freq='D', features=['month', 'day', 'week'], h=1)
 transformed_df
@@ -171,6 +176,7 @@ transformed_df
 | 1098 | 4         | 2001-05-12 | 6.133142 | 5     | 12  | 19   |
 | 1099 | 4         | 2001-05-13 | 0.403709 | 5     | 13  | 19   |
 | 1100 | 4         | 2001-05-14 | 1.081779 | 5     | 14  | 20   |
+
 
 ```python
 future_df
@@ -211,6 +217,7 @@ steps.*
 | time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
 | **Returns** | **Tuple** |  | **Original DataFrame with the computed features** |
 
+
 ```python
 series_with_prices = series.assign(price=np.random.rand(len(series))).sample(frac=1.0)
 series_with_prices
@@ -229,6 +236,7 @@ series_with_prices
 | 268 | 1         | 2001-03-25 | 2.393771 | 0.735438 |
 | 171 | 0         | 2001-03-25 | 3.085493 | 0.463871 |
 | 931 | 4         | 2000-11-26 | 0.292296 | 0.691377 |
+
 
 ```python
 transformed_df, future_df = future_exog_to_historic(
@@ -253,6 +261,7 @@ transformed_df
 | 1098 | 1         | 2001-03-25 | 2.393771 | 0.481712 |
 | 1099 | 0         | 2001-03-25 | 3.085493 | 0.433153 |
 | 1100 | 4         | 2000-11-26 | 0.292296 | 0.620219 |
+
 
 ```python
 future_df
@@ -295,6 +304,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | id_col | str | unique_id | Column that identifies each serie. |
 | time_col | str | ds | Column that identifies each timestep, its values can be timestamps or integers. |
 | **Returns** | **Tuple** |  | **Original DataFrame with the computed features** |
+
 
 ```python
 def is_weekend(times):
@@ -348,6 +358,7 @@ transformed_df
 | 1098 | 4 | 2001-05-12 | 6.133142 | 371.0 | -0.000002 | 1.000000 | 1.000000 | 4.251100e-07 | 12 | True | True | False |
 | 1099 | 4 | 2001-05-13 | 0.403709 | 372.0 | 0.781840 | 0.623479 | 0.974927 | -2.225243e-01 | 13 | True | False | False |
 | 1100 | 4 | 2001-05-14 | 1.081779 | 373.0 | 0.974928 | -0.222520 | 0.900969 | -4.338835e-01 | 14 | False | False | False |
+
 
 ```python
 future_df

@@ -37,6 +37,7 @@ target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 | agg_fn | Optional | None | Statistic to compute on the scores by id to reduce them to a single number. |
 | **Returns** | **AnyDFType** |  | **Metrics with one row per (id, metric) combination and one column per model.<br/>If `agg_fn` is not `None`, there is only one row per metric.** |
 
+
 ```python
 from functools import partial
 
@@ -100,6 +101,7 @@ evaluation
 | 177 | 7         | scaled_crps | 0.034337 | 0.034745 |
 | 178 | 8         | scaled_crps | 0.033336 | 0.032459 |
 | 179 | 9         | scaled_crps | 0.034766 | 0.035243 |
+
 
 ```python
 summary = evaluation.drop(columns='unique_id').groupby('metric').mean().reset_index()

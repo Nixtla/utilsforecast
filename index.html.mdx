@@ -9,11 +9,13 @@ title: utilsforecast
 
 ### PyPI
 
+
 ```sh
 pip install utilsforecast
 ```
 
 ### Conda
+
 
 ```sh
 conda install -c conda-forge utilsforecast
@@ -22,6 +24,7 @@ conda install -c conda-forge utilsforecast
 ## How to use
 
 ### Generate synthetic data
+
 
 ```python
 from utilsforecast.data import generate_series
@@ -49,6 +52,7 @@ series
 
 ### Plotting
 
+
 ```python
 from utilsforecast.plotting import plot_series
 ```
@@ -62,6 +66,7 @@ fig.savefig('imgs/index.png', bbox_inches='tight')
 ![](https://raw.githubusercontent.com/Nixtla/utilsforecast/main/nbs/imgs/index.png)
 
 ### Preprocessing
+
 
 ```python
 from utilsforecast.preprocessing import fill_gaps
@@ -83,6 +88,7 @@ with_gaps
 | 220 | 0         | 2000-08-08 | 19.091509 |
 | 221 | 0         | 2000-08-09 | 20.220739 |
 
+
 ```python
 fill_gaps(with_gaps, freq='D')
 ```
@@ -100,6 +106,7 @@ fill_gaps(with_gaps, freq='D')
 | 8   | 0         | 2000-08-09 | 20.220739 |
 
 ### Evaluating
+
 
 ```python
 from functools import partial
