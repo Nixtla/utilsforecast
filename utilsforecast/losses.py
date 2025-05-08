@@ -4,13 +4,14 @@
 
 # %% auto 0
 __all__ = ['mae', 'mse', 'rmse', 'bias', 'mape', 'smape', 'mase', 'rmae', 'msse', 'rmsse', 'quantile_loss',
-           'scaled_quantile_loss', 'mqloss', 'scaled_mqloss', 'coverage', 'calibration', 'scaled_crps']
+           'scaled_quantile_loss', 'mqloss', 'scaled_mqloss', 'coverage', 'calibration', 'scaled_crps', 'tweedie']
 
 # %% ../nbs/losses.ipynb 3
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from sklearn.metrics import mean_tweedie_deviance
 
 import utilsforecast.processing as ufp
 from .compat import DFType, DataFrame, pl_DataFrame, pl, pl_Expr
@@ -929,4 +930,41 @@ def scaled_crps(
             id_col,
             gen_expr,
         )
+    return res
+
+# %% ../nbs/losses.ipynb 95
+@_base_docstring
+def tweedie(
+    df: DFType,
+    models: List[str],
+    id_col: str = "unique_id",
+    target_col: str = "y",
+    power: float = 1.5,
+) -> DFType:
+    """Tweedie Deviance (mean).
+
+    Computes the mean Tweedie deviance between the predicted
+    values (columns in `models`) and the true values (`target_col`)
+    for each series identified by `id_col`. `power` controls the
+    variance power parameter of the Tweedie distribution."""
+    if isinstance(df, pd.DataFrame):
+        res = (
+            df.groupby(id_col, observed=True)
+            .apply(
+                lambda g: {
+                    m: mean_tweedie_deviance(
+                        y_true=g[target_col].to_numpy(),
+                        y_pred=g[m].to_numpy(),
+                        power=power,
+                    )
+                    for m in models
+                }
+            )
+            .apply(pd.Series)
+            .reset_index()
+        )
+    else:
+        pdf = df.to_pandas()
+        res = tweedie(pdf, models, id_col, target_col, power)
+        res = pl.from_pandas(res)
     return res
