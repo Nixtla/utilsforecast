@@ -4,14 +4,15 @@
 
 # %% auto 0
 __all__ = ['mae', 'mse', 'rmse', 'bias', 'mape', 'smape', 'mase', 'rmae', 'msse', 'rmsse', 'quantile_loss',
-           'scaled_quantile_loss', 'mqloss', 'scaled_mqloss', 'coverage', 'calibration', 'scaled_crps', 'tweedie']
+           'scaled_quantile_loss', 'mqloss', 'scaled_mqloss', 'coverage', 'calibration', 'scaled_crps',
+           'mean_tweedie_deviance', 'tweedie_deviance']
 
 # %% ../nbs/losses.ipynb 3
 from typing import Callable, Dict, List, Optional, Tuple, Union
+from numpy.typing import ArrayLike
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_tweedie_deviance
 
 import utilsforecast.processing as ufp
 from .compat import DFType, DataFrame, pl_DataFrame, pl, pl_Expr
@@ -933,38 +934,132 @@ def scaled_crps(
     return res
 
 # %% ../nbs/losses.ipynb 95
+def mean_tweedie_deviance(y_true: ArrayLike, y_pred: ArrayLike, power: float):
+    """
+    Compute the average Tweedie deviance between true values and predictions.
+
+    The Tweedie deviance is defined differently depending on the power parameter:
+      - power = 0: equivalent to mean squared error.
+      - power = 1: equivalent to mean Poisson deviance.
+      - power = 2: equivalent to mean gamma deviance.
+      - other powers: general Tweedie deviance.
+
+    Parameters
+    ----------
+    y_true : Sequence[float]
+        Ground truth (correct) target values. Must be convertible to a NumPy array of floats.
+    y_pred : Sequence[float]
+        Predicted target values. Must be convertible to a NumPy array of floats and strictly positive.
+    power : float
+        Tweedie power parameter. Determines the distribution:
+        - 0 for normal, 1 for Poisson, 2 for gamma, else general.
+
+    Returns
+    -------
+    float
+        The average Tweedie deviance over all samples.
+
+    Raises
+    ------
+    ValueError
+        If any predicted value is not strictly positive (required for Tweedie deviance).
+    """
+    y_true = np.asarray(y_true, dtype=float)
+    y_pred = np.asarray(y_pred, dtype=float)
+
+    if np.any(y_pred <= 0):
+        raise ValueError(
+            "All predictions must be strictly positive for Tweedie deviance."
+        )
+
+    if power == 0:
+        dev = (y_true - y_pred) ** 2
+
+    elif power == 1:
+        with np.errstate(divide="ignore", invalid="ignore"):
+            dev = 2 * (y_true * np.log(y_true / y_pred) - (y_true - y_pred))
+        zero_mask = y_true == 0
+        dev[zero_mask] = 2 * y_pred[zero_mask]
+
+    elif power == 2:
+        dev = 2 * (-np.log(y_true / y_pred) + (y_true / y_pred) - 1)
+
+    else:
+        dev = 2 * (
+            y_true ** (2 - power) / ((1 - power) * (2 - power))
+            - y_true * y_pred ** (1 - power) / (1 - power)
+            + y_pred ** (2 - power) / (2 - power)
+        )
+
+    return np.mean(dev)
+
+# %% ../nbs/losses.ipynb 96
 @_base_docstring
-def tweedie(
+def tweedie_deviance(
     df: DFType,
     models: List[str],
+    power: float = 1.5,
     id_col: str = "unique_id",
     target_col: str = "y",
-    power: float = 1.5,
 ) -> DFType:
-    """Tweedie Deviance (mean).
+    """
+    Compute the Tweedie deviance loss for one or multiple models, grouped by an identifier.
 
-    Computes the mean Tweedie deviance between the predicted
-    values (columns in `models`) and the true values (`target_col`)
-    for each series identified by `id_col`. `power` controls the
-    variance power parameter of the Tweedie distribution."""
+    Each group's deviance is calculated using the mean_tweedie_deviance function, which
+    measures the deviation between actual and predicted values under the Tweedie distribution.
+
+    The `power` parameter defines the specific compound distribution:
+      - 1: Poisson
+      - (1, 2): Compound Poisson-Gamma
+      - 2: Gamma
+      - >2: Inverse Gaussian
+
+    Parameters
+    ----------
+    df : DFType
+        Input dataset containing both true and predicted values. Can be a pandas or polars DataFrame.
+    models : List[str]
+        List of column names in `df` containing model predictions to evaluate.
+    power : float, optional (default=1.5)
+        Tweedie power parameter defining the distribution.
+    id_col : str, optional (default="unique_id")
+        Column name to group by when aggregating deviance scores.
+    target_col : str, optional (default="y")
+        Column name for the true target values.
+
+    Returns
+    -------
+    DFType
+        A DataFrame (same type as input) with one row per group (id_col) and one column per model,
+        containing the computed average deviance for each model.
+    """
     if isinstance(df, pd.DataFrame):
         res = (
             df.groupby(id_col, observed=True)
             .apply(
                 lambda g: {
-                    m: mean_tweedie_deviance(
-                        y_true=g[target_col].to_numpy(),
-                        y_pred=g[m].to_numpy(),
-                        power=power,
+                    model: mean_tweedie_deviance(
+                        y_true=g[target_col], y_pred=g[model], power=power
                     )
-                    for m in models
+                    for model in models
                 }
             )
             .apply(pd.Series)
             .reset_index()
         )
     else:
-        pdf = df.to_pandas()
-        res = tweedie(pdf, models, id_col, target_col, power)
-        res = pl.from_pandas(res)
+
+        def gen_expr(model):
+            return (
+                pl.struct([target_col, model])
+                .map_elements(
+                    lambda s: mean_tweedie_deviance(
+                        y_true=[s[target_col]], y_pred=[s[model]], power=power
+                    ),
+                    return_dtype=pl.Float64,
+                )
+                .alias(model)
+            )
+
+        res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
