@@ -287,8 +287,8 @@ def plot_series(
         for level in levels:
             lo = df[f"{y_col}-lo-{level}"]
             hi = df[f"{y_col}-hi-{level}"]
-            min_alpha = 0.2
-            max_alpha = 0.8
+            min_alpha = 0.1
+            max_alpha = 0.9
             alpha = max_alpha - (float(level) / 100) * (max_alpha - min_alpha)
             axi.fill_between(
                 times,
@@ -336,8 +336,8 @@ def plot_series(
             name = f"{y_col}_level_{level}"
             lo = df[f"{y_col}-lo-{level}"]
             hi = df[f"{y_col}-hi-{level}"]
-            min_alpha = 0.2
-            max_alpha = 0.8
+            min_alpha = 0.1
+            max_alpha = 0.9
             alpha = max_alpha - (float(level) / 100) * (max_alpha - min_alpha)
             y = np.concatenate([hi, lo[::-1]])
             fig.add_trace(
