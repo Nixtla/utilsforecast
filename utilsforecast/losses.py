@@ -1014,24 +1014,10 @@ def tweedie_deviance(
       - 2: Gamma
       - >2: Inverse Gaussian
 
-    Parameters
+    Additional Parameter
     ----------
-    df : DFType
-        Input dataset containing both true and predicted values. Can be a pandas or polars DataFrame.
-    models : List[str]
-        List of column names in `df` containing model predictions to evaluate.
     power : float, optional (default=1.5)
         Tweedie power parameter defining the distribution.
-    id_col : str, optional (default="unique_id")
-        Column name to group by when aggregating deviance scores.
-    target_col : str, optional (default="y")
-        Column name for the true target values.
-
-    Returns
-    -------
-    DFType
-        A DataFrame (same type as input) with one row per group (id_col) and one column per model,
-        containing the computed average deviance for each model.
     """
     if isinstance(df, pd.DataFrame):
         res = (
