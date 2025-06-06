@@ -23,3 +23,6 @@ jobs:
 
       - name: Run pre-commit
         run: pre-commit run --files utilsforecast/*
+
+      - name: Stage changes (fix for nbdev_export hook)
+        run: git add utilsforecast/* 
