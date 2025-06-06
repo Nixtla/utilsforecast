@@ -23,12 +23,3 @@ jobs:
 
       - name: Run pre-commit
         run: pre-commit run --files utilsforecast/*
-
-      - name: Stage changes
-        run: git add utilsforecast/*
-
-      - name: Commit changes
-        run: git commit -m "Automated commit for nbdev_export changes" || echo "No changes to commit"
-
-      - name: Re-run pre-commit
-        run: pre-commit run --files utilsforecast/*
