@@ -287,7 +287,7 @@ def plot_series(
         for level in levels:
             lo = df[f"{y_col}-lo-{level}"]
             hi = df[f"{y_col}-hi-{level}"]
-            min_alpha = 0.1
+            min_alpha = 0.1  # fix alpha to avoid transparency issues
             max_alpha = 0.9
             alpha = max_alpha - (float(level) / 100) * (max_alpha - min_alpha)
             axi.fill_between(
