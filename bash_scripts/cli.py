@@ -51,7 +51,7 @@ def no_dir_and_dir(cell, dir):
 
 
 def get_all_tests(cell):
-    if len(cell.directives_) == 0:
+    if cell.cell_type == "code" and len(cell.directives_) == 0:
         print(cell.source)
 
     if any(x in tst_flags + ["hide"] for x in cell.directives_):
