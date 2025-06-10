@@ -4,11 +4,11 @@ from utilsforecast.plotting import plot_series
 
 level = [80, 95]
 series = generate_series(
-    4, freq='D', equal_ends=True, with_trend=True, n_models=2, level=level
+    4, freq="D", equal_ends=True, with_trend=True, n_models=2, level=level
 )
-test_pd = series.groupby('unique_id', observed=True).tail(10).copy()
+test_pd = series.groupby("unique_id", observed=True).tail(10).copy()
 train_pd = series.drop(test_pd.index)
-plt.style.use('ggplot')
+plt.style.use("ggplot")
 fig = plot_series(
     train_pd,
     forecasts_df=test_pd,
@@ -16,10 +16,10 @@ fig = plot_series(
     plot_random=False,
     level=level,
     max_insample_length=50,
-    engine='matplotlib',
+    engine="matplotlib",
     plot_anomalies=True,
 )
-fig.savefig('imgs/plotting.png', bbox_inches='tight')
+fig.savefig("imgs/plotting.png", bbox_inches="tight")
 import warnings
 from itertools import product
 
@@ -49,14 +49,14 @@ forecasts = bools
 ids = [[0], [3, 1], None]
 levels = [[80], None]
 max_insample_lengths = [None, 50]
-engines = ['matplotlib']
+engines = ["matplotlib"]
 if POLARS_INSTALLED:
     train_pl = pl.DataFrame(train_pd.to_records(index=False))
     test_pl = pl.DataFrame(test_pd.to_records(index=False))
 if PLOTLY_INSTALLED:
-    engines.append('plotly')
+    engines.append("plotly")
 if PLOTLY_RESAMPLER_INSTALLED:
-    engines.append('plotly-resampler')
+    engines.append("plotly-resampler")
 iterable = product(
     polars, ids, anomalies, levels, max_insample_lengths, engines, randoms, forecasts
 )
@@ -88,14 +88,14 @@ for (
         engine=engine,
     )
     if level is None and plot_anomalies:
-        test_fail(fn, contains='specify the `level` argument')
+        test_fail(fn, contains="specify the `level` argument")
     elif level is not None and plot_anomalies and not with_forecasts:
-        test_fail(fn, contains='provide a `forecasts_df` with prediction')
+        test_fail(fn, contains="provide a `forecasts_df` with prediction")
     else:
         with warnings.catch_warnings():
             warnings.filterwarnings(
-                'ignore',
-                message='The behavior of DatetimeProperties.to_pydatetime is deprecated',
+                "ignore",
+                message="The behavior of DatetimeProperties.to_pydatetime is deprecated",
                 category=FutureWarning,
             )
             fn()

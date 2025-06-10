@@ -1,11 +1,18 @@
 # Validation
-from utilsforecast.validation import * # noqa: F403
+from utilsforecast.validation import (
+    _is_int_dtype,
+    _is_dt_dtype,
+    ensure_time_dtype,
+    validate_format,
+    validate_freq,
+)
 import datetime
 import pandas as pd
 import polars as pl
 
 from fastcore.test import test_eq, test_fail
 import polars.testing
+
 assert _is_int_dtype(pd.Series([1, 2]))
 assert _is_int_dtype(pd.Index([1, 2], dtype='uint8'))
 assert not _is_int_dtype(pd.Series([1.0]))
@@ -19,10 +26,12 @@ assert _is_int_dtype(pl.Series([1, 2], dtype=pl.UInt8))
 assert not _is_int_dtype(pl.Series([1.0]))
 assert _is_dt_dtype(pl.Series([datetime.date(2000, 1, 1)]))
 assert _is_dt_dtype(pl.Series([datetime.datetime(2000, 1, 1)]))
-assert _is_dt_dtype(pl.Series([datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)]))
+assert _is_dt_dtype(
+    pl.Series([datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)])
+)
 pd.testing.assert_frame_equal(
     ensure_time_dtype(pd.DataFrame({'ds': ['2000-01-01']})),
-    pd.DataFrame({'ds': pd.to_datetime(['2000-01-01'])})
+    pd.DataFrame({'ds': pd.to_datetime(['2000-01-01'])}),
 )
 df = pd.DataFrame({'ds': [1, 2]})
 assert df is ensure_time_dtype(df)
@@ -32,7 +41,7 @@ test_fail(
 )
 pl.testing.assert_frame_equal(
     ensure_time_dtype(pl.DataFrame({'ds': ['2000-01-01']})),
-    pl.DataFrame().with_columns(ds=pl.datetime(2000, 1, 1))
+    pl.DataFrame().with_columns(ds=pl.datetime(2000, 1, 1)),
 )
 df = pl.DataFrame({'ds': [1, 2]})
 assert df is ensure_time_dtype(df)
@@ -40,12 +49,11 @@ test_fail(
     lambda: ensure_time_dtype(pl.DataFrame({'ds': ['hello']})),
     contains='Please make sure that it contains valid timestamps',
 )
-from nbdev import show_doc
-show_doc(validate_format)
 import datetime
 
 from utilsforecast.compat import POLARS_INSTALLED, pl
 from utilsforecast.data import generate_series
+
 test_fail(lambda: validate_format(1), contains="got <class 'int'>")
 constructors = [pd.DataFrame]
 if POLARS_INSTALLED:
@@ -54,12 +62,31 @@ for constructor in constructors:
     df = constructor({'unique_id': [1]})
     test_fail(lambda: validate_format(df), contains="missing: ['ds', 'y']")
     df = constructor({'unique_id': [1], 'time': ['x'], 'y': [1]})
-    test_fail(lambda: validate_format(df, time_col='time'), contains="('time') should have either timestamps or integers")
+    test_fail(
+        lambda: validate_format(df, time_col='time'),
+        contains="('time') should have either timestamps or integers",
+    )
     for time in [1, datetime.datetime(2000, 1, 1)]:
         df = constructor({'unique_id': [1], 'ds': [time], 'sales': ['x']})
-        test_fail(lambda: validate_format(df, target_col='sales'), contains="('sales') should have a numeric data type")
-test_fail(lambda: validate_freq(pd.Series([1, 2]), 'D'), contains='provide a valid integer')
-test_fail(lambda: validate_freq(pd.to_datetime(['2000-01-01']).to_series(), 1), contains='provide a valid pandas or polars offset')
-test_fail(lambda: validate_freq(pl.Series([1, 2]), '1d'), contains='provide a valid integer')
-test_fail(lambda: validate_freq(pl.Series([datetime.datetime(2000, 1, 1)]), 1), contains='provide a valid pandas or polars offset')
-test_fail(lambda: validate_freq(pl.Series([datetime.datetime(2000, 1, 1)]), 'D'), contains='valid polars offset')
+        test_fail(
+            lambda: validate_format(df, target_col='sales'),
+            contains="('sales') should have a numeric data type",
+        )
+test_fail(
+    lambda: validate_freq(pd.Series([1, 2]), 'D'), contains='provide a valid integer'
+)
+test_fail(
+    lambda: validate_freq(pd.to_datetime(['2000-01-01']).to_series(), 1),
+    contains='provide a valid pandas or polars offset',
+)
+test_fail(
+    lambda: validate_freq(pl.Series([1, 2]), '1d'), contains='provide a valid integer'
+)
+test_fail(
+    lambda: validate_freq(pl.Series([datetime.datetime(2000, 1, 1)]), 1),
+    contains='provide a valid pandas or polars offset',
+)
+test_fail(
+    lambda: validate_freq(pl.Series([datetime.datetime(2000, 1, 1)]), 'D'),
+    contains='valid polars offset',
+)

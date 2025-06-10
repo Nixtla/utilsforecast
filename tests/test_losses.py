@@ -29,12 +29,12 @@ from utilsforecast.compat import POLARS_INSTALLED
 if POLARS_INSTALLED:
     import polars as pl
 
-warnings.filterwarnings('ignore', message='Unknown section References')
+warnings.filterwarnings("ignore", message="Unknown section References")
 from utilsforecast.data import generate_series
 
-models = ['model0', 'model1']
+models = ["model0", "model1"]
 series = generate_series(10, n_models=2, level=[80])
-series_pl = generate_series(10, n_models=2, level=[80], engine='polars')
+series_pl = generate_series(10, n_models=2, level=[80], engine="polars")
 ## 1. Scale-dependent Errors
 ### Mean Absolute Error (MAE)
 
@@ -45,7 +45,7 @@ series_pl = generate_series(10, n_models=2, level=[80], engine='polars')
 def pd_vs_pl(pd_df, pl_df, models):
     np.testing.assert_allclose(
         pd_df[models].to_numpy(),
-        pl_df.sort('unique_id').select(models).to_numpy(),
+        pl_df.sort("unique_id").select(models).to_numpy(),
     )
 
 
@@ -158,32 +158,32 @@ pd_vs_pl(
 # $$
 df = pd.DataFrame(
     {
-        'unique_id': [0, 1, 2],
-        'y': [1.0, 2.0, 3.0],
-        'overestimation': [2.0, 3.0, 4.0],  # y + 1.
-        'underestimation': [0.0, 1.0, 2.0],  # y - 1.
+        "unique_id": [0, 1, 2],
+        "y": [1.0, 2.0, 3.0],
+        "overestimation": [2.0, 3.0, 4.0],  # y + 1.
+        "underestimation": [0.0, 1.0, 2.0],  # y - 1.
     }
 )
-df['unique_id'] = df['unique_id'].astype('category')
+df["unique_id"] = df["unique_id"].astype("category")
 df = pd.concat([df, df.assign(unique_id=2)]).reset_index(drop=True)
 
-ql_models_test = ['overestimation', 'underestimation']
+ql_models_test = ["overestimation", "underestimation"]
 quantiles = np.array([0.1, 0.9])
 
 for q in quantiles:
     ql_df = quantile_loss(df, models=dict(zip(ql_models_test, ql_models_test)), q=q)
     # for overestimation, delta_y = y - y_hat = -1 so ql = max(-q, -(q-1))
-    assert all(max(-q, -(q - 1)) == ql for ql in ql_df['overestimation'])
+    assert all(max(-q, -(q - 1)) == ql for ql in ql_df["overestimation"])
     # for underestimation, delta_y = y - y_hat = 1, so ql = max(q, q-1)
-    assert all(max(q, q - 1) == ql for ql in ql_df['underestimation'])
+    assert all(max(q, q - 1) == ql for ql in ql_df["underestimation"])
 q_models = {
     0.1: {
-        'model0': 'model0-lo-80',
-        'model1': 'model1-lo-80',
+        "model0": "model0-lo-80",
+        "model1": "model1-lo-80",
     },
     0.9: {
-        'model0': 'model0-hi-80',
-        'model1': 'model1-hi-80',
+        "model0": "model0-hi-80",
+        "model1": "model1-hi-80",
     },
 }
 
@@ -203,12 +203,12 @@ for q in quantiles:
 # $$
 q_models = {
     0.1: {
-        'model0': 'model0-lo-80',
-        'model1': 'model1-lo-80',
+        "model0": "model0-lo-80",
+        "model1": "model1-lo-80",
     },
     0.9: {
-        'model0': 'model0-hi-80',
-        'model1': 'model1-hi-80',
+        "model0": "model0-hi-80",
+        "model1": "model1-hi-80",
     },
 }
 
@@ -228,8 +228,8 @@ for q in quantiles:
 # \frac{1}{n} \sum_{q_{i}} \mathrm{QL}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{(q_{i})}_{\tau})
 # $$
 mq_models = {
-    'model0': ['model0-lo-80', 'model0-hi-80'],
-    'model1': ['model1-lo-80', 'model1-hi-80'],
+    "model0": ["model0-lo-80", "model0-hi-80"],
+    "model1": ["model1-lo-80", "model1-hi-80"],
 }
 
 expected = (
@@ -239,7 +239,7 @@ expected = (
             for i, q in enumerate(quantiles)
         ]
     )
-    .groupby('unique_id', observed=True, as_index=False)
+    .groupby("unique_id", observed=True, as_index=False)
     .mean()
 )
 actual = mqloss(
@@ -255,15 +255,15 @@ pd_vs_pl(
 )
 for series_df in [series, series_pl]:
     if isinstance(series_df, pd.DataFrame):
-        df_test = series_df.assign(unique_id=lambda df: df['unique_id'].astype(str))
+        df_test = series_df.assign(unique_id=lambda df: df["unique_id"].astype(str))
     else:
-        df_test = series_df.with_columns(pl.col('unique_id').cast(pl.Utf8))
+        df_test = series_df.with_columns(pl.col("unique_id").cast(pl.Utf8))
     mql_df = mqloss(
         df_test,
         mq_models,
         quantiles=quantiles,
     )
-    assert mql_df.shape == (series['unique_id'].nunique(), 1 + len(models))
+    assert mql_df.shape == (series["unique_id"].nunique(), 1 + len(models))
     if isinstance(mql_df, pd.DataFrame):
         null_vals = mql_df.isna().sum().sum()
     else:
