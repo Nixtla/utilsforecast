@@ -1,6 +1,11 @@
 import matplotlib.pyplot as plt
+from pathlib import Path
+
 from utilsforecast.data import generate_series
 from utilsforecast.plotting import plot_series
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+IMG_PATH = ROOT_DIR / "nbs" / "imgs"
 
 level = [80, 95]
 series = generate_series(
