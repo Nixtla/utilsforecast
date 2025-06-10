@@ -946,23 +946,18 @@ def mean_tweedie_deviance(y_true: ArrayLike, y_pred: ArrayLike, power: float):
 
     Parameters
     ----------
-    y_true : Sequence[float]
+    y_true : array-like
         Ground truth (correct) target values. Must be convertible to a NumPy array of floats.
-    y_pred : Sequence[float]
+    y_pred : array-like
         Predicted target values. Must be convertible to a NumPy array of floats and strictly positive.
     power : float
         Tweedie power parameter. Determines the distribution:
-        - 0 for normal, 1 for Poisson, 2 for gamma, else general.
+        0 for normal, 1 for Poisson, 2 for gamma, else general.
 
     Returns
     -------
     float
-        The average Tweedie deviance over all samples.
-
-    Raises
-    ------
-    ValueError
-        If any predicted value is not strictly positive (required for Tweedie deviance).
+        Average Tweedie deviance over all samples
     """
     y_true = np.asarray(y_true, dtype=float)
     y_pred = np.asarray(y_pred, dtype=float)
