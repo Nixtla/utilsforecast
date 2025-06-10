@@ -36,7 +36,7 @@ jobs:
           mkdir nbs/_extensions
           cp -r docs-scripts/mintlify/ nbs/_extensions/
           python docs-scripts/update-quarto.py
-          nbdev_docs
+          nbdev_docs --n_workers 1
       - name: Apply final formats
         run: bash ./docs-scripts/docs-final-formatting.bash
       - name: Copy over necessary assets
