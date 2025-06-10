@@ -9,6 +9,7 @@ __all__ = ['mae', 'mse', 'rmse', 'bias', 'mape', 'smape', 'mase', 'rmae', 'msse'
 
 # %% ../nbs/losses.ipynb 3
 from typing import Callable, Dict, List, Optional, Tuple, Union
+from numpy.typing import ArrayLike
 
 import numpy as np
 import pandas as pd
@@ -933,11 +934,7 @@ def scaled_crps(
     return res
 
 # %% ../nbs/losses.ipynb 95
-def mean_tweedie_deviance(
-    y_true: Union[List[float], np.ndarray],
-    y_pred: Union[List[float], np.ndarray],
-    power: float,
-):
+def mean_tweedie_deviance(y_true: ArrayLike, y_pred: ArrayLike, power: float):
     """
     Compute the average Tweedie deviance between true values and predictions.
 
@@ -955,17 +952,12 @@ def mean_tweedie_deviance(
         Predicted target values. Must be convertible to a NumPy array of floats and strictly positive.
     power : float
         Tweedie power parameter. Determines the distribution:
-        - 0 for normal, 1 for Poisson, 2 for gamma, else general.
+        0 for normal, 1 for Poisson, 2 for gamma, else general.
 
     Returns
     -------
     float
-        The average Tweedie deviance over all samples.
-
-    Raises
-    ------
-    ValueError
-        If any predicted value is not strictly positive (required for Tweedie deviance).
+        Average Tweedie deviance over all samples
     """
     y_true = np.asarray(y_true, dtype=float)
     y_pred = np.asarray(y_pred, dtype=float)
@@ -996,7 +988,7 @@ def mean_tweedie_deviance(
 
     return np.mean(dev)
 
-# %% ../nbs/losses.ipynb 96
+# %% ../nbs/losses.ipynb 97
 def tweedie_deviance(
     df: DFType,
     models: List[str],
@@ -1004,13 +996,12 @@ def tweedie_deviance(
     id_col: str = "unique_id",
     target_col: str = "y",
 ) -> DFType:
-    """
-    Compute the Tweedie deviance loss for one or multiple models, grouped by an identifier.
+    """Compute the Tweedie deviance loss for one or multiple models, grouped by an identifier.
 
     Each group's deviance is calculated using the mean_tweedie_deviance function, which
     measures the deviation between actual and predicted values under the Tweedie distribution.
 
-    The `power` parameter defines the specific compound distribution:
+    The power parameter defines the specific compound distribution:
       - 1: Poisson
       - (1, 2): Compound Poisson-Gamma
       - 2: Gamma
