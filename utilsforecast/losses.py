@@ -9,7 +9,6 @@ __all__ = ['mae', 'mse', 'rmse', 'bias', 'mape', 'smape', 'mase', 'rmae', 'msse'
 
 # %% ../nbs/losses.ipynb 3
 from typing import Callable, Dict, List, Optional, Tuple, Union
-from numpy.typing import ArrayLike
 
 import numpy as np
 import pandas as pd
@@ -934,7 +933,11 @@ def scaled_crps(
     return res
 
 # %% ../nbs/losses.ipynb 95
-def mean_tweedie_deviance(y_true: ArrayLike, y_pred: ArrayLike, power: float):
+def mean_tweedie_deviance(
+    y_true: Union[List[float], np.ndarray],
+    y_pred: Union[List[float], np.ndarray],
+    power: float,
+):
     """
     Compute the average Tweedie deviance between true values and predictions.
 
@@ -946,9 +949,9 @@ def mean_tweedie_deviance(y_true: ArrayLike, y_pred: ArrayLike, power: float):
 
     Parameters
     ----------
-    y_true : Sequence[float]
+    y_true : array-like
         Ground truth (correct) target values. Must be convertible to a NumPy array of floats.
-    y_pred : Sequence[float]
+    y_pred : array-like
         Predicted target values. Must be convertible to a NumPy array of floats and strictly positive.
     power : float
         Tweedie power parameter. Determines the distribution:
