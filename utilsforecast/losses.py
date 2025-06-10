@@ -994,7 +994,6 @@ def mean_tweedie_deviance(y_true: ArrayLike, y_pred: ArrayLike, power: float):
     return np.mean(dev)
 
 # %% ../nbs/losses.ipynb 96
-@_base_docstring
 def tweedie_deviance(
     df: DFType,
     models: List[str],
@@ -1014,10 +1013,23 @@ def tweedie_deviance(
       - 2: Gamma
       - >2: Inverse Gaussian
 
-    Additional Parameter
+    Parameters
     ----------
+    df : pandas or polars DataFrame
+        Input dataframe with id, actual values and predictions.
+    models : list of str
+        Columns that identify the models predictions.
     power : float, optional (default=1.5)
         Tweedie power parameter defining the distribution.
+    id_col : str (default='unique_id')
+        Column that identifies each serie.
+    target_col : str (default='y')
+        Column that contains the target.
+
+    Returns
+    -------
+    pandas or polars DataFrame
+        dataframe with one row per id and one column per model.
     """
     if isinstance(df, pd.DataFrame):
         res = (
