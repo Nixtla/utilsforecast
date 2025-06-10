@@ -3,7 +3,6 @@ import warnings
 import numpy as np
 import pandas as pd
 import polars as pl
-from nbdev import show_doc
 
 from utilsforecast.compat import POLARS_INSTALLED
 from utilsforecast.losses import (
