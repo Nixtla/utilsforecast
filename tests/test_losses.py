@@ -1,30 +1,30 @@
-import re
 import warnings
 
-import pandas as pd
 import numpy as np
-from nbdev import show_doc
-from utilsforecast.losses import (
-    mae,
-    mse,
-    rmse,
-    bias,
-    mape,
-    smape,
-    rmae,
-    mase,
-    msse,
-    rmsse,
-    quantile_loss,
-    scaled_quantile_loss,
-    mqloss,
-    scaled_mqloss,
-    coverage,
-    calibration,
-    scaled_crps,
-)
+import pandas as pd
 import polars as pl
+from nbdev import show_doc
+
 from utilsforecast.compat import POLARS_INSTALLED
+from utilsforecast.losses import (
+    bias,
+    calibration,
+    coverage,
+    mae,
+    mape,
+    mase,
+    mqloss,
+    mse,
+    msse,
+    quantile_loss,
+    rmae,
+    rmse,
+    rmsse,
+    scaled_crps,
+    scaled_mqloss,
+    scaled_quantile_loss,
+    smape,
+)
 
 if POLARS_INSTALLED:
     import polars as pl
@@ -48,38 +48,41 @@ def pd_vs_pl(pd_df, pl_df, models):
         pl_df.sort("unique_id").select(models).to_numpy(),
     )
 
-
-pd_vs_pl(
-    mae(series, models),
-    mae(series_pl, models),
-    models,
-)
+def test_mae():
+    pd_vs_pl(
+        mae(series, models),
+        mae(series_pl, models),
+        models,
+    )
 ### Mean Squared Error
 
 # $$
 # \mathrm{MSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} (y_{\tau} - \hat{y}_{\tau})^{2}
 # $$
-pd_vs_pl(
-    mse(series, models),
-    mse(series_pl, models),
-    models,
-)
+def test_mse():
+    pd_vs_pl(
+        mse(series, models),
+        mse(series_pl, models),
+        models,
+    )
 ### Root Mean Squared Error
 
 # $$
 # \mathrm{RMSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \sqrt{\frac{1}{H} \sum^{t+H}_{\tau=t+1} (y_{\tau} - \hat{y}_{\tau})^{2}}
 # $$
+def test_rmse():
+    pd_vs_pl(
+        rmse(series, models),
+        rmse(series_pl, models),
+        models,
+    )
 
-pd_vs_pl(
-    rmse(series, models),
-    rmse(series_pl, models),
-    models,
-)
-pd_vs_pl(
-    bias(series, models),
-    bias(series_pl, models),
-    models,
-)
+def test_bias():
+    pd_vs_pl(
+        bias(series, models),
+        bias(series_pl, models),
+        models,
+    )
 ## 2. Percentage Errors
 ### Mean Absolute Percentage Error
 
@@ -87,21 +90,24 @@ pd_vs_pl(
 # \mathrm{MAPE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{|y_{\tau}|}
 # $$
 
-pd_vs_pl(
-    mape(series, models),
-    mape(series_pl, models),
-    models,
-)
+def test_mape():
+    pd_vs_pl(
+        mape(series, models),
+        mape(series_pl, models),
+        models,
+    )
 ### Symmetric Mean Absolute Percentage Error
 
 # $$
 # \mathrm{SMAPE}_{2}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{|y_{\tau}|+|\hat{y}_{\tau}|}
 # $$
-pd_vs_pl(
-    smape(series, models),
-    smape(series_pl, models),
-    models,
-)
+
+def test_smape():
+    pd_vs_pl(
+        smape(series, models),
+        smape(series_pl, models),
+        models,
+    )
 ## 3. Scale-independent Errors
 ### Mean Absolute Scaled Error
 
@@ -109,44 +115,47 @@ pd_vs_pl(
 # \mathrm{MASE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau}) =
 # \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}
 # $$
-
-pd_vs_pl(
-    mase(series, models, 7, series),
-    mase(series_pl, models, 7, series_pl),
-    models,
-)
+def test_mase():
+    pd_vs_pl(
+        mase(series, models, 7, series),
+        mase(series_pl, models, 7, series_pl),
+        models,
+    )
 ### Relative Mean Absolute Error
 
 # $$
 # \mathrm{RMAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{base}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{base}_{\tau})}
 # $$
-pd_vs_pl(
-    rmae(series, models, models[0]),
-    rmae(series_pl, models, models[0]),
-    models,
-)
+def test_rmae():
+    pd_vs_pl(
+        rmae(series, models, models[0]),
+        rmae(series_pl, models, models[0]),
+        models,
+    )
 ### Mean Squared Scaled Error
 
 # $$
 # \mathrm{MSSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau}) =
 # \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{(y_{\tau}-\hat{y}_{\tau})^2}{\mathrm{MSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}
 # $$
-pd_vs_pl(
-    msse(series, models, 7, series),
-    msse(series_pl, models, 7, series_pl),
-    models,
-)
+def test_msse():
+    pd_vs_pl(
+        msse(series, models, 7, series),
+        msse(series_pl, models, 7, series_pl),
+        models,
+    )
 ### Root Mean Squared Scaled Error
 
 # $$
 # \mathrm{RMSSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau}) =
 # \sqrt{\frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{(y_{\tau}-\hat{y}_{\tau})^2}{\mathrm{MSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}}
 # $$
-pd_vs_pl(
-    rmsse(series, models, 7, series),
-    rmsse(series_pl, models, 7, series_pl),
-    models,
-)
+def test_rmsse():
+    pd_vs_pl(
+        rmsse(series, models, 7, series),
+        rmsse(series_pl, models, 7, series_pl),
+        models,
+    )
 ## 4. Probabilistic Errors
 ### Quantile Loss
 
@@ -156,6 +165,7 @@ pd_vs_pl(
 # \Big( (1-q)\,( \hat{y}^{(q)}_{\tau} - y_{\tau} )_{+}
 # + q\,( y_{\tau} - \hat{y}^{(q)}_{\tau} )_{+} \Big)
 # $$
+
 df = pd.DataFrame(
     {
         "unique_id": [0, 1, 2],
@@ -187,11 +197,12 @@ q_models = {
     },
 }
 
-for q in quantiles:
-    pd_vs_pl(
-        quantile_loss(series, q_models[q], q=q),
-        quantile_loss(series_pl, q_models[q], q=q),
-        models,
+def test_quantile_loss():
+    for q in quantiles:
+        pd_vs_pl(
+            quantile_loss(series, q_models[q], q=q),
+            quantile_loss(series_pl, q_models[q], q=q),
+            models,
     )
 ### Scaled Quantile Loss
 
@@ -212,11 +223,12 @@ q_models = {
     },
 }
 
-for q in quantiles:
-    pd_vs_pl(
-        scaled_quantile_loss(series, q_models[q], seasonality=1, train_df=series, q=q),
-        scaled_quantile_loss(
-            series_pl, q_models[q], seasonality=1, train_df=series_pl, q=q
+def test_scaled_quantile_loss():
+    for q in quantiles:
+        pd_vs_pl(
+            scaled_quantile_loss(series, q_models[q], seasonality=1, train_df=series, q=q),
+            scaled_quantile_loss(
+                series_pl, q_models[q], seasonality=1, train_df=series_pl, q=q
         ),
         models,
     )
@@ -247,11 +259,13 @@ actual = mqloss(
     models=mq_models,
     quantiles=quantiles,
 )
-pd.testing.assert_frame_equal(actual, expected)
-pd_vs_pl(
-    mqloss(series, mq_models, quantiles=quantiles),
-    mqloss(series_pl, mq_models, quantiles=quantiles),
-    models,
+
+def test_multi_quantile_loss():
+    pd.testing.assert_frame_equal(actual, expected)
+    pd_vs_pl(
+        mqloss(series, mq_models, quantiles=quantiles),
+        mqloss(series_pl, mq_models, quantiles=quantiles),
+        models,
 )
 for series_df in [series, series_pl]:
     if isinstance(series_df, pd.DataFrame):
@@ -276,28 +290,31 @@ for series_df in [series, series_pl]:
 # [\mathbf{\hat{y}}^{(q_{1})}_{\tau}, ... ,\hat{y}^{(q_{n})}_{\tau}]) =
 # \frac{1}{n} \sum_{q_{i}} \frac{\mathrm{QL}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{(q_{i})}_{\tau})}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}
 # $$
-pd_vs_pl(
-    scaled_mqloss(
-        series, mq_models, quantiles=quantiles, seasonality=1, train_df=series
-    ),
-    scaled_mqloss(
+
+def test_scaled_multi_quantile_loss():
+    pd_vs_pl(
+        scaled_mqloss(
+            series, mq_models, quantiles=quantiles, seasonality=1, train_df=series
+        ),
+        scaled_mqloss(
         series_pl, mq_models, quantiles=quantiles, seasonality=1, train_df=series_pl
     ),
     models,
 )
 ### Coverage
-pd_vs_pl(
-    coverage(series, models, 80),
-    coverage(series_pl, models, 80),
-    models,
-)
+def test_coverage():
+    pd_vs_pl(
+        coverage(series, models, 80),
+        coverage(series_pl, models, 80),
+        models,
+    )
 ### Calibration
-show_doc(calibration, title_level=4)
-pd_vs_pl(
-    calibration(series, q_models[0.1]),
-    calibration(series_pl, q_models[0.1]),
-    models,
-)
+def test_calibration():
+    pd_vs_pl(
+        calibration(series, q_models[0.1]),
+        calibration(series_pl, q_models[0.1]),
+        models,
+    )
 ### CRPS
 
 # $$
@@ -306,9 +323,9 @@ pd_vs_pl(
 # $$
 
 # Where $\hat{F}_{\tau}$ is the an estimated multivariate distribution, and $y_{i,\tau}$ are its realizations.
-
-pd_vs_pl(
-    scaled_crps(series, mq_models, quantiles),
-    scaled_crps(series_pl, mq_models, quantiles),
-    models,
-)
+def test_scaled_crps():
+    pd_vs_pl(
+        scaled_crps(series, mq_models, quantiles),
+        scaled_crps(series_pl, mq_models, quantiles),
+        models,
+    )
