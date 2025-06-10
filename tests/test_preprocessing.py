@@ -1,11 +1,12 @@
 import warnings
-import pandas as pd
-from utilsforecast.preprocessing import fill_gaps
-import polars as pl
+from datetime import date, datetime
+
 import numpy as np
-from datetime import datetime, date
+import pandas as pd
+import polars as pl
 
 from utilsforecast.data import generate_series
+from utilsforecast.preprocessing import fill_gaps
 
 df = pd.DataFrame(
     {
@@ -14,7 +15,6 @@ df = pd.DataFrame(
         "y": np.arange(5),
     }
 )
-df
 fill_gaps(
     df,
     freq="YS",
@@ -42,7 +42,7 @@ df = pd.DataFrame(
         "y": np.arange(5),
     }
 )
-df
+
 fill_gaps(
     df,
     freq=1,
@@ -69,8 +69,10 @@ polars_ms = fill_gaps(
     start=datetime(2019, 1, 1),
     end=datetime(2024, 1, 1),
 )
-assert polars_ms.schema["ds"].time_unit == "ms"
-polars_ms
+
+def test_fill_gaps_polars():
+    assert polars_ms.schema["ds"].time_unit == "ms"
+
 df = pl.DataFrame(
     {
         "unique_id": [0, 0, 0, 1, 1],
@@ -84,7 +86,7 @@ df = pl.DataFrame(
         "y": np.arange(5),
     }
 )
-df
+
 fill_gaps(
     df,
     freq="1y",
@@ -98,7 +100,7 @@ df = pl.DataFrame(
         "y": np.arange(5),
     }
 )
-df
+
 fill_gaps(
     df,
     freq=1,
