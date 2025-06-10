@@ -12,19 +12,21 @@ series = generate_series(
     4, freq="D", equal_ends=True, with_trend=True, n_models=2, level=level
 )
 test_pd = series.groupby("unique_id", observed=True).tail(10).copy()
+
 train_pd = series.drop(test_pd.index)
-plt.style.use("ggplot")
-fig = plot_series(
-    train_pd,
-    forecasts_df=test_pd,
-    ids=[0, 3],
-    plot_random=False,
-    level=level,
-    max_insample_length=50,
-    engine="matplotlib",
-    plot_anomalies=True,
-)
-fig.savefig("imgs/plotting.png", bbox_inches="tight")
+def test_plot_series():
+    plt.style.use("ggplot")
+    fig = plot_series(
+        train_pd,
+        forecasts_df=test_pd,
+        ids=[0, 3],
+        plot_random=False,
+        level=level,
+        max_insample_length=50,
+        engine="matplotlib",
+        plot_anomalies=True,
+    )
+    fig.savefig(IMG_PATH / "plotting.png", bbox_inches="tight")
 import warnings
 from itertools import product
 
@@ -66,41 +68,42 @@ iterable = product(
     polars, ids, anomalies, levels, max_insample_lengths, engines, randoms, forecasts
 )
 
-for (
-    as_polars,
-    ids,
-    plot_anomalies,
-    level,
-    max_insample_length,
-    engine,
-    plot_random,
-    with_forecasts,
-) in iterable:
-    if POLARS_INSTALLED and as_polars:
-        train = train_pl
-        test = test_pl if with_forecasts else None
-    else:
-        train = train_pd
-        test = test_pd if with_forecasts else None
-    fn = lambda: plot_series(
-        train,
-        forecasts_df=test,
-        ids=ids,
-        plot_random=plot_random,
-        plot_anomalies=plot_anomalies,
-        level=level,
-        max_insample_length=max_insample_length,
-        engine=engine,
-    )
-    if level is None and plot_anomalies:
-        test_fail(fn, contains="specify the `level` argument")
-    elif level is not None and plot_anomalies and not with_forecasts:
-        test_fail(fn, contains="provide a `forecasts_df` with prediction")
-    else:
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore",
-                message="The behavior of DatetimeProperties.to_pydatetime is deprecated",
-                category=FutureWarning,
-            )
-            fn()
+def test_plotting():
+    for (
+        as_polars,
+        ids,
+        plot_anomalies,
+        level,
+        max_insample_length,
+        engine,
+        plot_random,
+        with_forecasts,
+    ) in iterable:
+        if POLARS_INSTALLED and as_polars:
+            train = train_pl
+            test = test_pl if with_forecasts else None
+        else:
+            train = train_pd
+            test = test_pd if with_forecasts else None
+        fn = lambda: plot_series(
+            train,
+            forecasts_df=test,
+            ids=ids,
+            plot_random=plot_random,
+            plot_anomalies=plot_anomalies,
+            level=level,
+            max_insample_length=max_insample_length,
+            engine=engine,
+        )
+        if level is None and plot_anomalies:
+            test_fail(fn, contains="specify the `level` argument")
+        elif level is not None and plot_anomalies and not with_forecasts:
+            test_fail(fn, contains="provide a `forecasts_df` with prediction")
+        else:
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message="The behavior of DatetimeProperties.to_pydatetime is deprecated",
+                    category=FutureWarning,
+                )
+                fn()
