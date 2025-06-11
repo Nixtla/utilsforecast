@@ -8,9 +8,9 @@ import fugue.api as fa
 import pandas as pd
 import polars as pl
 import polars.testing
+import pytest
 from datasetsforecast.evaluation import accuracy as ds_evaluate
 from pyspark.sql import SparkSession
-import pytest
 
 import utilsforecast.processing as ufp
 from utilsforecast.data import generate_series
