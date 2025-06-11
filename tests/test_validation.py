@@ -1,11 +1,11 @@
-# Validation
 import datetime
 
 import pandas as pd
 import polars as pl
 import polars.testing
-from fastcore.test import test_eq, test_fail
+from fastcore.test import test_fail
 
+from utilsforecast.compat import POLARS_INSTALLED
 from utilsforecast.validation import (
     _is_dt_dtype,
     _is_int_dtype,
@@ -14,12 +14,14 @@ from utilsforecast.validation import (
     validate_freq,
 )
 
+
 def test_dtypes():
     assert _is_int_dtype(pd.Series([1, 2]))
     assert _is_int_dtype(pd.Index([1, 2], dtype='uint8'))
     assert not _is_int_dtype(pd.Series([1.0]))
     assert _is_dt_dtype(pd.to_datetime(['2000-01-01']))
     assert _is_dt_dtype(pd.to_datetime(['2000-01-01'], utc=True))
+
 
 def test_dtypes_arrow():
     assert _is_dt_dtype(pd.to_datetime(['2000-01-01']).astype('datetime64[s]'))
@@ -28,6 +30,7 @@ def test_dtypes_arrow():
     assert _is_int_dtype(pl.Series([1, 2]))
     assert _is_int_dtype(pl.Series([1, 2], dtype=pl.UInt8))
 
+
 def test_dtypes_polars():
     assert not _is_int_dtype(pl.Series([1.0]))
     assert _is_dt_dtype(pl.Series([datetime.date(2000, 1, 1)]))
@@ -35,6 +38,7 @@ def test_dtypes_polars():
     assert _is_dt_dtype(
         pl.Series([datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)])
     )
+
 
 def test_ensure_time_dtype():
     pd.testing.assert_frame_equal(
@@ -57,10 +61,7 @@ def test_ensure_time_dtype():
         lambda: ensure_time_dtype(pl.DataFrame({'ds': ['hello']})),
         contains='Please make sure that it contains valid timestamps',
     )
-import datetime
 
-from utilsforecast.compat import POLARS_INSTALLED, pl
-from utilsforecast.data import generate_series
 
 def test_validate_format():
     test_fail(lambda: validate_format(1), contains="got <class 'int'>")
@@ -82,20 +83,23 @@ def test_validate_format():
                 contains="('sales') should have a numeric data type",
             )
 
+
 def test_validate_freq():
     test_fail(
-        lambda: validate_freq(pd.Series([1, 2]), 'D'), contains='provide a valid integer'
+        lambda: validate_freq(pd.Series([1, 2]), 'D'),
+        contains='provide a valid integer',
     )
     test_fail(
         lambda: validate_freq(pd.to_datetime(['2000-01-01']).to_series(), 1),
-    contains='provide a valid pandas or polars offset',
+        contains='provide a valid pandas or polars offset',
     )
     test_fail(
-        lambda: validate_freq(pl.Series([1, 2]), '1d'), contains='provide a valid integer'
+        lambda: validate_freq(pl.Series([1, 2]), '1d'),
+        contains='provide a valid integer',
     )
     test_fail(
         lambda: validate_freq(pl.Series([datetime.datetime(2000, 1, 1)]), 1),
-    contains='provide a valid pandas or polars offset',
+        contains='provide a valid pandas or polars offset',
     )
     test_fail(
         lambda: validate_freq(pl.Series([datetime.datetime(2000, 1, 1)]), 'D'),
