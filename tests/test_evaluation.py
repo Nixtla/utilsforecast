@@ -10,6 +10,7 @@ import polars as pl
 import polars.testing
 from datasetsforecast.evaluation import accuracy as ds_evaluate
 from pyspark.sql import SparkSession
+import pytest
 
 import utilsforecast.processing as ufp
 from utilsforecast.data import generate_series
@@ -28,36 +29,52 @@ from utilsforecast.losses import (
     smape,
 )
 
-series = generate_series(10, n_models=2, level=[80, 95])
-series["unique_id"] = series["unique_id"].astype("int")
-models = ["model0", "model1"]
-metrics = [
-    mae,
-    mse,
-    rmse,
-    mape,
-    smape,
-    partial(mase, seasonality=7),
-    quantile_loss,
-    mqloss,
-    coverage,
-    calibration,
-    scaled_crps,
-]
-def test_evaluate():
+
+@pytest.fixture
+def setup_series():
+    series = generate_series(10, n_models=2, level=[80, 95])
+    series["unique_id"] = series["unique_id"].astype("int")
+    return series
+
+
+@pytest.fixture
+def setup_models():
+    return ["model0", "model1"]
+
+
+@pytest.fixture
+def setup_metrics():
+    return [
+        mae,
+        mse,
+        rmse,
+        mape,
+        smape,
+        partial(mase, seasonality=7),
+        quantile_loss,
+        mqloss,
+        coverage,
+        calibration,
+        scaled_crps,
+    ]
+
+
+def test_evaluate(setup_series, setup_models, setup_metrics):
     evaluation = evaluate(
-        series,
-        metrics=metrics,
-        models=models,
-        train_df=series,
+        setup_series,
+        metrics=setup_metrics,
+        models=setup_models,
+        train_df=setup_series,
         level=[80, 95],
     )
-    summary = evaluation.drop(columns="unique_id").groupby("metric").mean().reset_index()
+    summary = (
+        evaluation.drop(columns="unique_id").groupby("metric").mean().reset_index()
+    )
 
     series_pl = generate_series(10, n_models=2, level=[80, 95], engine="polars")
     pl_evaluation = evaluate(
         series_pl,
-        metrics=metrics,
+        metrics=setup_metrics,
         train_df=series_pl,
         level=[80, 95],
     ).drop("unique_id")
@@ -68,7 +85,11 @@ def test_evaluate():
     )
     pl.testing.assert_frame_equal(
         evaluate(
-            series_pl, metrics=metrics, train_df=series_pl, level=[80, 95], agg_fn="mean"
+            series_pl,
+            metrics=setup_metrics,
+            train_df=series_pl,
+            level=[80, 95],
+            agg_fn="mean",
         ).sort("metric"),
         pl_summary.sort("metric"),
     )
@@ -77,35 +98,24 @@ def test_evaluate():
 def daily_mase(y, y_hat, y_train):
     return ds_losses.mase(y, y_hat, y_train, seasonality=7)
 
-def test_datasets_evaluate():
+
+def test_datasets_evaluate(setup_series, setup_models, setup_metrics):
     level = [80, 95]
     for agg_fn in [None, "mean"]:
         uf_res = evaluate(
-            series,
-            metrics=metrics,
-            models=models,
-            train_df=series,
+            setup_series,
+            metrics=setup_metrics,
+            models=setup_models,
+            train_df=setup_series,
             level=level,
             agg_fn=agg_fn,
         )
         agg_by = None if agg_fn == "mean" else ["unique_id"]
         ds_res = ds_evaluate(
-            series,
-            metrics=[
-                ds_losses.mae,
-                ds_losses.mse,
-                ds_losses.rmse,
-                ds_losses.mape,
-                daily_mase,
-                ds_losses.smape,
-                ds_losses.quantile_loss,
-                ds_losses.mqloss,
-                ds_losses.coverage,
-                ds_losses.calibration,
-                ds_losses.scaled_crps,
-            ],
+            setup_series,
+            metrics=setup_metrics,
             level=level,
-            Y_df=series,
+            Y_df=setup_series,
             agg_by=agg_by,
         )
         ds_res["metric"] = ds_res["metric"].str.replace("-", "_")
@@ -113,7 +123,9 @@ def test_datasets_evaluate():
         ds_res["metric"] = ds_res["metric"].str.replace("lv_", "level")
         ds_res["metric"] = ds_res["metric"].str.replace("daily_mase", "mase")
         # utils doesn't multiply pct metrics by 100
-        ds_res.loc[ds_res["metric"].str.startswith("coverage"), ["model0", "model1"]] /= 100
+        ds_res.loc[
+            ds_res["metric"].str.startswith("coverage"), ["model0", "model1"]
+        ] /= 100
         ds_res.loc[ds_res["metric"].eq("mape"), ["model0", "model1"]] /= 100
         # we report smape between 0 and 1 instead of 0-200
         ds_res.loc[ds_res["metric"].eq("smape"), ["model0", "model1"]] /= 200
@@ -132,28 +144,31 @@ def test_datasets_evaluate():
         )
 
 
-def test_distributed_evaluate():
-    level=[80, 95]
+def test_distributed_evaluate(setup_series):
+    level = [80, 95]
     if sys.version_info >= (3, 9):
         spark = SparkSession.builder.getOrCreate()
         spark.sparkContext.setLogLevel("FATAL")
-        dask_df = dd.from_pandas(series, npartitions=2)
-        spark_df = spark.createDataFrame(series).repartition(2)
+        dask_df = dd.from_pandas(setup_series, npartitions=2)
+        spark_df = spark.createDataFrame(setup_series).repartition(2)
         for distributed_df, use_train in product([dask_df, spark_df], [True, False]):
             distr_metrics = [rmse, mae]
             if use_train:
                 distr_metrics.append(partial(mase, seasonality=7))
-                local_train = series
+                local_train = setup_series
                 distr_train = distributed_df
             else:
                 local_train = None
                 distr_train = None
             local_res = evaluate(
-                series, metrics=distr_metrics, level=level, train_df=local_train
+                setup_series, metrics=distr_metrics, level=level, train_df=local_train
             )
             distr_res = fa.as_fugue_df(
                 evaluate(
-                    distributed_df, metrics=distr_metrics, level=level, train_df=distr_train
+                    distributed_df,
+                    metrics=distr_metrics,
+                    level=level,
+                    train_df=distr_train,
                 )
             ).as_pandas()
             pd.testing.assert_frame_equal(
