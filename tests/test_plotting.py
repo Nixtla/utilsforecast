@@ -4,7 +4,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pytest
-from fastcore.test import test_fail
+from fastcore.test import test_fail as _test_fail
 
 from utilsforecast.compat import POLARS_INSTALLED
 from utilsforecast.data import generate_series
@@ -112,9 +112,9 @@ def test_plotting_combinations(
     )
 
     if level is None and plot_anomalies:
-        test_fail(fn, contains="specify the `level` argument")
+        _test_fail(fn, contains="specify the `level` argument")
     elif level is not None and plot_anomalies and not with_forecasts:
-        test_fail(fn, contains="provide a `forecasts_df` with prediction")
+        _test_fail(fn, contains="provide a `forecasts_df` with prediction")
     else:
         with warnings.catch_warnings():
             warnings.filterwarnings(

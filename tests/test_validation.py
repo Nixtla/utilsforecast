@@ -3,7 +3,7 @@ import datetime
 import pandas as pd
 import polars as pl
 import polars.testing
-from fastcore.test import test_fail
+from fastcore.test import test_fail as _test_fail
 
 from utilsforecast.compat import POLARS_INSTALLED
 from utilsforecast.validation import (
@@ -47,7 +47,7 @@ def test_ensure_time_dtype():
     )
     df = pd.DataFrame({'ds': [1, 2]})
     assert df is ensure_time_dtype(df)
-    test_fail(
+    _test_fail(
         lambda: ensure_time_dtype(pd.DataFrame({'ds': ['2000-14-14']})),
         contains='Please make sure that it contains valid timestamps',
     )
@@ -57,51 +57,51 @@ def test_ensure_time_dtype():
     )
     df = pl.DataFrame({'ds': [1, 2]})
     assert df is ensure_time_dtype(df)
-    test_fail(
+    _test_fail(
         lambda: ensure_time_dtype(pl.DataFrame({'ds': ['hello']})),
         contains='Please make sure that it contains valid timestamps',
     )
 
 
 def test_validate_format():
-    test_fail(lambda: validate_format(1), contains="got <class 'int'>")
+    _test_fail(lambda: validate_format(1), contains="got <class 'int'>")
     constructors = [pd.DataFrame]
     if POLARS_INSTALLED:
         constructors.append(pl.DataFrame)
     for constructor in constructors:
         df = constructor({'unique_id': [1]})
-        test_fail(lambda: validate_format(df), contains="missing: ['ds', 'y']")
+        _test_fail(lambda: validate_format(df), contains="missing: ['ds', 'y']")
         df = constructor({'unique_id': [1], 'time': ['x'], 'y': [1]})
-        test_fail(
+        _test_fail(
             lambda: validate_format(df, time_col='time'),
             contains="('time') should have either timestamps or integers",
         )
         for time in [1, datetime.datetime(2000, 1, 1)]:
             df = constructor({'unique_id': [1], 'ds': [time], 'sales': ['x']})
-            test_fail(
+            _test_fail(
                 lambda: validate_format(df, target_col='sales'),
                 contains="('sales') should have a numeric data type",
             )
 
 
 def test_validate_freq():
-    test_fail(
+    _test_fail(
         lambda: validate_freq(pd.Series([1, 2]), 'D'),
         contains='provide a valid integer',
     )
-    test_fail(
+    _test_fail(
         lambda: validate_freq(pd.to_datetime(['2000-01-01']).to_series(), 1),
         contains='provide a valid pandas or polars offset',
     )
-    test_fail(
+    _test_fail(
         lambda: validate_freq(pl.Series([1, 2]), '1d'),
         contains='provide a valid integer',
     )
-    test_fail(
+    _test_fail(
         lambda: validate_freq(pl.Series([datetime.datetime(2000, 1, 1)]), 1),
         contains='provide a valid pandas or polars offset',
     )
-    test_fail(
+    _test_fail(
         lambda: validate_freq(pl.Series([datetime.datetime(2000, 1, 1)]), 'D'),
         contains='valid polars offset',
     )
