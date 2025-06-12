@@ -362,6 +362,8 @@ def test_time_ranges_with_integers_pd():
     pd.testing.assert_series_equal(
         time_ranges(dates, freq=4, periods=3), pd.Series([1, 5, 9, 10, 14, 18])
     )
+
+
 # datetimes
 def test_time_ranges_daily_pl():
     dates = pl.Series([dt(2000, 1, 1), dt(2010, 10, 10)])
@@ -379,6 +381,7 @@ def test_time_ranges_daily_pl():
         ),
     )
 
+
 def test_time_ranges_every_2_days_pl():
     dates = pl.Series([dt(2000, 1, 1), dt(2010, 10, 10)])
     pl.testing.assert_series_equal(
@@ -394,6 +397,7 @@ def test_time_ranges_every_2_days_pl():
             ]
         ),
     )
+
 
 def test_time_ranges_every_4_days_pl():
     dates = pl.Series([dt(2000, 1, 1), dt(2010, 10, 10)])
@@ -411,6 +415,7 @@ def test_time_ranges_every_4_days_pl():
         ),
     )
 
+
 def test_time_ranges_month_offset_pl():
     pl.testing.assert_series_equal(
         time_ranges(pl.Series([dt(2010, 2, 28), dt(2000, 1, 31)]), "1mo", 3),
@@ -425,6 +430,8 @@ def test_time_ranges_month_offset_pl():
             ]
         ),
     )
+
+
 # dates
 def test_dates_with_different_months_pl():
     dates = pl.Series([datetime.date(2000, 1, 1), datetime.date(2010, 10, 10)])
@@ -439,7 +446,10 @@ def test_dates_with_different_months_pl():
             ]
         ),
     )
+
+
 # ints
+
 
 def test_time_ranges_with_integers_pl():
     dates = pl.Series([1, 10])
@@ -541,85 +551,109 @@ def test_cv_times(step_size, expected_ds, expected_cutoff):
     pd.testing.assert_frame_equal(actual, expected)
 
 
-np.testing.assert_equal(
-    is_in(pd.Series([1, 2, 3]), [1]), np.array([True, False, False])
+@pytest.mark.parametrize(
+    "values, lookup, expected", [([1, 2, 3], [1], [True, False, False])]
 )
-np.testing.assert_equal(
-    is_in(pl.Series([1, 2, 3]), [1]), np.array([True, False, False])
+def test_is_in(engine, values, lookup, expected):
+    series = pd.Series(values) if engine == "pandas" else pl.Series(values)
+    result = is_in(series, lookup)
+    np.testing.assert_equal(result, np.array(expected))
+
+
+@pytest.mark.parametrize(
+    "vals, lower, upper, expected",
+    [([1, 2, 3], [0, 1, 4], [4, 1, 2], [True, False, False])],
 )
-np.testing.assert_equal(
-    between(pd.Series([1, 2, 3]), pd.Series([0, 1, 4]), pd.Series([4, 1, 2])),
-    np.array([True, False, False]),
-)
-np.testing.assert_equal(
-    between(pl.Series([1, 2, 3]), pl.Series([0, 1, 4]), pl.Series([4, 1, 2])),
-    np.array([True, False, False]),
-)
-pd.testing.assert_frame_equal(
-    fill_null(pd.DataFrame({"x": [1, np.nan], "y": [np.nan, 2]}), {"x": 2, "y": 1}),
-    pd.DataFrame({"x": [1, 2], "y": [1, 2]}, dtype="float64"),
-)
-pl.testing.assert_frame_equal(
-    fill_null(pl.DataFrame({"x": [1, None], "y": [None, 2]}), {"x": 2, "y": 1}),
-    pl.DataFrame({"x": [1, 2], "y": [1, 2]}),
-)
-pd.testing.assert_series_equal(
-    cast(pd.Series([1, 2, 3]), "int16"), pd.Series([1, 2, 3], dtype="int16")
-)
-pd.testing.assert_series_equal(
-    cast(pl.Series("x", [1, 2, 3]), pl.Int16).to_pandas(),
-    pd.Series([1, 2, 3], name="x", dtype="int16"),
-)
-pd.testing.assert_frame_equal(
-    make_future_dataframe(
-        pd.Series([1, 2]), pd.to_datetime(["2000-01-01", "2010-10-10"]), freq="D", h=2
-    ),
-    pd.DataFrame(
-        {
-            "unique_id": [1, 1, 2, 2],
-            "ds": pd.to_datetime(
-                ["2000-01-02", "2000-01-03", "2010-10-11", "2010-10-12"]
-            ),
-        }
-    ),
-)
-pl.testing.assert_frame_equal(
-    make_future_dataframe(
-        pl.Series([1, 2]),
-        pl.Series([dt(2000, 1, 1), dt(2010, 10, 10)]),
-        freq="1d",
-        h=2,
-        id_col="uid",
-        time_col="dates",
-    ),
-    pl.DataFrame(
-        {
-            "uid": [1, 1, 2, 2],
-            "dates": [
-                dt(2000, 1, 2),
-                dt(2000, 1, 3),
-                dt(2010, 10, 11),
-                dt(2010, 10, 12),
-            ],
-        }
-    ),
-)
-pd.testing.assert_frame_equal(
-    anti_join(pd.DataFrame({"x": [1, 2]}), pd.DataFrame({"x": [1]}), on="x"),
-    pd.DataFrame({"x": [2]}),
-)
-_test_eq(
-    anti_join(pd.DataFrame({"x": [1]}), pd.DataFrame({"x": [1]}), on="x").shape[0],
-    0,
-)
-pl.testing.assert_frame_equal(
-    anti_join(pl_DataFrame({"x": [1, 2]}), pl_DataFrame({"x": [1]}), on="x"),
-    pl_DataFrame({"x": [2]}),
-)
-_test_eq(
-    anti_join(pl_DataFrame({"x": [1]}), pl_DataFrame({"x": [1]}), on="x").shape[0],
-    0,
-)
+def test_between(engine, vals, lower, upper, expected):
+    if engine == "pandas":
+        series = pd.Series(vals)
+        low = pd.Series(lower)
+        up = pd.Series(upper)
+    else:
+        series = pl.Series(vals)
+        low = pl.Series(lower)
+        up = pl.Series(upper)
+    result = between(series, low, up)
+    np.testing.assert_equal(result, np.array(expected))
+
+
+def test_fill_null(engine):
+    data = {"x": [1, np.nan], "y": [np.nan, 2]}
+    fill_values = {"x": 2, "y": 1}
+    if engine == "pandas":
+        df = pd.DataFrame(data)
+        result = fill_null(df, fill_values)
+        expected = pd.DataFrame({"x": [1, 2], "y": [1, 2]}, dtype="float64")
+        pd.testing.assert_frame_equal(result, expected)
+    else:
+        df = pl.DataFrame({"x": [1, None], "y": [None, 2]})
+        result = fill_null(df, fill_values)
+        expected = pl.DataFrame({"x": [1, 2], "y": [1, 2]})
+        pl.testing.assert_frame_equal(result, expected)
+
+
+def test_cast(engine):
+    if engine == "pandas":
+        series = pd.Series([1, 2, 3])
+        result = cast(series, "int16")
+        expected = pd.Series([1, 2, 3], dtype="int16")
+        pd.testing.assert_series_equal(result, expected)
+    else:
+        series = pl.Series("x", [1, 2, 3])
+        result = cast(series, pl.Int16).to_pandas()
+        expected = pd.Series([1, 2, 3], name="x", dtype="int16")
+        pd.testing.assert_series_equal(result, expected)
+
+
+def test_make_future_dataframe(engine):
+    if engine == "pandas":
+        ids = pd.Series([1, 2])
+        dates = pd.to_datetime(["2000-01-01", "2010-10-10"])
+        result = make_future_dataframe(ids, dates, freq="D", h=2)
+        expected = pd.DataFrame(
+            {
+                "unique_id": [1, 1, 2, 2],
+                "ds": pd.to_datetime(
+                    ["2000-01-02", "2000-01-03", "2010-10-11", "2010-10-12"]
+                ),
+            }
+        )
+        pd.testing.assert_frame_equal(result, expected)
+    else:
+        ids = pl.Series([1, 2])
+        dates = pl.Series([dt(2000, 1, 1), dt(2010, 10, 10)])
+        result = make_future_dataframe(
+            ids, dates, freq="1d", h=2, id_col="uid", time_col="dates"
+        )
+        expected = pl.DataFrame(
+            {
+                "uid": [1, 1, 2, 2],
+                "dates": [
+                    dt(2000, 1, 2),
+                    dt(2000, 1, 3),
+                    dt(2010, 10, 11),
+                    dt(2010, 10, 12),
+                ],
+            }
+        )
+        pl.testing.assert_frame_equal(result, expected)
+
+
+def test_anti_join(engine):
+    df1 = {"x": [1, 2]}
+    df2 = {"x": [1]}
+    if engine == "pandas":
+        result = anti_join(pd.DataFrame(df1), pd.DataFrame(df2), on="x")
+        expected = pd.DataFrame({"x": [2]})
+        pd.testing.assert_frame_equal(result, expected)
+        assert (anti_join(pd.DataFrame({"x": [1]}), pd.DataFrame({"x": [1]}), on="x").shape[0]== 0)
+    else:
+        result = anti_join(pl.DataFrame(df1), pl.DataFrame(df2), on="x")
+        expected = pl.DataFrame({"x": [2]})
+        pl.testing.assert_frame_equal(result, expected)
+        assert (anti_join(pl.DataFrame({"x": [1]}), pl.DataFrame({"x": [1]}), on="x").shape[0]== 0)
+
+
 horizon = 3
 test_size = 5
 for equal_ends in [True, False]:
