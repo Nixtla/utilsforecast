@@ -63,12 +63,16 @@ def test_assign_columns(engine):
 
     # Select and compare data
     if engine == "pandas":
-        np.testing.assert_allclose(series[["x", "y", "z"]].values, np.vstack([x, x, x]).T)
+        np.testing.assert_allclose(
+            series[["x", "y", "z"]].values, np.vstack([x, x, x]).T
+        )
         np.testing.assert_equal(series["ones"], np.ones(series.shape[0]))
         np.testing.assert_equal(series["as"], np.full(series.shape[0], "a"))
         np.testing.assert_equal(series["bs"], np.full(series.shape[0], "b"))
     else:  # polars
-        np.testing.assert_allclose(series.select(["x", "y", "z"]).to_numpy(), np.vstack([x, x, x]).T)
+        np.testing.assert_allclose(
+            series.select(["x", "y", "z"]).to_numpy(), np.vstack([x, x, x]).T
+        )
         np.testing.assert_equal(series["ones"].to_numpy(), np.ones(series.shape[0]))
         np.testing.assert_equal(series["as"].to_numpy(), np.full(series.shape[0], "a"))
         np.testing.assert_equal(series["bs"].to_numpy(), np.full(series.shape[0], "b"))
@@ -113,6 +117,7 @@ def test_is_nan_or_none():
             is_nan_or_none(pl.Series([np.nan, 1.0, None])).to_numpy(),
             np.array([True, False, True]),
         )
+
 
 def test_vertical_concat_pd():
     df1 = pd.DataFrame({"x": ["a", "b", "c"]}, dtype="category")
@@ -161,13 +166,15 @@ def test_sort_dataframe_pd():
         sort(pd.DataFrame({"x": [3, 1, 2]}), ["x"]), pd.DataFrame({"x": [1, 2, 3]})
     )
 
+
 def test_sort_series_and_index_pd():
     pd.testing.assert_series_equal(sort(pd.Series([3, 1, 2])), pd.Series([1, 2, 3]))
     pd.testing.assert_index_equal(sort(pd.Index([3, 1, 2])), pd.Index([1, 2, 3]))
     pl.testing.assert_frame_equal(
         sort(pl.DataFrame({"x": [3, 1, 2]}), "x"),
         pl.DataFrame({"x": [1, 2, 3]}),
-)
+    )
+
 
 def test_sort_dataframe_pl():
     pl.testing.assert_frame_equal(
@@ -178,13 +185,15 @@ def test_sort_dataframe_pl():
         sort(pl.Series("x", [3, 1, 2])), pl.Series("x", [1, 2, 3])
     )
 
+
 def test_sort_series_and_index_pl():
     pl.testing.assert_series_equal(sort(pl.Series([3, 1, 2])), pl.Series([1, 2, 3]))
     # pl.testing.assert_index_equal(sort(pl.Index([3, 1, 2])), pl.Index([1, 2, 3]))
     pl.testing.assert_frame_equal(
         sort(pl.DataFrame({"x": [3, 1, 2]}), "x"),
         pl.DataFrame({"x": [1, 2, 3]}),
-)
+    )
+
 
 def test_multiply_pl_freq_1d():
     assert _multiply_pl_freq("1d", 4) == "4d"
@@ -204,6 +213,7 @@ def test_multiply_freq_pl():
         pl_Series(["8m", "16m"]),
     )
 
+
 def test_offset_times_with_month_end():
     pd.testing.assert_index_equal(
         offset_times(
@@ -214,6 +224,7 @@ def test_offset_times_with_month_end():
         pd.Index(pd.to_datetime(["2020-02-29", "2020-03-31", "2020-04-30"])),
     )
 
+
 def test_offset_times_with_month_begin():
     pd.testing.assert_index_equal(
         offset_times(
@@ -223,6 +234,7 @@ def test_offset_times_with_month_begin():
         ),
         pd.Index(pd.to_datetime(["2020-02-01", "2020-03-01", "2020-04-01"])),
     )
+
 
 def test_offset_times_pl():
     pl.testing.assert_series_equal(
@@ -237,81 +249,107 @@ def test_offset_times_pl():
         ),
         pl_Series([dt(2020, 2, 29), dt(2020, 3, 31), dt(2020, 4, 30)]),
     )
+
+
 # datetimes
-dates = pd.to_datetime(["2000-01-01", "2010-10-10"])
-pd.testing.assert_series_equal(
-    time_ranges(dates, freq="D", periods=3),
-    pd.Series(
-        pd.to_datetime(
-            [
-                "2000-01-01",
-                "2000-01-02",
-                "2000-01-03",
-                "2010-10-10",
-                "2010-10-11",
-                "2010-10-12",
-            ]
-        )
-    ),
-)
-pd.testing.assert_series_equal(
-    time_ranges(dates, freq="2D", periods=3),
-    pd.Series(
-        pd.to_datetime(
-            [
-                "2000-01-01",
-                "2000-01-03",
-                "2000-01-05",
-                "2010-10-10",
-                "2010-10-12",
-                "2010-10-14",
-            ]
-        )
-    ),
-)
-pd.testing.assert_series_equal(
-    time_ranges(dates, freq="4D", periods=3),
-    pd.Series(
-        pd.to_datetime(
-            [
-                "2000-01-01",
-                "2000-01-05",
-                "2000-01-09",
-                "2010-10-10",
-                "2010-10-14",
-                "2010-10-18",
-            ]
-        )
-    ),
-)
-pd.testing.assert_series_equal(
-    time_ranges(
-        pd.to_datetime(["2000-01-01", "2010-10-01"]),
-        freq=2 * pd.offsets.MonthBegin(),
-        periods=2,
-    ),
-    pd.Series(pd.to_datetime(["2000-01-01", "2000-03-01", "2010-10-01", "2010-12-01"])),
-)
-pd.testing.assert_series_equal(
-    time_ranges(
-        pd.to_datetime(["2000-01-01", "2010-01-01"]).tz_localize("US/Eastern"),
-        freq=2 * pd.offsets.YearBegin(),
-        periods=2,
-    ),
-    pd.Series(
-        pd.to_datetime(
-            ["2000-01-01", "2002-01-01", "2010-01-01", "2012-01-01"]
-        ).tz_localize("US/Eastern")
-    ),
-)
-pd.testing.assert_series_equal(
-    time_ranges(
-        pd.to_datetime(["2000-12-31", "2010-12-31"]),
-        freq=2 * pd.offsets.YearEnd(),
-        periods=2,
-    ),
-    pd.Series(pd.to_datetime(["2000-12-31", "2002-12-31", "2010-12-31", "2012-12-31"])),
-)
+def test_time_ranges_daily():
+    dates = pd.to_datetime(["2000-01-01", "2010-10-10"])
+    pd.testing.assert_series_equal(
+        time_ranges(dates, freq="D", periods=3),
+        pd.Series(
+            pd.to_datetime(
+                [
+                    "2000-01-01",
+                    "2000-01-02",
+                    "2000-01-03",
+                    "2010-10-10",
+                    "2010-10-11",
+                    "2010-10-12",
+                ]
+            )
+        ),
+    )
+
+
+def test_time_ranges_every_2_days():
+    dates = pd.to_datetime(["2000-01-01", "2010-10-10"])
+    pd.testing.assert_series_equal(
+        time_ranges(dates, freq="2D", periods=3),
+        pd.Series(
+            pd.to_datetime(
+                [
+                    "2000-01-01",
+                    "2000-01-03",
+                    "2000-01-05",
+                    "2010-10-10",
+                    "2010-10-12",
+                    "2010-10-14",
+                ]
+            )
+        ),
+    )
+
+
+def test_time_ranges_every_4_days():
+    dates = pd.to_datetime(["2000-01-01", "2010-10-10"])
+    pd.testing.assert_series_equal(
+        time_ranges(dates, freq="4D", periods=3),
+        pd.Series(
+            pd.to_datetime(
+                [
+                    "2000-01-01",
+                    "2000-01-05",
+                    "2000-01-09",
+                    "2010-10-10",
+                    "2010-10-14",
+                    "2010-10-18",
+                ]
+            )
+        ),
+    )
+
+
+def test_time_ranges_with_month_begin_offset():
+    pd.testing.assert_series_equal(
+        time_ranges(
+            pd.to_datetime(["2000-01-01", "2010-10-01"]),
+            freq=2 * pd.offsets.MonthBegin(),
+            periods=2,
+        ),
+        pd.Series(
+            pd.to_datetime(["2000-01-01", "2000-03-01", "2010-10-01", "2010-12-01"])
+        ),
+    )
+
+
+def test_time_ranges_with_year_begin_offset_and_timezone():
+    pd.testing.assert_series_equal(
+        time_ranges(
+            pd.to_datetime(["2000-01-01", "2010-01-01"]).tz_localize("US/Eastern"),
+            freq=2 * pd.offsets.YearBegin(),
+            periods=2,
+        ),
+        pd.Series(
+            pd.to_datetime(
+                ["2000-01-01", "2002-01-01", "2010-01-01", "2012-01-01"]
+            ).tz_localize("US/Eastern")
+        ),
+    )
+
+
+def test_time_ranges_with_year_end_offset():
+    pd.testing.assert_series_equal(
+        time_ranges(
+            pd.to_datetime(["2000-12-31", "2010-12-31"]),
+            freq=2 * pd.offsets.YearEnd(),
+            periods=2,
+        ),
+        pd.Series(
+            pd.to_datetime(["2000-12-31", "2002-12-31", "2010-12-31", "2012-12-31"])
+        ),
+    )
+
+
 # ints
 dates = pd.Series([1, 10])
 pd.testing.assert_series_equal(
