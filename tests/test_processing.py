@@ -252,7 +252,7 @@ def test_offset_times_pl():
 
 
 # datetimes
-def test_time_ranges_daily():
+def test_time_ranges_daily_pd():
     dates = pd.to_datetime(["2000-01-01", "2010-10-10"])
     pd.testing.assert_series_equal(
         time_ranges(dates, freq="D", periods=3),
@@ -271,7 +271,7 @@ def test_time_ranges_daily():
     )
 
 
-def test_time_ranges_every_2_days():
+def test_time_ranges_every_2_days_pd():
     dates = pd.to_datetime(["2000-01-01", "2010-10-10"])
     pd.testing.assert_series_equal(
         time_ranges(dates, freq="2D", periods=3),
@@ -290,7 +290,7 @@ def test_time_ranges_every_2_days():
     )
 
 
-def test_time_ranges_every_4_days():
+def test_time_ranges_every_4_days_pd():
     dates = pd.to_datetime(["2000-01-01", "2010-10-10"])
     pd.testing.assert_series_equal(
         time_ranges(dates, freq="4D", periods=3),
@@ -309,7 +309,7 @@ def test_time_ranges_every_4_days():
     )
 
 
-def test_time_ranges_with_month_begin_offset():
+def test_time_ranges_with_month_begin_offset_pd():
     pd.testing.assert_series_equal(
         time_ranges(
             pd.to_datetime(["2000-01-01", "2010-10-01"]),
@@ -322,7 +322,7 @@ def test_time_ranges_with_month_begin_offset():
     )
 
 
-def test_time_ranges_with_year_begin_offset_and_timezone():
+def test_time_ranges_with_year_begin_offset_and_timezone_pd():
     pd.testing.assert_series_equal(
         time_ranges(
             pd.to_datetime(["2000-01-01", "2010-01-01"]).tz_localize("US/Eastern"),
@@ -337,7 +337,7 @@ def test_time_ranges_with_year_begin_offset_and_timezone():
     )
 
 
-def test_time_ranges_with_year_end_offset():
+def test_time_ranges_with_year_end_offset_pd():
     pd.testing.assert_series_equal(
         time_ranges(
             pd.to_datetime(["2000-12-31", "2010-12-31"]),
@@ -351,97 +351,111 @@ def test_time_ranges_with_year_end_offset():
 
 
 # ints
-dates = pd.Series([1, 10])
-pd.testing.assert_series_equal(
-    time_ranges(dates, freq=1, periods=3), pd.Series([1, 2, 3, 10, 11, 12])
-)
-pd.testing.assert_series_equal(
-    time_ranges(dates, freq=2, periods=3), pd.Series([1, 3, 5, 10, 12, 14])
-)
-pd.testing.assert_series_equal(
-    time_ranges(dates, freq=4, periods=3), pd.Series([1, 5, 9, 10, 14, 18])
-)
+def test_time_ranges_with_integers_pd():
+    dates = pd.Series([1, 10])
+    pd.testing.assert_series_equal(
+        time_ranges(dates, freq=1, periods=3), pd.Series([1, 2, 3, 10, 11, 12])
+    )
+    pd.testing.assert_series_equal(
+        time_ranges(dates, freq=2, periods=3), pd.Series([1, 3, 5, 10, 12, 14])
+    )
+    pd.testing.assert_series_equal(
+        time_ranges(dates, freq=4, periods=3), pd.Series([1, 5, 9, 10, 14, 18])
+    )
 # datetimes
-dates = pl.Series([dt(2000, 1, 1), dt(2010, 10, 10)])
-pl.testing.assert_series_equal(
-    time_ranges(dates, freq="1d", periods=3),
-    pl.Series(
-        [
-            dt(2000, 1, 1),
-            dt(2000, 1, 2),
-            dt(2000, 1, 3),
-            dt(2010, 10, 10),
-            dt(2010, 10, 11),
-            dt(2010, 10, 12),
-        ]
-    ),
-)
-pl.testing.assert_series_equal(
-    time_ranges(dates, freq="2d", periods=3),
-    pl.Series(
-        [
-            dt(2000, 1, 1),
-            dt(2000, 1, 3),
-            dt(2000, 1, 5),
-            dt(2010, 10, 10),
-            dt(2010, 10, 12),
-            dt(2010, 10, 14),
-        ]
-    ),
-)
-pl.testing.assert_series_equal(
-    time_ranges(dates, freq="4d", periods=3),
-    pl.Series(
-        [
-            dt(2000, 1, 1),
-            dt(2000, 1, 5),
-            dt(2000, 1, 9),
-            dt(2010, 10, 10),
-            dt(2010, 10, 14),
-            dt(2010, 10, 18),
-        ]
-    ),
-)
-pl.testing.assert_series_equal(
-    time_ranges(pl.Series([dt(2010, 2, 28), dt(2000, 1, 31)]), "1mo", 3),
-    pl.Series(
-        [
-            dt(2010, 2, 28),
-            dt(2010, 3, 31),
-            dt(2010, 4, 30),
-            dt(2000, 1, 31),
-            dt(2000, 2, 29),
-            dt(2000, 3, 31),
-        ]
-    ),
-)
+def test_time_ranges_daily_pl():
+    dates = pl.Series([dt(2000, 1, 1), dt(2010, 10, 10)])
+    pl.testing.assert_series_equal(
+        time_ranges(dates, freq="1d", periods=3),
+        pl.Series(
+            [
+                dt(2000, 1, 1),
+                dt(2000, 1, 2),
+                dt(2000, 1, 3),
+                dt(2010, 10, 10),
+                dt(2010, 10, 11),
+                dt(2010, 10, 12),
+            ]
+        ),
+    )
+
+def test_time_ranges_every_2_days_pl():
+    dates = pl.Series([dt(2000, 1, 1), dt(2010, 10, 10)])
+    pl.testing.assert_series_equal(
+        time_ranges(dates, freq="2d", periods=3),
+        pl.Series(
+            [
+                dt(2000, 1, 1),
+                dt(2000, 1, 3),
+                dt(2000, 1, 5),
+                dt(2010, 10, 10),
+                dt(2010, 10, 12),
+                dt(2010, 10, 14),
+            ]
+        ),
+    )
+
+def test_time_ranges_every_4_days_pl():
+    dates = pl.Series([dt(2000, 1, 1), dt(2010, 10, 10)])
+    pl.testing.assert_series_equal(
+        time_ranges(dates, freq="4d", periods=3),
+        pl.Series(
+            [
+                dt(2000, 1, 1),
+                dt(2000, 1, 5),
+                dt(2000, 1, 9),
+                dt(2010, 10, 10),
+                dt(2010, 10, 14),
+                dt(2010, 10, 18),
+            ]
+        ),
+    )
+
+def test_time_ranges_month_offset_pl():
+    pl.testing.assert_series_equal(
+        time_ranges(pl.Series([dt(2010, 2, 28), dt(2000, 1, 31)]), "1mo", 3),
+        pl.Series(
+            [
+                dt(2010, 2, 28),
+                dt(2010, 3, 31),
+                dt(2010, 4, 30),
+                dt(2000, 1, 31),
+                dt(2000, 2, 29),
+                dt(2000, 3, 31),
+            ]
+        ),
+    )
 # dates
-dates = pl.Series([datetime.date(2000, 1, 1), datetime.date(2010, 10, 10)])
-pl.testing.assert_series_equal(
-    time_ranges(dates, freq="1d", periods=2),
-    pl.Series(
-        [
-            datetime.date(2000, 1, 1),
-            datetime.date(2000, 1, 2),
-            datetime.date(2010, 10, 10),
-            datetime.date(2010, 10, 11),
-        ]
-    ),
-)
+def test_dates_with_different_months_pl():
+    dates = pl.Series([datetime.date(2000, 1, 1), datetime.date(2010, 10, 10)])
+    pl.testing.assert_series_equal(
+        time_ranges(dates, freq="1d", periods=2),
+        pl.Series(
+            [
+                datetime.date(2000, 1, 1),
+                datetime.date(2000, 1, 2),
+                datetime.date(2010, 10, 10),
+                datetime.date(2010, 10, 11),
+            ]
+        ),
+    )
 # ints
-dates = pl.Series([1, 10])
-pl.testing.assert_series_equal(
-    time_ranges(dates, freq=1, periods=3),
-    pl.Series([1, 2, 3, 10, 11, 12]),
-)
-pl.testing.assert_series_equal(
-    time_ranges(dates, freq=2, periods=3),
-    pl.Series([1, 3, 5, 10, 12, 14]),
-)
-pl.testing.assert_series_equal(
-    time_ranges(dates, freq=4, periods=3),
-    pl.Series([1, 5, 9, 10, 14, 18]),
-)
+
+def test_time_ranges_with_integers_pl():
+    dates = pl.Series([1, 10])
+    pl.testing.assert_series_equal(
+        time_ranges(dates, freq=1, periods=3),
+        pl.Series([1, 2, 3, 10, 11, 12]),
+    )
+    pl.testing.assert_series_equal(
+        time_ranges(dates, freq=2, periods=3),
+        pl.Series([1, 3, 5, 10, 12, 14]),
+    )
+    pl.testing.assert_series_equal(
+        time_ranges(dates, freq=4, periods=3),
+        pl.Series([1, 5, 9, 10, 14, 18]),
+    )
+
 pd.testing.assert_index_equal(
     repeat(pd.CategoricalIndex(["a", "b", "c"], categories=["a", "b", "c"]), 2),
     pd.CategoricalIndex(["a", "a", "b", "b", "c", "c"], categories=["a", "b", "c"]),
