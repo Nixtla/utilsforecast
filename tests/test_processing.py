@@ -709,9 +709,26 @@ def test_none_target():
         to_numpy(series_pd.drop(columns=["unique_id", "ds"])),
     )
 
+def test_n_static_features(static_features):
+    for n_static_features in [0, 2]:
+        series_pl = generate_series(
+            1_000, n_static_features=n_static_features, equal_ends=False, engine="polars"
+        )
+        scrambled_series_pl = series_pl.sample(fraction=1.0, shuffle=True)
+        dfp = DataFrameProcessor("unique_id", "ds", "y")
+        uids, times, data, indptr, _ = dfp.process(scrambled_series_pl)
+        grouped = group_by(series_pl, "unique_id")
+        _test_eq(times, grouped.agg(pl.col("ds").max()).sort("unique_id")["ds"].to_numpy())
+        _test_eq(uids, series_pl["unique_id"].unique().sort())
+        _test_eq(
+            data,
+            series_pl.select(
+                pl.col(c).map_batches(lambda s: s.to_physical())
+                for c in ["y"] + static_features[:n_static_features]
+            ).to_numpy(),
+        )
+        _test_eq(np.diff(indptr), grouped.count().sort("unique_id")["count"].to_numpy())
 
-
-def test_backtest_splits(df, n_windows, h, step_size, input_size):
     max_dates = df.groupby("unique_id", observed=True)["ds"].max()
     day_offset = pd.offsets.Day()
     common_kwargs = dict(
