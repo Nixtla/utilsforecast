@@ -729,6 +729,54 @@ def test_n_static_features(static_features):
         )
         _test_eq(np.diff(indptr), grouped.count().sort("unique_id")["count"].to_numpy())
 
+def test_short_stories():
+    short_series = generate_series(100, max_length=50)
+    backtest_results = list(
+        backtest_splits(
+            short_series,
+            n_windows=1,
+            h=49,
+            id_col="unique_id",
+            time_col="ds",
+            freq=pd.offsets.Day(),
+        )
+    )[0]
+    _test_fail(
+        lambda: list(
+            backtest_splits(
+                short_series,
+                n_windows=1,
+                h=50,
+                id_col="unique_id",
+                time_col="ds",
+                freq=pd.offsets.Day(),
+            )
+        ),
+        contains="at least 51 samples are required",
+    )
+    some_short_series = generate_series(100, min_length=20, max_length=100)
+    with warnings.catch_warnings(record=True) as issued_warnings:
+        warnings.simplefilter("always", UserWarning)
+        splits = list(
+            backtest_splits(
+                some_short_series,
+                n_windows=1,
+                h=50,
+                id_col="unique_id",
+                time_col="ds",
+                freq=pd.offsets.Day(),
+            )
+        )
+        assert any("will be dropped" in str(w.message) for w in issued_warnings)
+    short_series_int = short_series.copy()
+    short_series_int["ds"] = short_series.groupby("unique_id", observed=True).transform(
+        "cumcount"
+    )
+    backtest_int_results = list(
+        backtest_splits(
+            short_series_int, n_windows=1, h=40, id_col="unique_id", time_col="ds", freq=1
+        )
+    )[0]
     max_dates = df.groupby("unique_id", observed=True)["ds"].max()
     day_offset = pd.offsets.Day()
     common_kwargs = dict(
