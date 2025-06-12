@@ -1,5 +1,6 @@
 import warnings
 from datetime import date, datetime
+from itertools import product
 
 import numpy as np
 import pandas as pd
@@ -70,8 +71,10 @@ polars_ms = fill_gaps(
     end=datetime(2024, 1, 1),
 )
 
+
 def test_fill_gaps_polars():
     assert polars_ms.schema["ds"].time_unit == "ms"
+
 
 df = pl.DataFrame(
     {
@@ -107,9 +110,6 @@ fill_gaps(
     start=2019,
     end=2024,
 )
-from itertools import product
-
-from fastcore.test import test_warns
 
 
 def check_fill(dates, freq, start, end, include_start, include_end):
