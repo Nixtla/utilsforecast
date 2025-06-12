@@ -777,6 +777,9 @@ def test_short_stories():
             short_series_int, n_windows=1, h=40, id_col="unique_id", time_col="ds", freq=1
         )
     )[0]
+
+
+def _test_backtest_splits(df, n_windows, h, step_size, input_size):
     max_dates = df.groupby("unique_id", observed=True)["ds"].max()
     day_offset = pd.offsets.Day()
     common_kwargs = dict(
