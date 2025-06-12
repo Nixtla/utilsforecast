@@ -10,6 +10,7 @@ from polars import DataFrame as pl_DataFrame
 from polars import Series as pl_Series
 
 from utilsforecast.compat import POLARS_INSTALLED
+from utilsforecast.data import generate_series
 from utilsforecast.processing import (
     DataFrameProcessor,
     _multiply_pl_freq,
@@ -41,16 +42,15 @@ from utilsforecast.processing import (
 
 if POLARS_INSTALLED:
     import polars as pl
+    import polars.testing
 
 
-import polars.testing
+@pytest.fixture(params=["pandas"] + (["polars"] if POLARS_INSTALLED else []))
+def engine(request):
+    return request.param
 
-from utilsforecast.data import generate_series
 
-engines = ["pandas"]
-if POLARS_INSTALLED:
-    engines.append("polars")
-for engine in engines:
+def test_assign_columns(engine):
     series = generate_series(2, engine=engine)
     x = np.random.rand(series.shape[0])
     series = assign_columns(series, "x", x)
@@ -59,11 +59,21 @@ for engine in engines:
     series = assign_columns(series, "zeros", np.zeros(series.shape[0]))
     series = assign_columns(series, "as", "a")
     series = assign_columns(series, "bs", series.shape[0] * ["b"])
-    np.testing.assert_allclose(series[["x", "y", "z"]], np.vstack([x, x, x]).T)
-    np.testing.assert_equal(series["ones"], np.ones(series.shape[0]))
-    np.testing.assert_equal(series["as"], np.full(series.shape[0], "a"))
-    np.testing.assert_equal(series["bs"], np.full(series.shape[0], "b"))
-for engine in engines:
+
+    # Select and compare data
+    if engine == "pandas":
+        np.testing.assert_allclose(series[["x", "y", "z"]].values, np.vstack([x, x, x]).T)
+        np.testing.assert_equal(series["ones"].values, np.ones(series.shape[0]))
+        np.testing.assert_equal(series["as"].values, np.full(series.shape[0], "a"))
+        np.testing.assert_equal(series["bs"].values, np.full(series.shape[0], "b"))
+    else:  # polars
+        np.testing.assert_allclose(series.select(["x", "y", "z"]).to_numpy(), np.vstack([x, x, x]).T)
+        np.testing.assert_equal(series["ones"].to_numpy(), np.ones(series.shape[0]))
+        np.testing.assert_equal(series["as"].to_numpy(), np.full(series.shape[0], "a"))
+        np.testing.assert_equal(series["bs"].to_numpy(), np.full(series.shape[0], "b"))
+
+
+def test_take_rows(engine):
     series = generate_series(2, engine=engine)
     subset = take_rows(series, np.array([0, 2]))
     assert subset.shape[0] == 2
@@ -103,12 +113,9 @@ def test_is_nan_or_none():
             np.array([True, False, True]),
         )
 
-
-df1 = pd.DataFrame({"x": ["a", "b", "c"]}, dtype="category")
-df2 = pd.DataFrame({"x": ["f", "b", "a"]}, dtype="category")
-
-
-def test_vertical_concat():
+def test_vertical_concat_pd():
+    df1 = pd.DataFrame({"x": ["a", "b", "c"]}, dtype="category")
+    df2 = pd.DataFrame({"x": ["f", "b", "a"]}, dtype="category")
     pd.testing.assert_series_equal(
         vertical_concat([df1, df2])["x"],
         pd.Series(
@@ -119,12 +126,14 @@ def test_vertical_concat():
     )
 
 
-df1 = pl.DataFrame({"x": ["a", "b", "c"]}, schema={"x": pl.Categorical})
-df2 = pl.DataFrame({"x": ["f", "b", "a"]}, schema={"x": pl.Categorical})
-out = vertical_concat([df1, df2])["x"]
-assert out.equals(pl.Series("x", ["a", "b", "c", "f", "b", "a"]))
-assert out.to_physical().equals(pl.Series("x", [0, 1, 2, 3, 1, 0]))
-assert out.cat.get_categories().equals(pl.Series("x", ["a", "b", "c", "f"]))
+def test_vertical_concat_pl():
+    df1 = pl.DataFrame({"x": ["a", "b", "c"]}, schema={"x": pl.Categorical})
+    df2 = pl.DataFrame({"x": ["f", "b", "a"]}, schema={"x": pl.Categorical})
+    out = vertical_concat([df1, df2])["x"]
+    assert out.equals(pl.Series("x", ["a", "b", "c", "f", "b", "a"]))
+    assert out.to_physical().equals(pl.Series("x", [0, 1, 2, 3, 1, 0]))
+    assert out.cat.get_categories().equals(pl.Series("x", ["a", "b", "c", "f"]))
+
 for engine in engines:
     series = generate_series(2, engine=engine)
     doubled = vertical_concat([series, series])
