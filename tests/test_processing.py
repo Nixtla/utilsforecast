@@ -833,51 +833,46 @@ def _test_backtest_splits(df, n_windows, h, step_size, input_size):
     )
 
 
-n_series = 20
-min_length = 100
-max_length = 1000
-series = generate_series(
-    n_series, freq="D", min_length=min_length, max_length=max_length
-)
+@pytest.mark.parametrize("step_size,input_size", [(None, None), (1, None), (2, None), (1, 4), (2, 4)])
+def test_backtest_splits_pd(step_size, input_size):
+    n_series = 20
+    min_length = 100
+    max_length = 1000
+    series = generate_series(n_series, freq="D", min_length=min_length, max_length=max_length)
+    _test_backtest_splits(series, n_windows=3, h=14, step_size=step_size, input_size=input_size)
 
-for step_size in (None, 1, 2):
-    for input_size in (None, 4):
-        test_backtest_splits(
-            series, n_windows=3, h=14, step_size=step_size, input_size=input_size
-        )
-h = 10
-series_pl = generate_series(
-    n_series, freq="D", min_length=min_length, max_length=max_length, engine="polars"
-)
-splits = backtest_splits(
-    series_pl, n_windows=3, h=h, id_col="unique_id", time_col="ds", freq="1d"
-)
-for cutoffs, train, valid in splits:
-    train_ends = train.group_by("unique_id", maintain_order=True).agg(
-        pl.col("ds").max()
+
+def test_backtest_splits_polars_alignment():
+    h = 10
+    n_series = 20
+    series_pl = generate_series(n_series, freq="D", min_length=100, max_length=1000, engine="polars")
+    splits = backtest_splits(series_pl, n_windows=3, h=h, id_col="unique_id", time_col="ds", freq="1d")
+
+    for cutoffs, train, valid in splits:
+        train_ends = train.group_by("unique_id", maintain_order=True).agg(pl.col("ds").max())
+        valid_starts = valid.group_by("unique_id", maintain_order=True).agg(pl.col("ds").min())
+        valid_ends = valid.group_by("unique_id", maintain_order=True).agg(pl.col("ds").max())
+
+        expected_valid_starts = offset_times(train_ends["ds"], "1d", 1)
+        expected_valid_ends = offset_times(train_ends["ds"], "1d", h)
+
+        pl.testing.assert_series_equal(valid_starts["ds"], expected_valid_starts)
+        pl.testing.assert_series_equal(valid_ends["ds"], expected_valid_ends)
+
+
+def test_add_insample_levels_agreement():
+    series = generate_series(100, n_models=2)
+    models = ["model0", "model1"]
+    levels = [80, 95]
+    with_levels = add_insample_levels(series, models, levels)
+
+    for model in models:
+        for lvl in levels:
+            assert (with_levels[f"{model}-lo-{lvl}"].lt(with_levels[f"{model}-hi-{lvl}"])).all()
+
+    series_pl = generate_series(100, n_models=2, engine="polars")
+    with_levels_pl = add_insample_levels(series_pl, models, levels)
+    pd.testing.assert_frame_equal(
+        with_levels.drop(columns="unique_id"),
+        with_levels_pl.to_pandas().drop(columns="unique_id"),
     )
-    valid_starts = valid.group_by("unique_id", maintain_order=True).agg(
-        pl.col("ds").min()
-    )
-    valid_ends = valid.group_by("unique_id", maintain_order=True).agg(
-        pl.col("ds").max()
-    )
-    expected_valid_starts = offset_times(train_ends["ds"], "1d", 1)
-    expected_valid_ends = offset_times(train_ends["ds"], "1d", h)
-    pl.testing.assert_series_equal(valid_starts["ds"], expected_valid_starts)
-    pl.testing.assert_series_equal(valid_ends["ds"], expected_valid_ends)
-series = generate_series(100, n_models=2)
-models = ["model0", "model1"]
-levels = [80, 95]
-with_levels = add_insample_levels(series, models, levels)
-for model in models:
-    for lvl in levels:
-        assert (
-            with_levels[f"{model}-lo-{lvl}"].lt(with_levels[f"{model}-hi-{lvl}"]).all()
-        )
-series_pl = generate_series(100, n_models=2, engine="polars")
-with_levels_pl = add_insample_levels(series_pl, ["model0", "model1"], [80, 95])
-pd.testing.assert_frame_equal(
-    with_levels.drop(columns="unique_id"),
-    with_levels_pl.to_pandas().drop(columns="unique_id"),
-)
