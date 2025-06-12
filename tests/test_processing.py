@@ -194,42 +194,49 @@ def test_multiply_pl_freq_2d():
     assert _multiply_pl_freq("2d", 4) == "8d"
 
 
-pl.testing.assert_series_equal(
-    _multiply_pl_freq("1d", pl_Series([1, 2])),
-    pl_Series(["1d", "2d"]),
-)
-pl.testing.assert_series_equal(
-    _multiply_pl_freq("4m", pl_Series([2, 4])),
-    pl_Series(["8m", "16m"]),
-)
-pd.testing.assert_index_equal(
-    offset_times(
-        pd.to_datetime(["2020-01-31", "2020-02-29", "2020-03-31"]),
-        pd.offsets.MonthEnd(),
-        1,
-    ),
-    pd.Index(pd.to_datetime(["2020-02-29", "2020-03-31", "2020-04-30"])),
-)
-pd.testing.assert_index_equal(
-    offset_times(
-        pd.to_datetime(["2020-01-01", "2020-02-01", "2020-03-01"]),
-        pd.offsets.MonthBegin(),
-        1,
-    ),
-    pd.Index(pd.to_datetime(["2020-02-01", "2020-03-01", "2020-04-01"])),
-)
-pl.testing.assert_series_equal(
-    offset_times(
-        pl_Series([dt(2020, 1, 31), dt(2020, 2, 28), dt(2020, 3, 31)]), "1mo", 1
-    ),
-    pl_Series([dt(2020, 2, 29), dt(2020, 3, 28), dt(2020, 4, 30)]),
-)
-pl.testing.assert_series_equal(
-    offset_times(
-        pl_Series([dt(2020, 1, 31), dt(2020, 2, 29), dt(2020, 3, 31)]), "1mo", 1
-    ),
-    pl_Series([dt(2020, 2, 29), dt(2020, 3, 31), dt(2020, 4, 30)]),
-)
+def test_multiply_freq_pl():
+    pl.testing.assert_series_equal(
+        _multiply_pl_freq("1d", pl_Series([1, 2])),
+        pl_Series(["1d", "2d"]),
+    )
+    pl.testing.assert_series_equal(
+        _multiply_pl_freq("4m", pl_Series([2, 4])),
+        pl_Series(["8m", "16m"]),
+    )
+
+def test_offset_times_with_month_end():
+    pd.testing.assert_index_equal(
+        offset_times(
+            pd.to_datetime(["2020-01-31", "2020-02-29", "2020-03-31"]),
+            pd.offsets.MonthEnd(),
+            1,
+        ),
+        pd.Index(pd.to_datetime(["2020-02-29", "2020-03-31", "2020-04-30"])),
+    )
+
+def test_offset_times_with_month_begin():
+    pd.testing.assert_index_equal(
+        offset_times(
+            pd.to_datetime(["2020-01-01", "2020-02-01", "2020-03-01"]),
+            pd.offsets.MonthBegin(),
+            1,
+        ),
+        pd.Index(pd.to_datetime(["2020-02-01", "2020-03-01", "2020-04-01"])),
+    )
+
+def test_offset_times_pl():
+    pl.testing.assert_series_equal(
+        offset_times(
+            pl_Series([dt(2020, 1, 31), dt(2020, 2, 28), dt(2020, 3, 31)]), "1mo", 1
+        ),
+        pl_Series([dt(2020, 2, 29), dt(2020, 3, 28), dt(2020, 4, 30)]),
+    )
+    pl.testing.assert_series_equal(
+        offset_times(
+            pl_Series([dt(2020, 1, 31), dt(2020, 2, 29), dt(2020, 3, 31)]), "1mo", 1
+        ),
+        pl_Series([dt(2020, 2, 29), dt(2020, 3, 31), dt(2020, 4, 30)]),
+    )
 # datetimes
 dates = pd.to_datetime(["2000-01-01", "2010-10-10"])
 pd.testing.assert_series_equal(
