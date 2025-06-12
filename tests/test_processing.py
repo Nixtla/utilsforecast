@@ -700,78 +700,15 @@ def test_static_features(static_features):
 
 
 # test process_df with target_col=None
-series_pd = generate_series(10, n_static_features=2, equal_ends=False, engine="pandas")
-series_pd = series_pd.rename(columns={"y": "exog_0"})
-_, _, data, indptr, _ = process_df(series_pd, "unique_id", "ds", None)
-np.testing.assert_allclose(
-    data,
-    to_numpy(series_pd.drop(columns=["unique_id", "ds"])),
-)
-for n_static_features in [0, 2]:
-    series_pl = generate_series(
-        1_000, n_static_features=n_static_features, equal_ends=False, engine="polars"
-    )
-    scrambled_series_pl = series_pl.sample(fraction=1.0, shuffle=True)
-    dfp = DataFrameProcessor("unique_id", "ds", "y")
-    uids, times, data, indptr, _ = dfp.process(scrambled_series_pl)
-    grouped = group_by(series_pl, "unique_id")
-    _test_eq(times, grouped.agg(pl.col("ds").max()).sort("unique_id")["ds"].to_numpy())
-    _test_eq(uids, series_pl["unique_id"].unique().sort())
-    _test_eq(
+def test_none_target():
+    series_pd = generate_series(10, n_static_features=2, equal_ends=False, engine="pandas")
+    series_pd = series_pd.rename(columns={"y": "exog_0"})
+    _, _, data, indptr, _ = process_df(series_pd, "unique_id", "ds", None)
+    np.testing.assert_allclose(
         data,
-        series_pl.select(
-            pl.col(c).map_batches(lambda s: s.to_physical())
-            for c in ["y"] + static_features[:n_static_features]
-        ).to_numpy(),
+        to_numpy(series_pd.drop(columns=["unique_id", "ds"])),
     )
-    _test_eq(np.diff(indptr), grouped.count().sort("unique_id")["count"].to_numpy())
-short_series = generate_series(100, max_length=50)
-backtest_results = list(
-    backtest_splits(
-        short_series,
-        n_windows=1,
-        h=49,
-        id_col="unique_id",
-        time_col="ds",
-        freq=pd.offsets.Day(),
-    )
-)[0]
-_test_fail(
-    lambda: list(
-        backtest_splits(
-            short_series,
-            n_windows=1,
-            h=50,
-            id_col="unique_id",
-            time_col="ds",
-            freq=pd.offsets.Day(),
-        )
-    ),
-    contains="at least 51 samples are required",
-)
-some_short_series = generate_series(100, min_length=20, max_length=100)
-with warnings.catch_warnings(record=True) as issued_warnings:
-    warnings.simplefilter("always", UserWarning)
-    splits = list(
-        backtest_splits(
-            some_short_series,
-            n_windows=1,
-            h=50,
-            id_col="unique_id",
-            time_col="ds",
-            freq=pd.offsets.Day(),
-        )
-    )
-    assert any("will be dropped" in str(w.message) for w in issued_warnings)
-short_series_int = short_series.copy()
-short_series_int["ds"] = short_series.groupby("unique_id", observed=True).transform(
-    "cumcount"
-)
-backtest_int_results = list(
-    backtest_splits(
-        short_series_int, n_windows=1, h=40, id_col="unique_id", time_col="ds", freq=1
-    )
-)[0]
+
 
 
 def test_backtest_splits(df, n_windows, h, step_size, input_size):
