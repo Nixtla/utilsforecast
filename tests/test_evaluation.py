@@ -113,7 +113,19 @@ def test_datasets_evaluate(setup_series, setup_models, setup_metrics):
         agg_by = None if agg_fn == "mean" else ["unique_id"]
         ds_res = ds_evaluate(
             setup_series,
-            metrics=setup_metrics,
+            metrics=[
+                ds_losses.mae,
+                ds_losses.mse,
+                ds_losses.rmse,
+                ds_losses.mape,
+                daily_mase,
+                ds_losses.smape,
+                ds_losses.quantile_loss,
+                ds_losses.mqloss,
+                ds_losses.coverage,
+                ds_losses.calibration,
+                ds_losses.scaled_crps,
+            ],
             level=level,
             Y_df=setup_series,
             agg_by=agg_by,
