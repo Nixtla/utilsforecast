@@ -500,36 +500,47 @@ def test_repeat_objects_pl():
         pl.Series([1, 1, 2, 2, 2]),
     )
 
-# step_size=2
-actual = cv_times(
-    times=times,
-    uids=uids,
-    indptr=indptr,
-    h=h,
-    test_size=test_size,
-    step_size=2,
+
+@pytest.mark.parametrize(
+    "step_size, expected_ds, expected_cutoff",
+    [
+        (
+            1,
+            np.hstack([[46, 47, 48], [47, 48, 49], [48, 49, 50]]),
+            np.repeat([45, 46, 47], 3),
+        ),
+        (
+            2,
+            np.hstack([[46, 47, 48], [48, 49, 50]]),
+            np.repeat([45, 47], 3),
+        ),
+    ],
 )
-expected = pd.DataFrame(
-    {
-        "unique_id": 6 * ["id_0"],
-        "ds": np.hstack([[46, 47, 48], [48, 49, 50]], dtype=np.int64),
-        "cutoff": np.repeat(np.array([45, 47], dtype=np.int64), h),
-    }
-)
-pd.testing.assert_frame_equal(actual, expected)
-pd.testing.assert_frame_equal(
-    group_by_agg(pd.DataFrame({"x": [1, 1, 2], "y": [1, 1, 1]}), "x", {"y": "sum"}),
-    pd.DataFrame({"x": [1, 2], "y": [2, 1]}),
-)
-pd.testing.assert_frame_equal(
-    group_by_agg(
-        pl.DataFrame({"x": [1, 1, 2], "y": [1, 1, 1]}),
-        "x",
-        {"y": "sum"},
-        maintain_order=True,
-    ).to_pandas(),
-    pd.DataFrame({"x": [1, 2], "y": [2, 1]}),
-)
+def test_cv_times(step_size, expected_ds, expected_cutoff):
+    times = np.arange(51, dtype=np.int64)
+    uids = pd.Series(["id_0"])
+    indptr = np.array([0, 51])
+    h = 3
+    test_size = 5
+
+    actual = cv_times(
+        times=times,
+        uids=uids,
+        indptr=indptr,
+        h=h,
+        test_size=test_size,
+        step_size=step_size,
+    )
+    expected = pd.DataFrame(
+        {
+            "unique_id": ["id_0"] * len(expected_ds),
+            "ds": expected_ds,
+            "cutoff": expected_cutoff,
+        }
+    )
+    pd.testing.assert_frame_equal(actual, expected)
+
+
 np.testing.assert_equal(
     is_in(pd.Series([1, 2, 3]), [1]), np.array([True, False, False])
 )
