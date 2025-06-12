@@ -5,7 +5,8 @@ from datetime import datetime as dt
 import numpy as np
 import pandas as pd
 import pytest
-from fastcore.test import test_eq, test_fail
+from fastcore.test import test_eq as _test_eq
+from fastcore.test import test_fail as _test_fail
 from polars import DataFrame as pl_DataFrame
 from polars import Series as pl_Series
 
@@ -521,7 +522,7 @@ pd.testing.assert_frame_equal(
     anti_join(pd.DataFrame({"x": [1, 2]}), pd.DataFrame({"x": [1]}), on="x"),
     pd.DataFrame({"x": [2]}),
 )
-test_eq(
+_test_eq(
     anti_join(pd.DataFrame({"x": [1]}), pd.DataFrame({"x": [1]}), on="x").shape[0],
     0,
 )
@@ -529,7 +530,7 @@ pl.testing.assert_frame_equal(
     anti_join(pl_DataFrame({"x": [1, 2]}), pl_DataFrame({"x": [1]}), on="x"),
     pl_DataFrame({"x": [2]}),
 )
-test_eq(
+_test_eq(
     anti_join(pl_DataFrame({"x": [1]}), pl_DataFrame({"x": [1]}), on="x").shape[0],
     0,
 )
@@ -549,7 +550,7 @@ for equal_ends in [True, False]:
         test_size=test_size,
         step_size=1,
     )
-    test_eq(len(df_dates), n_series * horizon * (test_size - horizon + 1))
+    _test_eq(len(df_dates), n_series * horizon * (test_size - horizon + 1))
 static_features = ["static_0", "static_1"]
 for n_static_features in [0, 2]:
     series_pd = generate_series(
@@ -562,12 +563,12 @@ for n_static_features in [0, 2]:
     scrambled_series_pd = series_pd.sample(frac=1.0)
     dfp = DataFrameProcessor("unique_id", "ds", "y")
     uids, times, data, indptr, _ = dfp.process(scrambled_series_pd)
-    test_eq(times, series_pd.groupby("unique_id", observed=True)["ds"].max().values)
-    test_eq(uids, np.sort(series_pd["unique_id"].unique()))
+    _test_eq(times, series_pd.groupby("unique_id", observed=True)["ds"].max().values)
+    _test_eq(uids, np.sort(series_pd["unique_id"].unique()))
     for i in range(n_static_features):
         series_pd[f"static_{i}"] = series_pd[f"static_{i}"].cat.codes
-    test_eq(data, series_pd[["y"] + static_features[:n_static_features]].to_numpy())
-    test_eq(
+    _test_eq(data, series_pd[["y"] + static_features[:n_static_features]].to_numpy())
+    _test_eq(
         np.diff(indptr), series_pd.groupby("unique_id", observed=True).size().values
     )
 # test process_df with target_col=None
@@ -586,16 +587,16 @@ for n_static_features in [0, 2]:
     dfp = DataFrameProcessor("unique_id", "ds", "y")
     uids, times, data, indptr, _ = dfp.process(scrambled_series_pl)
     grouped = group_by(series_pl, "unique_id")
-    test_eq(times, grouped.agg(pl.col("ds").max()).sort("unique_id")["ds"].to_numpy())
-    test_eq(uids, series_pl["unique_id"].unique().sort())
-    test_eq(
+    _test_eq(times, grouped.agg(pl.col("ds").max()).sort("unique_id")["ds"].to_numpy())
+    _test_eq(uids, series_pl["unique_id"].unique().sort())
+    _test_eq(
         data,
         series_pl.select(
             pl.col(c).map_batches(lambda s: s.to_physical())
             for c in ["y"] + static_features[:n_static_features]
         ).to_numpy(),
     )
-    test_eq(np.diff(indptr), grouped.count().sort("unique_id")["count"].to_numpy())
+    _test_eq(np.diff(indptr), grouped.count().sort("unique_id")["count"].to_numpy())
 short_series = generate_series(100, max_length=50)
 backtest_results = list(
     backtest_splits(
@@ -607,7 +608,7 @@ backtest_results = list(
         freq=pd.offsets.Day(),
     )
 )[0]
-test_fail(
+_test_fail(
     lambda: list(
         backtest_splits(
             short_series,
