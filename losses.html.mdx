@@ -26,8 +26,8 @@ from utilsforecast.data import generate_series
 
 ```python
 models = ['model0', 'model1']
-series = generate_series(10, n_models=2, level=[80])
-series_pl = generate_series(10, n_models=2, level=[80], engine='polars')
+series = generate_series(1000, n_models=2, level=[80])
+series_pl = generate_series(1000, n_models=2, level=[80], engine='polars')
 ```
 
 ## 1. Scale-dependent Errors
@@ -45,7 +45,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L127"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L128"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mae
@@ -100,7 +100,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L159"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L160"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mse
@@ -147,7 +147,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L191"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L192"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### rmse
@@ -186,7 +186,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L216"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L217"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### bias
@@ -232,7 +232,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L251"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L252"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mape
@@ -278,7 +278,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L289"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L290"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### smape
@@ -331,7 +331,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L326"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L327"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mase
@@ -381,7 +381,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L380"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L381"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### rmae
@@ -428,7 +428,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L434"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L435"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### msse
@@ -475,7 +475,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L486"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L487"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### rmsse
@@ -528,7 +528,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L514"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L515"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### quantile_loss
@@ -568,7 +568,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L576"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L577"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### scaled_quantile_loss
@@ -614,7 +614,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L636"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L637"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mqloss
@@ -667,7 +667,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L695"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L696"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### scaled_mqloss
@@ -717,7 +717,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L760"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L761"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### coverage
@@ -752,7 +752,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L819"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L820"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### calibration
@@ -796,7 +796,7 @@ and $y_{i,\tau}$ are its realizations.
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L869"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L870"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### scaled_crps
@@ -830,5 +830,126 @@ pd_vs_pl(
     scaled_crps(series_pl, mq_models, quantiles),
     models,
 )
+```
+
+### Tweedie Deviance
+
+For a set of forecasts $\{\mu_i\}_{i=1}^N$ and observations
+$\{y_i\}_{i=1}^N$, the mean Tweedie deviance with power $p$ is
+
+$$
+
+\mathrm{TD}_{p}(\boldsymbol{\mu}, \mathbf{y})
+= \frac{1}{N} \sum_{i=1}^{N} d_{p}(y_i, \mu_i)
+
+$$
+
+where the unit-scaled deviance for each pair $(y,\mu)$ is
+
+$$
+
+d_{p}(y,\mu)
+=
+2
+\begin{cases}
+\displaystyle
+\frac{y^{2-p}}{(1-p)(2-p)}
+\;-\;
+\frac{y\,\mu^{1-p}}{1-p}
+\;+\;
+\frac{\mu^{2-p}}{2-p}, 
+& p \notin\{1,2\},\\[1em]
+\displaystyle
+y\,\ln\!\frac{y}{\mu}\;-\;(y-\mu),
+& p = 1\quad(\text{Poisson deviance}),\\[0.5em]
+\displaystyle
+-2\Bigl[\ln\!\frac{y}{\mu}\;-\;\frac{y-\mu}{\mu}\Bigr],
+& p = 2\quad(\text{Gamma deviance}).
+\end{cases}
+
+$$
+
+-   $y_i$ are the true values, $\mu_i$ the predicted means.  
+-   $p$ controls the variance relationship
+    $\mathrm{Var}(Y)\propto\mu^{p}$.  
+-   When $1<p<2$, this smoothly interpolates between Poisson ($p=1$) and
+    Gamma ($p=2$) deviance.
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L936"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+#### tweedie_deviance
+
+> ``` text
+>  tweedie_deviance (df:~DFType, models:List[str], power:float=1.5,
+>                    id_col:str='unique_id', target_col:str='y')
+> ```
+
+\*Compute the Tweedie deviance loss for one or multiple models, grouped
+by an identifier.
+
+Each group’s deviance is calculated using the mean_tweedie_deviance
+function, which measures the deviation between actual and predicted
+values under the Tweedie distribution.
+
+The `power` parameter defines the specific compound distribution: - 1:
+Poisson - (1, 2): Compound Poisson-Gamma - 2: Gamma - \>2: Inverse
+Gaussian\*
+
+|  | **Type** | **Default** | **Details** |
+|------|------------------|-------------------------|-------------------------|
+| df | DFType |  | Input dataframe with id, actuals and predictions. |
+| models | List |  | Columns that identify the models predictions. |
+| power | float | 1.5 | Tweedie power parameter. Determines the compound distribution. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **DFType** |  | **DataFrame with one row per id and one column per model, containing the mean Tweedie deviance. ** |
+
+
+```python
+# Normal test
+for power in [0, 1, 1.5, 2, 3]:
+    # Test Pandas vs Polars
+    td_pd = tweedie_deviance(series,   models, target_col="y", power=power)
+    td_pl = tweedie_deviance(series_pl, models, target_col="y", power=power)
+    pd_vs_pl(
+        td_pd,
+        td_pl,
+        models,
+    )
+    # Test for NaNs
+    assert not td_pd[models].isna().any().any(), f"NaNs found in pd DataFrame for power {power}"
+    assert not td_pl.select(pl.col(models).is_null().any()).sum_horizontal().item(), f"NaNs found in pl DataFrame for power {power}"
+    # Test for infinites
+    is_infinite = td_pd[models].isin([np.inf, -np.inf]).any().any()
+    assert not is_infinite, f"Infinities found in pd DataFrame for power {power}"
+    is_infinite_pl = td_pl.select(pl.col(models).is_infinite().any()).sum_horizontal().item()
+    assert not is_infinite_pl, f"Infinities found in pl DataFrame for power {power}"
+
+# Test zero handling (skip power >=2 since it requires all y > 0)
+series.loc[0, 'y'] = 0.0  # Set a zero value to test the zero handling
+series.loc[49, 'y'] = 0.0  # Set another zero value to test the zero handling
+series_pl[0, 'y'] = 0.0  # Set a zero value to test the zero handling
+series_pl[49, 'y'] = 0.0  # Set another zero value to test the zero handling
+for power in [0, 1, 1.5]:
+    # Test Pandas vs Polars
+    td_pd = tweedie_deviance(series,   models, target_col="y", power=power)
+    td_pl = tweedie_deviance(series_pl, models, target_col="y", power=power)
+    pd_vs_pl(
+        td_pd,
+        td_pl,
+        models,
+    )
+    # Test for NaNs
+    assert not td_pd[models].isna().any().any(), f"NaNs found in pd DataFrame for power {power}"
+    assert not td_pl.select(pl.col(models).is_null().any()).sum_horizontal().item(), f"NaNs found in pl DataFrame for power {power}"
+    # Test for infinites
+    is_infinite = td_pd[models].isin([np.inf, -np.inf]).any().any()
+    assert not is_infinite, f"Infinities found in pd DataFrame for power {power}"
+    is_infinite_pl = td_pl.select(pl.col(models).is_infinite().any()).sum_horizontal().item()
+    assert not is_infinite_pl, f"Infinities found in pl DataFrame for power {power}"
 ```
 
