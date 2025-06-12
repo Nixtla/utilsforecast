@@ -672,6 +672,33 @@ def test_cv_times_with_horizon_and_test_sizes():
         )
         _test_eq(len(df_dates), n_series * horizon * (test_size - horizon + 1))
 
+@pytest.fixture
+def static_features():
+    return ["static_0", "static_1"]
+
+
+def test_static_features(static_features):
+    for n_static_features in [0, 2]:
+        series_pd = generate_series(
+            1_000, n_static_features=n_static_features, equal_ends=False, engine="pandas"
+        )
+        for i in range(n_static_features):
+            series_pd[f"static_{i}"] = (
+                series_pd[f"static_{i}"].map(lambda x: f"x_{x}").astype("category")
+            )
+        scrambled_series_pd = series_pd.sample(frac=1.0)
+        dfp = DataFrameProcessor("unique_id", "ds", "y")
+        uids, times, data, indptr, _ = dfp.process(scrambled_series_pd)
+        _test_eq(times, series_pd.groupby("unique_id", observed=True)["ds"].max().values)
+        _test_eq(uids, np.sort(series_pd["unique_id"].unique()))
+        for i in range(n_static_features):
+            series_pd[f"static_{i}"] = series_pd[f"static_{i}"].cat.codes
+        _test_eq(data, series_pd[["y"] + static_features[:n_static_features]].to_numpy())
+        _test_eq(
+            np.diff(indptr), series_pd.groupby("unique_id", observed=True).size().values
+        )
+
+
 # test process_df with target_col=None
 series_pd = generate_series(10, n_static_features=2, equal_ends=False, engine="pandas")
 series_pd = series_pd.rename(columns={"y": "exog_0"})
