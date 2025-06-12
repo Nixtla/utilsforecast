@@ -135,40 +135,65 @@ def test_vertical_concat_pl():
     assert out.to_physical().equals(pl.Series("x", [0, 1, 2, 3, 1, 0]))
     assert out.cat.get_categories().equals(pl.Series("x", ["a", "b", "c", "f"]))
 
-for engine in engines:
+
+def test_concat(engine):
     series = generate_series(2, engine=engine)
     doubled = vertical_concat([series, series])
     assert doubled.shape[0] == 2 * series.shape[0]
-for engine in engines:
+
     series = generate_series(2, engine=engine)
     renamer = {c: f"{c}_2" for c in series.columns}
+
     if engine == "pandas":
         series2 = series.rename(columns=renamer)
     else:
         series2 = series.rename(renamer)
+
     doubled = horizontal_concat([series, series2])
     assert doubled.shape[1] == 2 * series.shape[1]
-pd.testing.assert_frame_equal(
-    sort(pd.DataFrame({"x": [3, 1, 2]}), "x"), pd.DataFrame({"x": [1, 2, 3]})
+
+
+def test_sort_dataframe_pd():
+    pd.testing.assert_frame_equal(
+        sort(pd.DataFrame({"x": [3, 1, 2]}), "x"), pd.DataFrame({"x": [1, 2, 3]})
+    )
+    pd.testing.assert_frame_equal(
+        sort(pd.DataFrame({"x": [3, 1, 2]}), ["x"]), pd.DataFrame({"x": [1, 2, 3]})
+    )
+
+def test_sort_series_and_index_pd():
+    pd.testing.assert_series_equal(sort(pd.Series([3, 1, 2])), pd.Series([1, 2, 3]))
+    pd.testing.assert_index_equal(sort(pd.Index([3, 1, 2])), pd.Index([1, 2, 3]))
+    pl.testing.assert_frame_equal(
+        sort(pl.DataFrame({"x": [3, 1, 2]}), "x"),
+        pl.DataFrame({"x": [1, 2, 3]}),
 )
-pd.testing.assert_frame_equal(
-    sort(pd.DataFrame({"x": [3, 1, 2]}), ["x"]), pd.DataFrame({"x": [1, 2, 3]})
+
+def test_sort_dataframe_pl():
+    pl.testing.assert_frame_equal(
+        sort(pl.DataFrame({"x": [3, 1, 2]}), ["x"]),
+        pl.DataFrame({"x": [1, 2, 3]}),
+    )
+    pl.testing.assert_series_equal(
+        sort(pl.Series("x", [3, 1, 2])), pl.Series("x", [1, 2, 3])
+    )
+
+def test_sort_series_and_index_pl():
+    pl.testing.assert_series_equal(sort(pl.Series([3, 1, 2])), pl.Series([1, 2, 3]))
+    # pl.testing.assert_index_equal(sort(pl.Index([3, 1, 2])), pl.Index([1, 2, 3]))
+    pl.testing.assert_frame_equal(
+        sort(pl.DataFrame({"x": [3, 1, 2]}), "x"),
+        pl.DataFrame({"x": [1, 2, 3]}),
 )
-pd.testing.assert_series_equal(sort(pd.Series([3, 1, 2])), pd.Series([1, 2, 3]))
-pd.testing.assert_index_equal(sort(pd.Index([3, 1, 2])), pd.Index([1, 2, 3]))
-pl.testing.assert_frame_equal(
-    sort(pl.DataFrame({"x": [3, 1, 2]}), "x"),
-    pl.DataFrame({"x": [1, 2, 3]}),
-)
-pl.testing.assert_frame_equal(
-    sort(pl.DataFrame({"x": [3, 1, 2]}), ["x"]),
-    pl.DataFrame({"x": [1, 2, 3]}),
-)
-pl.testing.assert_series_equal(
-    sort(pl.Series("x", [3, 1, 2])), pl.Series("x", [1, 2, 3])
-)
-test_eq(_multiply_pl_freq("1d", 4), "4d")
-test_eq(_multiply_pl_freq("2d", 4), "8d")
+
+def test_multiply_pl_freq_1d():
+    assert _multiply_pl_freq("1d", 4) == "4d"
+
+
+def test_multiply_pl_freq_2d():
+    assert _multiply_pl_freq("2d", 4) == "8d"
+
+
 pl.testing.assert_series_equal(
     _multiply_pl_freq("1d", pl_Series([1, 2])),
     pl_Series(["1d", "2d"]),
