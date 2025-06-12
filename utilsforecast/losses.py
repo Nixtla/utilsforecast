@@ -5,11 +5,10 @@
 # %% auto 0
 __all__ = ['mae', 'mse', 'rmse', 'bias', 'mape', 'smape', 'mase', 'rmae', 'msse', 'rmsse', 'quantile_loss',
            'scaled_quantile_loss', 'mqloss', 'scaled_mqloss', 'coverage', 'calibration', 'scaled_crps',
-           'mean_tweedie_deviance', 'tweedie_deviance']
+           'tweedie_deviance']
 
 # %% ../nbs/losses.ipynb 3
 from typing import Callable, Dict, List, Optional, Tuple, Union
-from numpy.typing import ArrayLike
 
 import numpy as np
 import pandas as pd
@@ -934,61 +933,6 @@ def scaled_crps(
     return res
 
 # %% ../nbs/losses.ipynb 95
-def mean_tweedie_deviance(y_true: ArrayLike, y_pred: ArrayLike, power: float):
-    """
-    Compute the average Tweedie deviance between true values and predictions.
-
-    The Tweedie deviance is defined differently depending on the power parameter:
-      - power = 0: equivalent to mean squared error.
-      - power = 1: equivalent to mean Poisson deviance.
-      - power = 2: equivalent to mean gamma deviance.
-      - other powers: general Tweedie deviance.
-
-    Parameters
-    ----------
-    y_true : array-like
-        Ground truth (correct) target values. Must be convertible to a NumPy array of floats.
-    y_pred : array-like
-        Predicted target values. Must be convertible to a NumPy array of floats and strictly positive.
-    power : float
-        Tweedie power parameter. Determines the distribution:
-        0 for normal, 1 for Poisson, 2 for gamma, else general.
-
-    Returns
-    -------
-    float
-        Average Tweedie deviance over all samples
-    """
-    y_true = np.asarray(y_true, dtype=float)
-    y_pred = np.asarray(y_pred, dtype=float)
-
-    if np.any(y_pred <= 0):
-        raise ValueError(
-            "All predictions must be strictly positive for Tweedie deviance."
-        )
-
-    if power == 0:
-        dev = (y_true - y_pred) ** 2
-
-    elif power == 1:
-        with np.errstate(divide="ignore", invalid="ignore"):
-            dev = 2 * (y_true * np.log(y_true / y_pred) - (y_true - y_pred))
-        zero_mask = y_true == 0
-        dev[zero_mask] = 2 * y_pred[zero_mask]
-
-    elif power == 2:
-        dev = 2 * (-np.log(y_true / y_pred) + (y_true / y_pred) - 1)
-
-    else:
-        dev = 2 * (
-            y_true ** (2 - power) / ((1 - power) * (2 - power))
-            - y_true * y_pred ** (1 - power) / (1 - power)
-            + y_pred ** (2 - power) / (2 - power)
-        )
-
-    return np.mean(dev)
-
-# %% ../nbs/losses.ipynb 97
 def tweedie_deviance(
     df: DFType,
     models: List[str],
@@ -996,12 +940,13 @@ def tweedie_deviance(
     id_col: str = "unique_id",
     target_col: str = "y",
 ) -> DFType:
-    """Compute the Tweedie deviance loss for one or multiple models, grouped by an identifier.
+    """
+    Compute the Tweedie deviance loss for one or multiple models, grouped by an identifier.
 
     Each group's deviance is calculated using the mean_tweedie_deviance function, which
     measures the deviation between actual and predicted values under the Tweedie distribution.
 
-    The power parameter defines the specific compound distribution:
+    The `power` parameter defines the specific compound distribution:
       - 1: Poisson
       - (1, 2): Compound Poisson-Gamma
       - 2: Gamma
@@ -1010,11 +955,11 @@ def tweedie_deviance(
     Parameters
     ----------
     df : pandas or polars DataFrame
-        Input dataframe with id, actual values and predictions.
+        Input dataframe with id, actuals and predictions.
     models : list of str
         Columns that identify the models predictions.
-    power : float, optional (default=1.5)
-        Tweedie power parameter defining the distribution.
+    power : float (default=1.5)
+        Tweedie power parameter. Determines the compound distribution.
     id_col : str (default='unique_id')
         Column that identifies each serie.
     target_col : str (default='y')
@@ -1023,35 +968,99 @@ def tweedie_deviance(
     Returns
     -------
     pandas or polars DataFrame
-        dataframe with one row per id and one column per model.
-    """
-    if isinstance(df, pd.DataFrame):
-        res = (
-            df.groupby(id_col, observed=True)
-            .apply(
-                lambda g: {
-                    model: mean_tweedie_deviance(
-                        y_true=g[target_col], y_pred=g[model], power=power
-                    )
-                    for model in models
-                }
-            )
-            .apply(pd.Series)
-            .reset_index()
-        )
-    else:
+        DataFrame with one row per id and one column per model, containing the mean Tweedie deviance.
 
-        def gen_expr(model):
-            return (
-                pl.struct([target_col, model])
-                .map_elements(
-                    lambda s: mean_tweedie_deviance(
-                        y_true=[s[target_col]], y_pred=[s[model]], power=power
-                    ),
-                    return_dtype=pl.Float64,
+    References
+    ----------
+    [1] https://en.wikipedia.org/wiki/Tweedie_distribution
+
+    """
+    if power < 0:
+        raise ValueError("Power must be non-negative.")
+
+    if np.any(df[models] <= 0):
+        raise ValueError(
+            "All predictions must be strictly positive for Tweedie deviance."
+        )
+
+    if isinstance(df, pd.DataFrame):
+        y_true = df[target_col]
+        y_pred = df[models]
+        delta_y = y_pred.sub(y_true, axis=0)
+        if power == 0:
+            dev = delta_y.pow(2)
+        elif power == 1:
+            with np.errstate(divide="ignore", invalid="ignore"):
+                dev = np.log(y_pred).sub(np.log(y_true), axis=0)
+                dev = -2 * dev.mul(y_true, axis=0).sub(delta_y, axis=0)
+            zero_mask = y_true == 0
+            dev.loc[zero_mask] = 2 * y_pred[zero_mask]
+        elif power == 2:
+            with np.errstate(divide="ignore", invalid="ignore"):
+                dev = np.log(y_pred).sub(np.log(y_true), axis=0)
+                dev = 2 * (dev.add((1 / y_pred).mul(y_true, axis=0), axis=0) - 1)
+        else:
+            dev1 = y_true.clip(lower=0).pow(2 - power).div((1 - power) * (2 - power))
+            dev2 = -y_pred.pow(1 - power).div(1 - power).mul(y_true, axis=0)
+            dev3 = y_pred.pow(2 - power).div(2 - power)
+            dev = 2 * dev2.add(dev1, axis=0).add(dev3, axis=0)
+        # Group by id_col and calculate mean deviance for each model
+        res = dev.groupby(df[id_col], observed=True).mean()
+        res.index.name = id_col
+        res = res.reset_index()
+
+    else:
+        if power == 0:
+
+            def gen_expr(model):
+                return (pl.col(model) - pl.col(target_col)).pow(2).alias(model)
+
+        elif power == 1:
+
+            def gen_expr(model):
+                return (
+                    pl.when(pl.col(target_col) == 0)
+                    .then(2 * pl.col(model))
+                    .otherwise(
+                        2
+                        * (
+                            pl.col(target_col)
+                            * (pl.col(target_col).log() - pl.col(model).log())
+                            - (pl.col(target_col) - pl.col(model))
+                        )
+                    )
+                    .alias(model)
                 )
-                .alias(model)
-            )
+
+        elif power == 2:
+
+            def gen_expr(model):
+                return (
+                    2
+                    * (pl.col(model).log() - pl.col(target_col).log())
+                    .add(pl.col(target_col).truediv(pl.col(model)))
+                    .sub(1)
+                ).alias(model)
+
+        else:
+
+            def gen_expr(model):
+                return (
+                    2
+                    * (
+                        pl.col(target_col)
+                        .clip(0)
+                        .pow(2 - power)
+                        .truediv((1 - power) * (2 - power))
+                    )
+                    .sub(
+                        pl.col(target_col)
+                        .mul(pl.col(model).pow(1 - power))
+                        .truediv(1 - power)
+                    )
+                    .add(pl.col(model).pow(2 - power).truediv(2 - power))
+                ).alias(model)
 
         res = _pl_agg_expr(df, models, id_col, gen_expr)
+
     return res
