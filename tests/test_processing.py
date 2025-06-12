@@ -63,9 +63,9 @@ def test_assign_columns(engine):
     # Select and compare data
     if engine == "pandas":
         np.testing.assert_allclose(series[["x", "y", "z"]].values, np.vstack([x, x, x]).T)
-        np.testing.assert_equal(series["ones"].values, np.ones(series.shape[0]))
-        np.testing.assert_equal(series["as"].values, np.full(series.shape[0], "a"))
-        np.testing.assert_equal(series["bs"].values, np.full(series.shape[0], "b"))
+        np.testing.assert_equal(series["ones"], np.ones(series.shape[0]))
+        np.testing.assert_equal(series["as"], np.full(series.shape[0], "a"))
+        np.testing.assert_equal(series["bs"], np.full(series.shape[0], "b"))
     else:  # polars
         np.testing.assert_allclose(series.select(["x", "y", "z"]).to_numpy(), np.vstack([x, x, x]).T)
         np.testing.assert_equal(series["ones"].to_numpy(), np.ones(series.shape[0]))
