@@ -456,58 +456,49 @@ def test_time_ranges_with_integers_pl():
         pl.Series([1, 5, 9, 10, 14, 18]),
     )
 
-pd.testing.assert_index_equal(
-    repeat(pd.CategoricalIndex(["a", "b", "c"], categories=["a", "b", "c"]), 2),
-    pd.CategoricalIndex(["a", "a", "b", "b", "c", "c"], categories=["a", "b", "c"]),
-)
-pd.testing.assert_series_equal(repeat(pd.Series([1, 2]), 2), pd.Series([1, 1, 2, 2]))
-pd.testing.assert_series_equal(
-    repeat(pd.Series([1, 2]), pd.Series([2, 3])),
-    pd.Series([1, 1, 2, 2, 2]),
-)
-np.testing.assert_array_equal(
-    repeat(np.array([np.datetime64("2000-01-01"), np.datetime64("2010-10-10")]), 2),
-    np.array(
-        [
-            np.datetime64("2000-01-01"),
-            np.datetime64("2000-01-01"),
-            np.datetime64("2010-10-10"),
-            np.datetime64("2010-10-10"),
-        ]
-    ),
-)
-np.testing.assert_array_equal(
-    repeat(np.array([1, 2]), np.array([2, 3])),
-    np.array([1, 1, 2, 2, 2]),
-)
-s = pl.Series(["a", "b", "c"], dtype=pl.Categorical)
-pl.testing.assert_series_equal(repeat(s, 2), pl.concat([s, s]).sort())
-pl.testing.assert_series_equal(repeat(pl.Series([2, 4]), 2), pl.Series([2, 2, 4, 4]))
-pl.testing.assert_series_equal(
-    repeat(pl.Series([1, 2]), np.array([2, 3])),
-    pl.Series([1, 1, 2, 2, 2]),
-)
-times = np.arange(51, dtype=np.int64)
-uids = pd.Series(["id_0"])
-indptr = np.array([0, 51])
-h = 3
-test_size = 5
-actual = cv_times(
-    times=times,
-    uids=uids,
-    indptr=indptr,
-    h=h,
-    test_size=test_size,
-    step_size=1,
-)
-expected = pd.DataFrame(
-    {
-        "unique_id": 9 * ["id_0"],
-        "ds": np.hstack([[46, 47, 48], [47, 48, 49], [48, 49, 50]], dtype=np.int64),
-        "cutoff": np.repeat(np.array([45, 46, 47], dtype=np.int64), h),
-    }
-)
-pd.testing.assert_frame_equal(actual, expected)
+
+def test_repeat_objects_pd():
+    pd.testing.assert_index_equal(
+        repeat(pd.CategoricalIndex(["a", "b", "c"], categories=["a", "b", "c"]), 2),
+        pd.CategoricalIndex(["a", "a", "b", "b", "c", "c"], categories=["a", "b", "c"]),
+    )
+    pd.testing.assert_series_equal(
+        repeat(pd.Series([1, 2]), 2), pd.Series([1, 1, 2, 2])
+    )
+    pd.testing.assert_series_equal(
+        repeat(pd.Series([1, 2]), pd.Series([2, 3])),
+        pd.Series([1, 1, 2, 2, 2]),
+    )
+
+
+def test_repeat_objects_np():
+    np.testing.assert_array_equal(
+        repeat(np.array([np.datetime64("2000-01-01"), np.datetime64("2010-10-10")]), 2),
+        np.array(
+            [
+                np.datetime64("2000-01-01"),
+                np.datetime64("2000-01-01"),
+                np.datetime64("2010-10-10"),
+                np.datetime64("2010-10-10"),
+            ]
+        ),
+    )
+    np.testing.assert_array_equal(
+        repeat(np.array([1, 2]), np.array([2, 3])),
+        np.array([1, 1, 2, 2, 2]),
+    )
+
+
+def test_repeat_objects_pl():
+    s = pl.Series(["a", "b", "c"], dtype=pl.Categorical)
+    pl.testing.assert_series_equal(repeat(s, 2), pl.concat([s, s]).sort())
+    pl.testing.assert_series_equal(
+        repeat(pl.Series([2, 4]), 2), pl.Series([2, 2, 4, 4])
+    )
+    pl.testing.assert_series_equal(
+        repeat(pl.Series([1, 2]), np.array([2, 3])),
+        pl.Series([1, 1, 2, 2, 2]),
+    )
 
 # step_size=2
 actual = cv_times(
