@@ -1,0 +1,10 @@
+/* overrides/assets/stylesheets/extra.css */
+:root {
+  --md-accent-fg-color: #15803D;
+  --md-accent-fg-color--transparent: rgba(21, 128, 61, 0.1);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-accent-fg-color: #15803D;
+  --md-accent-fg-color--transparent: rgba(21, 128, 61, 0.1);
+}
