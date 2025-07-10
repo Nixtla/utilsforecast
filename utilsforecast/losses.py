@@ -49,7 +49,7 @@ def _pl_agg_expr(
     df: pl_DataFrame,
     models: Union[List[str], List[Tuple[str, str]]],
     id_col: str,
-    gen_expr: Callable[[Any], pl.Expr],
+    gen_expr: Callable[[Any], "pl.Expr"],
     agg: str = "mean",
 ) -> pl_DataFrame:
     exprs = [gen_expr(model) for model in models]
@@ -273,7 +273,7 @@ def cfe(
 
         return _pl_agg_expr(df, models, id_col, gen_expr, agg="sum")
 
-# %% ../nbs/losses.ipynb 33
+# %% ../nbs/losses.ipynb 34
 @_base_docstring
 def pis(
     df: DFType,
@@ -306,7 +306,7 @@ def pis(
             agg="sum",
         )
 
-# %% ../nbs/losses.ipynb 36
+# %% ../nbs/losses.ipynb 38
 @_base_docstring
 def spis(
     df: DFType,
@@ -352,7 +352,7 @@ def spis(
         )
         return res
 
-# %% ../nbs/losses.ipynb 42
+# %% ../nbs/losses.ipynb 45
 def _zero_to_nan(series: Union[pd.Series, "pl.Expr"]) -> Union[pd.Series, "pl.Expr"]:
     if isinstance(series, pd.Series):
         res = series.replace(0, np.nan)
@@ -360,7 +360,7 @@ def _zero_to_nan(series: Union[pd.Series, "pl.Expr"]) -> Union[pd.Series, "pl.Ex
         res = pl.when(series == 0).then(float("nan")).otherwise(series.abs())
     return res
 
-# %% ../nbs/losses.ipynb 43
+# %% ../nbs/losses.ipynb 46
 @_base_docstring
 def mape(
     df: DFType,
@@ -398,7 +398,7 @@ def mape(
         res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 47
+# %% ../nbs/losses.ipynb 50
 @_base_docstring
 def smape(
     df: DFType,
@@ -436,7 +436,7 @@ def smape(
         res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 53
+# %% ../nbs/losses.ipynb 56
 def mase(
     df: DFType,
     models: List[str],
@@ -490,7 +490,7 @@ def mase(
         target_col=target_col,
     )
 
-# %% ../nbs/losses.ipynb 58
+# %% ../nbs/losses.ipynb 61
 def rmae(
     df: DFType,
     models: List[str],
@@ -544,7 +544,7 @@ def rmae(
         res = res.select([id_col, *exprs])
     return res
 
-# %% ../nbs/losses.ipynb 62
+# %% ../nbs/losses.ipynb 65
 def msse(
     df: DFType,
     models: List[str],
@@ -596,7 +596,7 @@ def msse(
         target_col=target_col,
     )
 
-# %% ../nbs/losses.ipynb 66
+# %% ../nbs/losses.ipynb 69
 def rmsse(
     df: DFType,
     models: List[str],
@@ -624,7 +624,7 @@ rmsse.__doc__ = msse.__doc__.replace(  # type: ignore[union-attr]
     "Mean Squared Scaled Error (MSSE)", "Root Mean Squared Scaled Error (RMSSE)"
 )
 
-# %% ../nbs/losses.ipynb 72
+# %% ../nbs/losses.ipynb 75
 def quantile_loss(
     df: DFType,
     models: Dict[str, str],
@@ -686,7 +686,7 @@ def quantile_loss(
         res = _pl_agg_expr(df, list(models.items()), id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 77
+# %% ../nbs/losses.ipynb 80
 def scaled_quantile_loss(
     df: DFType,
     models: Dict[str, str],
@@ -746,7 +746,7 @@ def scaled_quantile_loss(
         target_col=target_col,
     )
 
-# %% ../nbs/losses.ipynb 82
+# %% ../nbs/losses.ipynb 85
 def mqloss(
     df: DFType,
     models: Dict[str, List[str]],
@@ -805,7 +805,7 @@ def mqloss(
             res = ufp.assign_columns(res, model, model_res[model])
     return res
 
-# %% ../nbs/losses.ipynb 88
+# %% ../nbs/losses.ipynb 91
 def scaled_mqloss(
     df: DFType,
     models: Dict[str, List[str]],
@@ -870,7 +870,7 @@ def scaled_mqloss(
         target_col=target_col,
     )
 
-# %% ../nbs/losses.ipynb 92
+# %% ../nbs/losses.ipynb 95
 def coverage(
     df: DFType,
     models: List[str],
@@ -929,7 +929,7 @@ def coverage(
         res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 96
+# %% ../nbs/losses.ipynb 99
 def calibration(
     df: DFType,
     models: Dict[str, str],
@@ -979,7 +979,7 @@ def calibration(
         res = _pl_agg_expr(df, list(models.items()), id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 100
+# %% ../nbs/losses.ipynb 103
 def scaled_crps(
     df: DFType,
     models: Dict[str, List[str]],
@@ -1045,7 +1045,7 @@ def scaled_crps(
         )
     return res
 
-# %% ../nbs/losses.ipynb 104
+# %% ../nbs/losses.ipynb 107
 def tweedie_deviance(
     df: DFType,
     models: List[str],
