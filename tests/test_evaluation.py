@@ -155,36 +155,36 @@ def test_datasets_evaluate(setup_series, setup_models, setup_metrics):
             ds_res.reset_index(drop=True),
         )
 
-@pytest.mark.skipif(sys.platform == "win32", reason="Tests are not supported on Windows")
+@pytest.mark.skipif(sys.platform == "win32", reason="Distributed tests are not supported on Windows")
+@pytest.mark.skipif(sys.version_info <= (3, 9), reason="Distributed tests are not supported on Python < 3.10")
 def test_distributed_evaluate(setup_series):
     level = [80, 95]
-    if sys.version_info >= (3, 9):
-        spark = SparkSession.builder.getOrCreate()
-        spark.sparkContext.setLogLevel("FATAL")
-        dask_df = dd.from_pandas(setup_series, npartitions=2)
-        spark_df = spark.createDataFrame(setup_series).repartition(2)
-        for distributed_df, use_train in product([dask_df, spark_df], [True, False]):
-            distr_metrics = [rmse, mae]
-            if use_train:
-                distr_metrics.append(partial(mase, seasonality=7))
-                local_train = setup_series
-                distr_train = distributed_df
-            else:
-                local_train = None
-                distr_train = None
-            local_res = evaluate(
-                setup_series, metrics=distr_metrics, level=level, train_df=local_train
+    spark = SparkSession.builder.getOrCreate()
+    spark.sparkContext.setLogLevel("FATAL")
+    dask_df = dd.from_pandas(setup_series, npartitions=2)
+    spark_df = spark.createDataFrame(setup_series).repartition(2)
+    for distributed_df, use_train in product([dask_df, spark_df], [True, False]):
+        distr_metrics = [rmse, mae]
+        if use_train:
+            distr_metrics.append(partial(mase, seasonality=7))
+            local_train = setup_series
+            distr_train = distributed_df
+        else:
+            local_train = None
+            distr_train = None
+        local_res = evaluate(
+            setup_series, metrics=distr_metrics, level=level, train_df=local_train
+        )
+        distr_res = fa.as_fugue_df(
+            evaluate(
+                distributed_df,
+                metrics=distr_metrics,
+                level=level,
+                train_df=distr_train,
             )
-            distr_res = fa.as_fugue_df(
-                evaluate(
-                    distributed_df,
-                    metrics=distr_metrics,
-                    level=level,
-                    train_df=distr_train,
-                )
-            ).as_pandas()
-            pd.testing.assert_frame_equal(
-                local_res.sort_values(["unique_id", "metric"]).reset_index(drop=True),
-                distr_res.sort_values(["unique_id", "metric"]).reset_index(drop=True),
-                check_dtype=False,
-            )
+        ).as_pandas()
+        pd.testing.assert_frame_equal(
+            local_res.sort_values(["unique_id", "metric"]).reset_index(drop=True),
+            distr_res.sort_values(["unique_id", "metric"]).reset_index(drop=True),
+            check_dtype=False,
+        )
