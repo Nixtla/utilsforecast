@@ -155,7 +155,7 @@ def test_datasets_evaluate(setup_series, setup_models, setup_metrics):
             ds_res.reset_index(drop=True),
         )
 
-
+@pytest.mark.skipif(sys.platform == "win32", reason="Tests are not supported on Windows")
 def test_distributed_evaluate(setup_series):
     level = [80, 95]
     if sys.version_info >= (3, 9):
