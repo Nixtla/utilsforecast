@@ -5,6 +5,7 @@ from datetime import datetime as dt
 import numpy as np
 import pandas as pd
 import pytest
+from conftest import assert_raises_with_message
 from polars import Series as pl_Series
 
 from utilsforecast.compat import POLARS_INSTALLED
@@ -36,8 +37,6 @@ from utilsforecast.processing import (
     to_numpy,
     vertical_concat,
 )
-
-from .conftest import assert_raises_with_message
 
 if POLARS_INSTALLED:
     import polars as pl

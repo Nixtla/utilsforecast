@@ -1,10 +1,9 @@
 # test _append_one
 import numpy as np
+from conftest import assert_raises_with_message
 
 from utilsforecast.data import generate_series
 from utilsforecast.grouped_array import GroupedArray, _append_one, _append_several
-
-from .conftest import assert_raises_with_message
 
 
 def test_append_one():

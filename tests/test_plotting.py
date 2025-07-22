@@ -4,12 +4,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pytest
+from conftest import assert_raises_with_message
 
 from utilsforecast.compat import POLARS_INSTALLED
 from utilsforecast.data import generate_series
 from utilsforecast.plotting import plot_series
-
-from .conftest import assert_raises_with_message
 
 if POLARS_INSTALLED:
     import polars as pl
