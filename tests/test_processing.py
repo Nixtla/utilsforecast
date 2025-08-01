@@ -716,13 +716,17 @@ def test_n_static_features(static_features, n_static_features):
     grouped = group_by(series_pl, "unique_id")
     np.testing.assert_array_equal(times, grouped.agg(pl.col("ds").max()).sort("unique_id")["ds"].to_numpy())
     np.testing.assert_array_equal(uids, series_pl["unique_id"].unique().sort())
-    np.testing.assert_array_equal(
-        data,
-        series_pl.select(
-            pl.col(c).map_batches(lambda s: s.to_physical())
-            for c in ["y"] + static_features[:n_static_features]
-        ).to_numpy(),
-    )
+
+    expected_data = (
+            scrambled_series_pl
+            .sort(["unique_id", "ds"])
+            .select([
+                pl.col(c).map_batches(lambda s: s.to_physical())
+                for c in ["y"] + static_features[:n_static_features]
+            ])
+            .to_numpy()
+        )
+    np.testing.assert_array_equal(data, expected_data)
     np.testing.assert_array_equal(np.diff(indptr), grouped.len().sort("unique_id")["len"].to_numpy())
 
 def test_short_stories():
