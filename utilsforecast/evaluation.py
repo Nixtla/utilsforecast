@@ -15,7 +15,9 @@ import numpy as np
 import pandas as pd
 
 import utilsforecast.processing as ufp
+
 from .compat import AnyDFType, DFType, DistributedDFType, pl, pl_DataFrame
+
 
 # %% ../nbs/evaluation.ipynb 4
 def _function_name(f: Callable):
@@ -169,27 +171,27 @@ def evaluate(
     Args:
         df (pandas, polars, dask or spark DataFrame): Forecasts to evaluate.
             Must have `id_col`, `time_col`, `target_col` and models' predictions.
-        metrics (list of callable): Functions with arguments `df`, `models`, 
+        metrics (list of callable): Functions with arguments `df`, `models`,
             `id_col`, `target_col` and optionally `train_df`.
         models (list of str, optional): Names of the models to evaluate.
-            If `None` will use every column in the dataframe after removing 
+            If `None` will use every column in the dataframe after removing
             id, time and target. Defaults to None.
         train_df (pandas, polars, dask or spark DataFrame, optional): Training set.
             Used to evaluate metrics such as `mase`. Defaults to None.
         level (list of int, optional): Prediction interval levels. Used to compute
             losses that rely on quantiles. Defaults to None.
-        id_col (str, optional): Column that identifies each serie. 
+        id_col (str, optional): Column that identifies each serie.
             Defaults to 'unique_id'.
         time_col (str, optional): Column that identifies each timestep, its values
             can be timestamps or integers. Defaults to 'ds'.
-        target_col (str, optional): Column that contains the target. 
+        target_col (str, optional): Column that contains the target.
             Defaults to 'y'.
         agg_fn (str, optional): Statistic to compute on the scores by id to reduce
             them to a single number. Defaults to None.
 
     Returns:
-        pandas, polars, dask or spark DataFrame: Metrics with one row per 
-            (id, metric) combination and one column per model. If `agg_fn` is 
+        pandas, polars, dask or spark DataFrame: Metrics with one row per
+            (id, metric) combination and one column per model. If `agg_fn` is
             not `None`, there is only one row per metric.
     """
     if not isinstance(df, (pd.DataFrame, pl_DataFrame)):

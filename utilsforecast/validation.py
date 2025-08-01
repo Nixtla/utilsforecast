@@ -11,7 +11,8 @@ from typing import Optional, Union
 
 import pandas as pd
 
-from .compat import DFType, DataFrame, Series, pl_DataFrame, pl_Series, pl
+from .compat import DataFrame, DFType, Series, pl, pl_DataFrame, pl_Series
+
 
 # %% ../nbs/validation.ipynb 5
 def _is_int_dtype(s: Union[pd.Index, Series]) -> bool:

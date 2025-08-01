@@ -18,6 +18,7 @@ from .compat import DFType, pl, pl_DataFrame, pl_Series
 from .processing import group_by, repeat
 from .validation import _is_int_dtype, validate_format, validate_freq
 
+
 # %% ../nbs/preprocessing.ipynb 4
 def _determine_bound(bound, freq, times_by_id, agg) -> np.ndarray:
     if bound == "per_serie":

@@ -13,6 +13,7 @@ import pandas as pd
 
 from .compat import DataFrame, pl, pl_DataFrame
 
+
 # %% ../nbs/data.ipynb 5
 @overload
 def generate_series(

@@ -13,7 +13,8 @@ import numpy as np
 import pandas as pd
 
 import utilsforecast.processing as ufp
-from .compat import DFType, DataFrame, pl, pl_DataFrame, pl_Expr
+
+from .compat import DataFrame, DFType, pl, pl_DataFrame, pl_Expr
 from .validation import validate_format, validate_freq
 
 # %% ../nbs/feature_engineering.ipynb 4
@@ -122,22 +123,22 @@ def fourier(
     """Compute fourier seasonal terms for training and forecasting
 
     Args:
-        df (pandas or polars DataFrame): Dataframe with ids, times and values 
+        df (pandas or polars DataFrame): Dataframe with ids, times and values
             for the exogenous regressors.
-        freq (str or int): Frequency of the data. Must be a valid pandas or 
+        freq (str or int): Frequency of the data. Must be a valid pandas or
             polars offset alias, or an integer.
-        season_length (int): Number of observations per unit of time. 
+        season_length (int): Number of observations per unit of time.
             Ex: 24 Hourly data.
         k (int): Maximum order of the fourier terms
         h (int, optional): Forecast horizon. Defaults to 0.
-        id_col (str, optional): Column that identifies each serie. 
+        id_col (str, optional): Column that identifies each serie.
             Defaults to 'unique_id'.
-        time_col (str, optional): Column that identifies each timestep, its 
+        time_col (str, optional): Column that identifies each timestep, its
             values can be timestamps or integers. Defaults to 'ds'.
 
     Returns:
-        tuple[pandas or polars DataFrame, pandas or polars DataFrame]: A tuple 
-            containing the original DataFrame with the computed features and 
+        tuple[pandas or polars DataFrame, pandas or polars DataFrame]: A tuple
+            containing the original DataFrame with the computed features and
             DataFrame with future values.
     """
     f = partial(_fourier, season_length=season_length, k=k)
@@ -161,19 +162,19 @@ def trend(
     """Add a trend column with consecutive integers for training and forecasting
 
     Args:
-        df (pandas or polars DataFrame): Dataframe with ids, times and values 
+        df (pandas or polars DataFrame): Dataframe with ids, times and values
             for the exogenous regressors.
-        freq (str or int): Frequency of the data. Must be a valid pandas or 
+        freq (str or int): Frequency of the data. Must be a valid pandas or
             polars offset alias, or an integer.
         h (int, optional): Forecast horizon. Defaults to 0.
-        id_col (str, optional): Column that identifies each serie. 
+        id_col (str, optional): Column that identifies each serie.
             Defaults to 'unique_id'.
-        time_col (str, optional): Column that identifies each timestep, its 
+        time_col (str, optional): Column that identifies each timestep, its
             values can be timestamps or integers. Defaults to 'ds'.
 
     Returns:
-        tuple[pandas or polars DataFrame, pandas or polars DataFrame]: A tuple 
-            containing the original DataFrame with the computed features and 
+        tuple[pandas or polars DataFrame, pandas or polars DataFrame]: A tuple
+            containing the original DataFrame with the computed features and
             DataFrame with future values.
     """
     return _add_features(
@@ -250,21 +251,21 @@ def time_features(
     """Compute timestamp-based features for training and forecasting
 
     Args:
-        df (pandas or polars DataFrame): Dataframe with ids, times and values 
+        df (pandas or polars DataFrame): Dataframe with ids, times and values
             for the exogenous regressors.
-        freq (str or int): Frequency of the data. Must be a valid pandas or 
+        freq (str or int): Frequency of the data. Must be a valid pandas or
             polars offset alias, or an integer.
-        features (list of str or callable): Features to compute. Can be string 
+        features (list of str or callable): Features to compute. Can be string
             aliases of timestamp attributes or functions to apply to the times.
         h (int, optional): Forecast horizon. Defaults to 0.
-        id_col (str, optional): Column that identifies each serie. 
+        id_col (str, optional): Column that identifies each serie.
             Defaults to 'unique_id'.
-        time_col (str, optional): Column that identifies each timestep, its 
+        time_col (str, optional): Column that identifies each timestep, its
             values can be timestamps or integers. Defaults to 'ds'.
 
     Returns:
-        tuple[pandas or polars DataFrame, pandas or polars DataFrame]: A tuple 
-            containing the original DataFrame with the computed features and 
+        tuple[pandas or polars DataFrame, pandas or polars DataFrame]: A tuple
+            containing the original DataFrame with the computed features and
             DataFrame with future values.
     """
     transformed = _add_time_features(df=df, features=features, time_col=time_col)
@@ -295,20 +296,20 @@ def future_exog_to_historic(
     """Turn future exogenous features into historic by shifting them `h` steps.
 
     Args:
-        df (pandas or polars DataFrame): Dataframe with ids, times and values 
+        df (pandas or polars DataFrame): Dataframe with ids, times and values
             for the exogenous regressors.
-        freq (str or int): Frequency of the data. Must be a valid pandas or 
+        freq (str or int): Frequency of the data. Must be a valid pandas or
             polars offset alias, or an integer.
         features (list of str): Features to be converted into historic.
         h (int, optional): Forecast horizon. Defaults to 0.
-        id_col (str, optional): Column that identifies each serie. 
+        id_col (str, optional): Column that identifies each serie.
             Defaults to 'unique_id'.
-        time_col (str, optional): Column that identifies each timestep, its 
+        time_col (str, optional): Column that identifies each timestep, its
             values can be timestamps or integers. Defaults to 'ds'.
 
     Returns:
-        tuple[pandas or polars DataFrame, pandas or polars DataFrame]: A tuple 
-            containing the original DataFrame with the computed features and 
+        tuple[pandas or polars DataFrame, pandas or polars DataFrame]: A tuple
+            containing the original DataFrame with the computed features and
             DataFrame with future values.
     """
     if h == 0:
@@ -346,21 +347,21 @@ def pipeline(
     """Compute several features for training and forecasting
 
     Args:
-        df (pandas or polars DataFrame): Dataframe with ids, times and values 
+        df (pandas or polars DataFrame): Dataframe with ids, times and values
             for the exogenous regressors.
-        features (list of callable): List of features to compute. Must take only 
+        features (list of callable): List of features to compute. Must take only
             df, freq, h, id_col and time_col (other arguments must be fixed).
-        freq (str or int): Frequency of the data. Must be a valid pandas or 
+        freq (str or int): Frequency of the data. Must be a valid pandas or
             polars offset alias, or an integer.
         h (int, optional): Forecast horizon. Defaults to 0.
-        id_col (str, optional): Column that identifies each serie. 
+        id_col (str, optional): Column that identifies each serie.
             Defaults to 'unique_id'.
-        time_col (str, optional): Column that identifies each timestep, its 
+        time_col (str, optional): Column that identifies each timestep, its
             values can be timestamps or integers. Defaults to 'ds'.
 
     Returns:
-        tuple[pandas or polars DataFrame, pandas or polars DataFrame]: A tuple 
-            containing the original DataFrame with the computed features and 
+        tuple[pandas or polars DataFrame, pandas or polars DataFrame]: A tuple
+            containing the original DataFrame with the computed features and
             DataFrame with future values.
     """
     transformed: Optional[DataFrame] = None

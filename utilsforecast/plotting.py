@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 try:
     import matplotlib as mpl
-    import matplotlib.pyplot as plt
     import matplotlib.colors as cm
+    import matplotlib.pyplot as plt
 except ImportError:
     raise ImportError(
         "matplotlib is not installed. Please install it and try again.\n"
@@ -23,11 +23,14 @@ import pandas as pd
 
 if TYPE_CHECKING:
     import plotly
-from packaging.version import Version, parse as parse_version
+from packaging.version import Version
+from packaging.version import parse as parse_version
 
 import utilsforecast.processing as ufp
-from .compat import DFType, pl_Series, pl
+
+from .compat import DFType, pl, pl_Series
 from .validation import validate_format
+
 
 # %% ../nbs/plotting.ipynb 5
 def _filter_series(df, id_col, time_col, uids, models=None, max_insample_length=None):
@@ -69,39 +72,39 @@ def plot_series(
     """Plot forecasts and insample values.
 
     Args:
-        df (pandas or polars DataFrame, optional): DataFrame with columns 
+        df (pandas or polars DataFrame, optional): DataFrame with columns
             [`id_col`, `time_col`, `target_col`]. Defaults to None.
-        forecasts_df (pandas or polars DataFrame, optional): DataFrame with 
+        forecasts_df (pandas or polars DataFrame, optional): DataFrame with
             columns [`id_col`, `time_col`] and models. Defaults to None.
-        ids (list of str, optional): Time Series to plot. If None, time series 
+        ids (list of str, optional): Time Series to plot. If None, time series
             are selected randomly. Defaults to None.
-        plot_random (bool, optional): Select time series to plot randomly. 
+        plot_random (bool, optional): Select time series to plot randomly.
             Defaults to True.
         max_ids (int, optional): Maximum number of ids to plot. Defaults to 8.
         models (list of str, optional): Models to plot. Defaults to None.
-        level (list of float, optional): Prediction intervals to plot. 
+        level (list of float, optional): Prediction intervals to plot.
             Defaults to None.
-        max_insample_length (int, optional): Maximum number of train/insample 
+        max_insample_length (int, optional): Maximum number of train/insample
             observations to be plotted. Defaults to None.
-        plot_anomalies (bool, optional): Plot anomalies for each prediction 
+        plot_anomalies (bool, optional): Plot anomalies for each prediction
             interval. Defaults to False.
-        engine (str, optional): Library used to plot. 'plotly', 'plotly-resampler' 
+        engine (str, optional): Library used to plot. 'plotly', 'plotly-resampler'
             or 'matplotlib'. Defaults to 'matplotlib'.
-        palette (str, optional): Name of the matplotlib colormap to use for the 
+        palette (str, optional): Name of the matplotlib colormap to use for the
             plots. If None, uses the current style. Defaults to None.
-        id_col (str, optional): Column that identifies each serie. 
+        id_col (str, optional): Column that identifies each serie.
             Defaults to 'unique_id'.
-        time_col (str, optional): Column that identifies each timestep, its 
+        time_col (str, optional): Column that identifies each timestep, its
             values can be timestamps or integers. Defaults to 'ds'.
-        target_col (str, optional): Column that contains the target. 
+        target_col (str, optional): Column that contains the target.
             Defaults to 'y'.
-        seed (int, optional): Seed used for the random number generator. Only 
+        seed (int, optional): Seed used for the random number generator. Only
             used if plot_random is True. Defaults to 0.
-        resampler_kwargs (dict, optional): Keyword arguments to be passed to 
-            plotly-resampler constructor. For further custumization ("show_dash") 
-            call the method, store the plotting object and add the extra arguments 
+        resampler_kwargs (dict, optional): Keyword arguments to be passed to
+            plotly-resampler constructor. For further custumization ("show_dash")
+            call the method, store the plotting object and add the extra arguments
             to its `show_dash` method. Defaults to None.
-        ax (matplotlib axes, array of matplotlib axes or plotly Figure, optional): 
+        ax (matplotlib axes, array of matplotlib axes or plotly Figure, optional):
             Object where plots will be added. Defaults to None.
 
     Returns:

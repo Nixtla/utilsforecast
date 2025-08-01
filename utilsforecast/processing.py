@@ -18,13 +18,15 @@ import numpy as np
 import pandas as pd
 from pandas.tseries.offsets import BaseOffset
 
-from .compat import DataFrame, Series, pl, pl_DataFrame, pl_Series
 from utilsforecast.validation import (
     _is_dt_dtype,
     _is_int_dtype,
     ensure_shallow_copy,
     validate_format,
 )
+
+from .compat import DataFrame, Series, pl, pl_DataFrame, pl_Series
+
 
 # %% ../nbs/processing.ipynb 5
 def _polars_categorical_to_numerical(serie: pl_Series) -> pl_Series:

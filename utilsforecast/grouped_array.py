@@ -11,6 +11,7 @@ import numpy as np
 from .compat import DataFrame
 from .processing import counts_by_id, value_cols_to_numpy
 
+
 # %% ../nbs/grouped_array.ipynb 2
 def _append_one(
     data: np.ndarray, indptr: np.ndarray, new: np.ndarray

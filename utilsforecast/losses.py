@@ -8,13 +8,15 @@ __all__ = ['mae', 'mse', 'rmse', 'bias', 'cfe', 'pis', 'spis', 'mape', 'smape', 
            'tweedie_deviance']
 
 # %% ../nbs/losses.ipynb 3
-from typing import Callable, Dict, List, Optional, Tuple, Union, Any
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 
 import utilsforecast.processing as ufp
-from .compat import DFType, DataFrame, pl_DataFrame, pl, pl_Expr
+
+from .compat import DataFrame, DFType, pl, pl_DataFrame, pl_Expr
+
 
 # %% ../nbs/losses.ipynb 11
 def _base_docstring(*args, **kwargs) -> Callable:
@@ -73,10 +75,10 @@ def _scale_loss(
         train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
-        
+
     Returns:
         pandas or polars DataFrame: dataframe with one row per id and one column per model.
-        
+
     References:
         [1] https://robjhyndman.com/papers/mase.pdf
     """
