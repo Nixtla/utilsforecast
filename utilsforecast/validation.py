@@ -11,7 +11,8 @@ from typing import Optional, Union
 
 import pandas as pd
 
-from .compat import DFType, DataFrame, Series, pl_DataFrame, pl_Series, pl
+from .compat import DataFrame, DFType, Series, pl, pl_DataFrame, pl_Series
+
 
 # %% ../nbs/validation.ipynb 5
 def _is_int_dtype(s: Union[pd.Index, Series]) -> bool:
@@ -82,20 +83,14 @@ def validate_format(
 ) -> None:
     """Ensure DataFrame has expected format.
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        DataFrame with time series in long format.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    time_col : str (default='ds')
-        Column that identifies each timestamp.
-    target_col : str, optional (default='y')
-        Column that contains the target.
+    Args:
+        df (pandas or polars DataFrame): DataFrame with time series in long format.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        time_col (str, optional): Column that identifies each timestamp. Defaults to 'ds'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
 
-    Returns
-    -------
-    None
+    Returns:
+        None
     """
     if not isinstance(df, (pd.DataFrame, pl_DataFrame)):
         raise ValueError(

@@ -18,13 +18,15 @@ import numpy as np
 import pandas as pd
 from pandas.tseries.offsets import BaseOffset
 
-from .compat import DataFrame, Series, pl, pl_DataFrame, pl_Series
 from utilsforecast.validation import (
     _is_dt_dtype,
     _is_int_dtype,
     ensure_shallow_copy,
     validate_format,
 )
+
+from .compat import DataFrame, Series, pl, pl_DataFrame, pl_Series
+
 
 # %% ../nbs/processing.ipynb 5
 def _polars_categorical_to_numerical(serie: pl_Series) -> pl_Series:
@@ -77,15 +79,11 @@ def maybe_compute_sort_indices(
 ) -> Optional[np.ndarray]:
     """Compute indices that would sort the dataframe
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, times and target values.
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, times and target values.
 
-    Returns
-    -------
-    numpy array or None
-        Array with indices to sort the dataframe or None if it's already sorted.
+    Returns:
+        numpy array or None: Array with indices to sort the dataframe or None if it's already sorted.
     """
     ids = df[id_col]
     times = df[time_col]
@@ -663,24 +661,17 @@ def process_df(
 ) -> ProcessedDF:
     """Extract components from dataframe
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, times and target values.
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, times and target values.
 
-    Returns
-    -------
-    ids : pandas or polars Serie
-        serie with the sorted unique ids present in the data.
-    last_times : numpy array
-        array with the last time for each serie.
-    data : numpy ndarray
-        2d array with target plus features values.
-    indptr : numpy ndarray
-        1d array with indices to the start and end of each serie.
-    sort_idxs : numpy array or None
-        array with the indices that would sort the original data.
-        If the data is already sorted this is `None`.
+    Returns:
+        ProcessedDF: A named tuple containing:
+            - ids (pandas or polars Series): serie with the sorted unique ids present in the data.
+            - last_times (numpy array): array with the last time for each serie.
+            - data (numpy ndarray): 2d array with target plus features values.
+            - indptr (numpy ndarray): 1d array with indices to the start and end of each serie.
+            - sort_idxs (numpy array or None): array with the indices that would sort the original data.
+              If the data is already sorted this is `None`.
     """
     # validations
     validate_format(df, id_col, time_col, target_col)
