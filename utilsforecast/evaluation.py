@@ -166,34 +166,31 @@ def evaluate(
 ) -> AnyDFType:
     """Evaluate forecast using different metrics.
 
-    Parameters
-    ----------
-    df : pandas, polars, dask or spark DataFrame.
-        Forecasts to evaluate.
-        Must have `id_col`, `time_col`, `target_col` and models' predictions.
-    metrics : list of callable
-        Functions with arguments `df`, `models`, `id_col`, `target_col` and optionally `train_df`.
-    models : list of str, optional (default=None)
-        Names of the models to evaluate.
-        If `None` will use every column in the dataframe after removing id, time and target.
-    train_df : pandas, polars, dask or spark DataFrame, optional (default=None)
-        Training set. Used to evaluate metrics such as `mase`.
-    level : list of int, optional (default=None)
-        Prediction interval levels. Used to compute losses that rely on quantiles.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    time_col : str (default='ds')
-        Column that identifies each timestep, its values can be timestamps or integers.
-    target_col : str (default='y')
-        Column that contains the target.
-    agg_fn : str, optional (default=None)
-        Statistic to compute on the scores by id to reduce them to a single number.
+    Args:
+        df (pandas, polars, dask or spark DataFrame): Forecasts to evaluate.
+            Must have `id_col`, `time_col`, `target_col` and models' predictions.
+        metrics (list of callable): Functions with arguments `df`, `models`, 
+            `id_col`, `target_col` and optionally `train_df`.
+        models (list of str, optional): Names of the models to evaluate.
+            If `None` will use every column in the dataframe after removing 
+            id, time and target. Defaults to None.
+        train_df (pandas, polars, dask or spark DataFrame, optional): Training set.
+            Used to evaluate metrics such as `mase`. Defaults to None.
+        level (list of int, optional): Prediction interval levels. Used to compute
+            losses that rely on quantiles. Defaults to None.
+        id_col (str, optional): Column that identifies each serie. 
+            Defaults to 'unique_id'.
+        time_col (str, optional): Column that identifies each timestep, its values
+            can be timestamps or integers. Defaults to 'ds'.
+        target_col (str, optional): Column that contains the target. 
+            Defaults to 'y'.
+        agg_fn (str, optional): Statistic to compute on the scores by id to reduce
+            them to a single number. Defaults to None.
 
-    Returns
-    -------
-    pandas, polars, dask or spark DataFrame
-        Metrics with one row per (id, metric) combination and one column per model.
-        If `agg_fn` is not `None`, there is only one row per metric.
+    Returns:
+        pandas, polars, dask or spark DataFrame: Metrics with one row per 
+            (id, metric) combination and one column per model. If `agg_fn` is 
+            not `None`, there is only one row per metric.
     """
     if not isinstance(df, (pd.DataFrame, pl_DataFrame)):
         return _distributed_evaluate(

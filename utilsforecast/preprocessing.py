@@ -68,31 +68,24 @@ def id_time_grid(
 ) -> DFType:
     """Generate all expected combiations of ids and times.
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input data
-    freq : str or int
-        Series' frequency
-    start : str, int, date or datetime.
-        Initial timestamp for the series.
+    Args:
+        df (pandas or polars DataFrame): Input data
+        freq (str or int): Series' frequency
+        start (str, int, date or datetime, optional): Initial timestamp for the series.
             * 'per_serie' uses each serie's first timestamp
             * 'global' uses the first timestamp seen in the data
             * Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)
-    end : str, int, date or datetime.
-        Initial timestamp for the series.
+            Defaults to "per_serie".
+        end (str, int, date or datetime, optional): Initial timestamp for the series.
             * 'per_serie' uses each serie's last timestamp
             * 'global' uses the last timestamp seen in the data
             * Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    time_col : str (default='ds')
-        Column that identifies each timestamp.
+            Defaults to "global".
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        time_col (str, optional): Column that identifies each timestamp. Defaults to 'ds'.
 
-    Returns
-    -------
-    pandas or polars DataFrame
-        Dataframe with expected ids and times.
+    Returns:
+        pandas or polars DataFrame: Dataframe with expected ids and times.
     """
     if isinstance(df, pl_DataFrame):
         times_by_id = (
@@ -210,31 +203,24 @@ def fill_gaps(
 ) -> DFType:
     """Enforce start and end datetimes for dataframe.
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input data
-    freq : str or int
-        Series' frequency
-    start : str, int, date or datetime.
-        Initial timestamp for the series.
+    Args:
+        df (pandas or polars DataFrame): Input data
+        freq (str or int): Series' frequency
+        start (str, int, date or datetime, optional): Initial timestamp for the series.
             * 'per_serie' uses each serie's first timestamp
             * 'global' uses the first timestamp seen in the data
             * Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)
-    end : str, int, date or datetime.
-        Initial timestamp for the series.
+            Defaults to "per_serie".
+        end (str, int, date or datetime, optional): Initial timestamp for the series.
             * 'per_serie' uses each serie's last timestamp
             * 'global' uses the last timestamp seen in the data
             * Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    time_col : str (default='ds')
-        Column that identifies each timestamp.
+            Defaults to "global".
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        time_col (str, optional): Column that identifies each timestamp. Defaults to 'ds'.
 
-    Returns
-    -------
-    filled_df : pandas or polars DataFrame
-        Dataframe with gaps filled.
+    Returns:
+        pandas or polars DataFrame: Dataframe with gaps filled.
     """
     validate_format(df, id_col=id_col, time_col=time_col, target_col=None)
     validate_freq(df[time_col], freq=freq)

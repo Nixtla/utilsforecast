@@ -20,21 +20,14 @@ from .compat import DFType, DataFrame, pl_DataFrame, pl, pl_Expr
 def _base_docstring(*args, **kwargs) -> Callable:
     base_docstring = """
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, actual values and predictions.
-    models : list of str
-        Columns that identify the models predictions.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    target_col : str (default='y')
-        Column that contains the target.
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, actual values and predictions.
+        models (list of str): Columns that identify the models predictions.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
 
-    Returns
-    -------
-    pandas or polars Dataframe
-        dataframe with one row per id and one column per model.
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.
     """
 
     def docstring_decorator(f: Callable):
@@ -71,30 +64,21 @@ def _scale_loss(
     target_col: str = "y",
 ) -> DFType:
     """
-    Parameters
-    ----------
-    loss_df : pandas or polars DataFrame
-        Input dataframe with id, actuals, predictions and losses results.
-    scale_type : str
-        Type of scaling. Possible values are 'absolute_error' or 'squared_error'.
-    models : list of str
-        Columns that identify the models predictions.
-    seasonality : int
-        Main frequency of the time series;
-        Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
-    train_df : pandas or polars DataFrame
-        Training dataframe with id and actual values. Must be sorted by time.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    target_col : str (default='y')
-        Column that contains the target.
-    Returns
-    -------
-    pandas or polars Dataframe
-        dataframe with one row per id and one column per model.
-    References
-    ----------
-    [1] https://robjhyndman.com/papers/mase.pdf
+    Args:
+        loss_df (pandas or polars DataFrame): Input dataframe with id, actuals, predictions and losses results.
+        scale_type (str): Type of scaling. Possible values are 'absolute_error' or 'squared_error'.
+        models (list of str): Columns that identify the models predictions.
+        seasonality (int): Main frequency of the time series;
+            Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
+        train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.
+        
+    References:
+        [1] https://robjhyndman.com/papers/mase.pdf
     """
 
     if isinstance(train_df, pd.DataFrame):
@@ -454,30 +438,20 @@ def mase(
     The MASE partially composed the Overall Weighted Average (OWA),
     used in the M4 Competition.
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, actuals and predictions.
-    models : list of str
-        Columns that identify the models predictions.
-    seasonality : int
-        Main frequency of the time series;
-        Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
-    train_df : pandas or polars DataFrame
-        Training dataframe with id and actual values. Must be sorted by time.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    target_col : str (default='y')
-        Column that contains the target.
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, actuals and predictions.
+        models (list of str): Columns that identify the models predictions.
+        seasonality (int): Main frequency of the time series;
+            Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
+        train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
 
-    Returns
-    -------
-    pandas or polars Dataframe
-        dataframe with one row per id and one column per model.
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.
 
-    References
-    ----------
-    [1] https://robjhyndman.com/papers/mase.pdf
+    References:
+        [1] https://robjhyndman.com/papers/mase.pdf
     """
     mean_abs_err = mae(df, models, id_col, target_col)
     return _scale_loss(
@@ -504,23 +478,15 @@ def rmae(
     A number smaller than one implies that the forecast in the
     numerator is better than the forecast in the denominator.
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, times, actuals and predictions.
-    models : list of str
-        Columns that identify the models predictions.
-    baseline : str
-        Column that identifies the baseline model predictions.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    target_col : str (default='y')
-        Column that contains the target.
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, times, actuals and predictions.
+        models (list of str): Columns that identify the models predictions.
+        baseline (str): Column that identifies the baseline model predictions.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
 
-    Returns
-    -------
-    pandas or polars Dataframe
-        dataframe with one row per id and one column per model.
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.
     """
     numerator = mae(df, models, id_col, target_col)
     denominator = mae(df, [baseline], id_col, target_col)
@@ -560,30 +526,20 @@ def msse(
     of the prediction and the observed value against the mean
     squared errors of the seasonal naive model.
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, actuals and predictions.
-    models : list of str
-        Columns that identify the models predictions.
-    seasonality : int
-        Main frequency of the time series;
-        Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
-    train_df : pandas or polars DataFrame
-        Training dataframe with id and actual values. Must be sorted by time.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    target_col : str (default='y')
-        Column that contains the target.
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, actuals and predictions.
+        models (list of str): Columns that identify the models predictions.
+        seasonality (int): Main frequency of the time series;
+            Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
+        train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
 
-    Returns
-    -------
-    pandas or polars Dataframe
-        dataframe with one row per id and one column per model.
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.
 
-    References
-    ----------
-    [1] https://otexts.com/fpp3/accuracy.html
+    References:
+        [1] https://otexts.com/fpp3/accuracy.html
     """
     mean_sq_err = mse(df=df, models=models, id_col=id_col, target_col=target_col)
     return _scale_loss(
@@ -639,23 +595,15 @@ def quantile_loss(
     loss pays more attention to under or over estimation.
     A common value for q is 0.5 for the deviation from the median.
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, times, actuals and predictions.
-    models : dict from str to str
-        Mapping from model name to the model predictions for the specified quantile.
-    q : float (default=0.5)
-        Quantile for the predictions' comparison.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    target_col : str (default='y')
-        Column that contains the target.
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, times, actuals and predictions.
+        models (dict from str to str): Mapping from model name to the model predictions for the specified quantile.
+        q (float, optional): Quantile for the predictions' comparison. Defaults to 0.5.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
 
-    Returns
-    -------
-    pandas or polars Dataframe
-        dataframe with one row per id and one column per model.
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.
     """
     if isinstance(df, pd.DataFrame):
         res: Optional[pd.DataFrame] = None
@@ -706,32 +654,21 @@ def scaled_quantile_loss(
     This was the official measure used in the M5 Uncertainty competition
     with seasonality = 1.
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, times, actuals and predictions.
-    models : dict from str to str
-        Mapping from model name to the model predictions for the specified quantile.
-    seasonality : int
-        Main frequency of the time series;
-        Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
-    train_df : pandas or polars DataFrame
-        Training dataframe with id and actual values. Must be sorted by time.
-    q : float (default=0.5)
-        Quantile for the predictions' comparison.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    target_col : str (default='y')
-        Column that contains the target.
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, times, actuals and predictions.
+        models (dict from str to str): Mapping from model name to the model predictions for the specified quantile.
+        seasonality (int): Main frequency of the time series;
+            Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
+        train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
+        q (float, optional): Quantile for the predictions' comparison. Defaults to 0.5.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
 
-    Returns
-    -------
-    pandas or polars Dataframe
-        dataframe with one row per id and one column per model.
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.
 
-    References
-    ----------
-    [1] https://www.sciencedirect.com/science/article/pii/S0169207021001722
+    References:
+        [1] https://www.sciencedirect.com/science/article/pii/S0169207021001722
     """
     q_loss = quantile_loss(
         df=df, models=models, q=q, id_col=id_col, target_col=target_col
@@ -767,27 +704,18 @@ def mqloss(
     and treats the CRPS integral with a left Riemann approximation, averaging over
     uniformly distanced quantiles.
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, times, actuals and predictions.
-    models : dict from str to list of str
-        Mapping from model name to the model predictions for each quantile.
-    quantiles : numpy array
-        Quantiles to compare against.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    target_col : str (default='y')
-        Column that contains the target.
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, times, actuals and predictions.
+        models (dict from str to list of str): Mapping from model name to the model predictions for each quantile.
+        quantiles (numpy array): Quantiles to compare against.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
 
-    Returns
-    -------
-    pandas or polars Dataframe
-        dataframe with one row per id and one column per model.
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.
 
-    References
-    ----------
-    [1] https://www.jstor.org/stable/2629907
+    References:
+        [1] https://www.jstor.org/stable/2629907
     """
     res: Optional[DataFrame] = None
     error = np.empty((df.shape[0], quantiles.size))
@@ -830,32 +758,21 @@ def scaled_mqloss(
     This was the official measure used in the M5 Uncertainty competition
     with seasonality = 1.
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, times, actuals and predictions.
-    models : dict from str to list of str
-        Mapping from model name to the model predictions for each quantile.
-    quantiles : numpy array
-        Quantiles to compare against.
-    seasonality : int
-        Main frequency of the time series;
-        Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
-    train_df : pandas or polars DataFrame
-        Training dataframe with id and actual values. Must be sorted by time.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    target_col : str (default='y')
-        Column that contains the target.
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, times, actuals and predictions.
+        models (dict from str to list of str): Mapping from model name to the model predictions for each quantile.
+        quantiles (numpy array): Quantiles to compare against.
+        seasonality (int): Main frequency of the time series;
+            Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
+        train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
 
-    Returns
-    -------
-    pandas or polars Dataframe
-        dataframe with one row per id and one column per model.
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.
 
-    References
-    ----------
-    [1] https://www.sciencedirect.com/science/article/pii/S0169207021001722
+    References:
+        [1] https://www.sciencedirect.com/science/article/pii/S0169207021001722
     """
     mq_loss = mqloss(
         df=df, models=models, quantiles=quantiles, id_col=id_col, target_col=target_col
@@ -880,27 +797,18 @@ def coverage(
 ) -> DFType:
     """Coverage of y with y_hat_lo and y_hat_hi.
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, times, actuals and predictions.
-    models : list of str
-        Columns that identify the models predictions.
-    level : int
-        Confidence level used for intervals.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    target_col : str (default='y')
-        Column that contains the target.
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, times, actuals and predictions.
+        models (list of str): Columns that identify the models predictions.
+        level (int): Confidence level used for intervals.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
 
-    Returns
-    -------
-    pandas or polars Dataframe
-        dataframe with one row per id and one column per model.
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.
 
-    References
-    ----------
-    [1] https://www.jstor.org/stable/2629907
+    References:
+        [1] https://www.jstor.org/stable/2629907
     """
     if isinstance(df, pd.DataFrame):
         out = np.empty((df.shape[0], len(models)))
@@ -939,25 +847,17 @@ def calibration(
     """
     Fraction of y that is lower than the model's predictions.
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, times, actuals and predictions.
-    models : dict from str to str
-        Mapping from model name to the model predictions.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    target_col : str (default='y')
-        Column that contains the target.
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, times, actuals and predictions.
+        models (dict from str to str): Mapping from model name to the model predictions.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
 
-    Returns
-    -------
-    pandas or polars Dataframe
-        dataframe with one row per id and one column per model.
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.
 
-    References
-    ----------
-    [1] https://www.jstor.org/stable/2629907
+    References:
+        [1] https://www.jstor.org/stable/2629907
     """
     if isinstance(df, pd.DataFrame):
         out = np.empty((df.shape[0], len(models)))
@@ -994,27 +894,18 @@ def scaled_crps(
     This metric averages percentual weighted absolute deviations as
     defined by the quantile losses.
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, times, actuals and predictions.
-    models : dict from str to list of str
-        Mapping from model name to the model predictions for each quantile.
-    quantiles : numpy array
-        Quantiles to compare against.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    target_col : str (default='y')
-        Column that contains the target.
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, times, actuals and predictions.
+        models (dict from str to list of str): Mapping from model name to the model predictions for each quantile.
+        quantiles (numpy array): Quantiles to compare against.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
 
-    Returns
-    -------
-    pandas or polars Dataframe
-        dataframe with one row per id and one column per model.
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.
 
-    References
-    ----------
-    [1] https://proceedings.mlr.press/v139/rangapuram21a.html
+    References:
+        [1] https://proceedings.mlr.press/v139/rangapuram21a.html
     """
     eps: np.float64 = np.finfo(np.float64).eps
     quantiles = np.asarray(quantiles)
@@ -1065,27 +956,18 @@ def tweedie_deviance(
       - 2: Gamma
       - >2: Inverse Gaussian
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, actuals and predictions.
-    models : list of str
-        Columns that identify the models predictions.
-    power : float (default=1.5)
-        Tweedie power parameter. Determines the compound distribution.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    target_col : str (default='y')
-        Column that contains the target.
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, actuals and predictions.
+        models (list of str): Columns that identify the models predictions.
+        power (float, optional): Tweedie power parameter. Determines the compound distribution. Defaults to 1.5.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
 
-    Returns
-    -------
-    pandas or polars DataFrame
-        DataFrame with one row per id and one column per model, containing the mean Tweedie deviance.
+    Returns:
+        pandas or polars DataFrame: DataFrame with one row per id and one column per model, containing the mean Tweedie deviance.
 
-    References
-    ----------
-    [1] https://en.wikipedia.org/wiki/Tweedie_distribution
+    References:
+        [1] https://en.wikipedia.org/wiki/Tweedie_distribution
 
     """
     if power < 0:
