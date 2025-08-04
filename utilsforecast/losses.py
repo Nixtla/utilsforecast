@@ -620,7 +620,7 @@ def msse(
         target_col=target_col,
     )
 
-# %% ../nbs/losses.ipynb 72
+# %% ../nbs/losses.ipynb 76
 def rmsse(
     df: DFType,
     models: List[str],
@@ -648,7 +648,7 @@ rmsse.__doc__ = msse.__doc__.replace(  # type: ignore[union-attr]
     "Mean Squared Scaled Error (MSSE)", "Root Mean Squared Scaled Error (RMSSE)"
 )
 
-# %% ../nbs/losses.ipynb 78
+# %% ../nbs/losses.ipynb 82
 def quantile_loss(
     df: DFType,
     models: Dict[str, str],
@@ -702,7 +702,7 @@ def quantile_loss(
         res = _pl_agg_expr(df, list(models.items()), id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 83
+# %% ../nbs/losses.ipynb 87
 def scaled_quantile_loss(
     df: DFType,
     models: Dict[str, str],
@@ -751,7 +751,7 @@ def scaled_quantile_loss(
         target_col=target_col,
     )
 
-# %% ../nbs/losses.ipynb 88
+# %% ../nbs/losses.ipynb 92
 def mqloss(
     df: DFType,
     models: Dict[str, List[str]],
@@ -801,7 +801,7 @@ def mqloss(
             res = ufp.assign_columns(res, model, model_res[model])
     return res
 
-# %% ../nbs/losses.ipynb 94
+# %% ../nbs/losses.ipynb 98
 def scaled_mqloss(
     df: DFType,
     models: Dict[str, List[str]],
@@ -855,7 +855,7 @@ def scaled_mqloss(
         target_col=target_col,
     )
 
-# %% ../nbs/losses.ipynb 98
+# %% ../nbs/losses.ipynb 102
 def coverage(
     df: DFType,
     models: List[str],
@@ -905,7 +905,7 @@ def coverage(
         res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 102
+# %% ../nbs/losses.ipynb 106
 def calibration(
     df: DFType,
     models: Dict[str, str],
@@ -947,7 +947,7 @@ def calibration(
         res = _pl_agg_expr(df, list(models.items()), id_col, gen_expr)
     return res
 
-# %% ../nbs/losses.ipynb 106
+# %% ../nbs/losses.ipynb 110
 def scaled_crps(
     df: DFType,
     models: Dict[str, List[str]],
@@ -994,7 +994,7 @@ def scaled_crps(
                 2 * pl.col(model) * pl.col("counts") / (pl.col("norm") + eps)
             ).alias(model)
 
-        grouped_df = ufp.group_by(df, id_col)
+        grouped_df = ufp.group_by(df, id_col, maintain_order=True)
         norm = grouped_df.agg(pl.col(target_col).abs().sum().alias("norm"))
         res = _pl_agg_expr(
             loss.join(sizes, on=id_col).join(norm, on=id_col),
@@ -1004,7 +1004,7 @@ def scaled_crps(
         )
     return res
 
-# %% ../nbs/losses.ipynb 110
+# %% ../nbs/losses.ipynb 114
 def tweedie_deviance(
     df: DFType,
     models: List[str],
