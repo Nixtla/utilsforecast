@@ -84,8 +84,9 @@ select = ["F", "ARG", "I"]
 quote-style = "double"
 
 [tool.pytest.ini_options]
+pythonpath = "utilsforecast"
 testpaths = ["tests"]
-plugins = ["pytest_cov"]
+required_plugins = ["pytest-cov"]
 addopts = [
     "--cov=utilsforecast",
     "--cov-report=term-missing",
