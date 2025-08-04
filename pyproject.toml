@@ -52,6 +52,8 @@ dev = [
     "polars[numpy]",
     "pytest",
     "pytest-cov",
+    "fugue[dask,spark]>=0.8.1",
+    "dask<=2024.12.1",
 ]
 
 [project.urls]
@@ -96,3 +98,4 @@ show_missing = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--cov utilsforecast -vv"
