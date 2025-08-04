@@ -35,7 +35,7 @@ plotting = [
     "plotly-resampler",
 ]
 polars = [
-    "polars[numpy]",
+    "polars[numpy]<=1.31",
 ]
 dev = [
     "black",

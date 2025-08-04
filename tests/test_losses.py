@@ -16,6 +16,7 @@ from utilsforecast.losses import (
     mqloss,
     mse,
     msse,
+    nd,
     quantile_loss,
     rmae,
     rmse,
@@ -83,10 +84,8 @@ def multi_quantile_models():
 
 
 def pd_vs_pl(pd_df, pl_df, models):
-    np.testing.assert_allclose(
-        pd_df[models].to_numpy(),
-        pl_df.sort("unique_id").select(models).to_numpy(),
-    )
+    pd.testing.assert_frame_equal(pd_df[models],
+                                  pl_df[models].to_pandas())
 
 
 class TestBasicMetrics:
@@ -171,6 +170,14 @@ class TestScaleIndependentErrors:
         pd_vs_pl(
             rmsse(series, models, 7, series),
             rmsse(series_pl, models, 7, series_pl),
+            models,
+        )
+
+    def test_nd(self, setup_series):
+        series, series_pl, models = setup_series
+        pd_vs_pl(
+            nd(series, models),
+            nd(series_pl, models),
             models,
         )
 
@@ -332,7 +339,7 @@ class TestProbabilisticMetrics:
         )
 
 class TestTweedieDeviance:
-    
+
     @pytest.mark.parametrize("power", [0, 1, 1.5, 2, 3])
     def test_non_zero_handling(self, setup_series, power):
         series, series_pl, models = setup_series
@@ -362,7 +369,7 @@ class TestTweedieDeviance:
         series.loc[49, 'y'] = 0.0  # Set another zero value to test the zero handling
         series_pl[0, 'y'] = 0.0  # Set a zero value to test the zero handling
         series_pl[49, 'y'] = 0.0  # Set another zero value to test the zero handling
-        
+
         # Test Pandas vs Polars
         td_pd = tweedie_deviance(series,   models, target_col="y", power=power)
         td_pl = tweedie_deviance(series_pl, models, target_col="y", power=power)
