@@ -85,6 +85,7 @@ quote-style = "double"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+plugins = ["pytest_cov"]
 addopts = [
     "--cov=utilsforecast",
     "--cov-report=term-missing",
