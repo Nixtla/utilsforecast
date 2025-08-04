@@ -83,13 +83,16 @@ select = ["F", "ARG", "I"]
 [tool.ruff.format]
 quote-style = "double"
 
+[tool.coverage]
+branch = true
+source = ["utilsforecast"]
+
+[tool.coverage.run]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+
 [tool.pytest.ini_options]
-pythonpath = "utilsforecast"
 testpaths = ["tests"]
-required_plugins = ["pytest-cov"]
-addopts = [
-    "--cov=utilsforecast",
-    "--cov-report=term-missing",
-    "--cov-report=html",
-    "--cov-fail-under=80",
-]
