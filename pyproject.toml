@@ -50,7 +50,8 @@ dev = [
     "plotly",
     "plotly-resampler",
     "polars[numpy]",
-    "pytest"
+    "pytest",
+    "pytest-cov",
 ]
 
 [project.urls]
