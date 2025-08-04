@@ -73,10 +73,8 @@ given time and averages these devations over the length of the series.\*
 
 ```python
 def pd_vs_pl(pd_df, pl_df, models):
-    np.testing.assert_allclose(
-        pd_df[models].to_numpy(),
-        pl_df.sort('unique_id').select(models).to_numpy(),
-    )
+    pd.testing.assert_frame_equal(pd_df[models], 
+                                  pl_df[models].to_pandas())
 ```
 
 
@@ -84,7 +82,7 @@ def pd_vs_pl(pd_df, pl_df, models):
 pd_vs_pl(
     mae(series, models),
     mae(series_pl, models),
-    models,
+    models=models
 )
 ```
 
@@ -395,6 +393,11 @@ pd_vs_pl(
 )
 ```
 
+``` text
+/tmp/ipykernel_12558/2968355870.py:19: FutureWarning: The default of observed=False is deprecated and will be changed to True in a future version of pandas. Pass observed=False to retain current behavior or observed=True to adopt the future default and silence this warning.
+  .groupby(id_col)[target_col]
+```
+
 
 ```python
 # case for scaled pis
@@ -645,6 +648,51 @@ pd_vs_pl(
 )
 ```
 
+### Normalized Deviation
+
+$$
+
+\mathrm{ND}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{\sum^{t+H}_{\tau=t+1} |y_{\tau} - \hat{y}_{\tau}|}{\sum^{t+H}_{\tau=t+1} | y_{\tau} |}
+
+$$
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L548"
+target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
+
+#### nd
+
+> ``` text
+>  nd (df:~DFType, models:List[str], id_col:str='unique_id',
+>      target_col:str='y')
+> ```
+
+\*Normalized Deviation (ND)
+
+ND measures the relative prediction accuracy of a forecasting method by
+calculating the sum of the absolute deviation of the prediction and the
+true value at a given time and dividing it by the sum of the absolute
+value of the ground truth.\*
+
+|  | **Type** | **Default** | **Details** |
+|------|------------------|-------------------------|-------------------------|
+| df | DFType |  | Input dataframe with id, times, actuals and predictions. |
+| models | List |  | Columns that identify the models predictions. |
+| id_col | str | unique_id | Column that identifies each serie. |
+| target_col | str | y | Column that contains the target. |
+| **Returns** | **DFType** |  | **dataframe with one row per id and one column per model.** |
+
+
+```python
+pd_vs_pl(
+    nd(series, models),
+    nd(series_pl, models),
+    models,
+)
+```
+
 ### Mean Squared Scaled Error
 
 $$
@@ -657,7 +705,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L548"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L614"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### msse
@@ -704,7 +752,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L600"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L666"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### rmsse
@@ -757,7 +805,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L628"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L694"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### quantile_loss
@@ -797,7 +845,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L690"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L756"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### scaled_quantile_loss
@@ -843,7 +891,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L750"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L816"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### mqloss
@@ -896,7 +944,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L809"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L875"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 ### scaled_mqloss
@@ -946,7 +994,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L874"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L940"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### coverage
@@ -981,7 +1029,7 @@ pd_vs_pl(
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L933"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L999"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### calibration
@@ -1025,7 +1073,7 @@ and $y_{i,\tau}$ are its realizations.
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L983"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L1049"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### scaled_crps
@@ -1107,7 +1155,7 @@ $$
 ------------------------------------------------------------------------
 
 <a
-href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L1049"
+href="https://github.com/Nixtla/utilsforecast/blob/main/utilsforecast/losses.py#L1115"
 target="_blank" style={{ float: "right", fontSize: "smaller" }}>source</a>
 
 #### tweedie_deviance
