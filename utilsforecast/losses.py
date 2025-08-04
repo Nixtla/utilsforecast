@@ -526,21 +526,14 @@ def nd(
     value at a given time and dividing it by the sum of the absolute
     value of the ground truth.
 
-    Parameters
-    ----------
-    df : pandas or polars DataFrame
-        Input dataframe with id, times, actuals and predictions.
-    models : list of str
-        Columns that identify the models predictions.
-    id_col : str (default='unique_id')
-        Column that identifies each serie.
-    target_col : str (default='y')
-        Column that contains the target.
+    Args:
+        df: Input dataframe with id, times, actuals and predictions.
+        models: Columns that identify the models predictions.
+        id_col: Column that identifies each serie. Defaults to 'unique_id'.
+        target_col: Column that contains the target. Defaults to 'y'.
 
-    Returns
-    -------
-    pandas or polars Dataframe
-        dataframe with one row per id and one column per model.
+    Returns:
+        Dataframe with one row per id and one column per model.
     """
     if isinstance(df, pd.DataFrame):
         nom = (
