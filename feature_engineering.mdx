@@ -1,0 +1,202 @@
+
+
+
+
+# <kbd>module</kbd> `utilsforecast.feature_engineering`
+Create exogenous regressors for your models 
+
+**Global Variables**
+---------------
+- **pl**
+
+---
+
+
+
+## <kbd>function</kbd> `fourier`
+
+```python
+fourier(
+    df: DataFrame,
+    freq: Union[str, int],
+    season_length: int,
+    k: int,
+    h: int = 0,
+    id_col: str = 'unique_id',
+    time_col: str = 'ds'
+) → Tuple[DataFrame, DataFrame]
+```
+
+Compute fourier seasonal terms for training and forecasting 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Dataframe with ids, times and values  for the exogenous regressors. 
+ - <b>`freq`</b> (str or int):  Frequency of the data. Must be a valid pandas or  polars offset alias, or an integer. 
+ - <b>`season_length`</b> (int):  Number of observations per unit of time. 
+ - <b>`Ex`</b>:  24 Hourly data. 
+ - <b>`k`</b> (int):  Maximum order of the fourier terms 
+ - <b>`h`</b> (int, optional):  Forecast horizon. Defaults to 0. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie.  Defaults to 'unique_id'. 
+ - <b>`time_col`</b> (str, optional):  Column that identifies each timestep, its  values can be timestamps or integers. Defaults to 'ds'. 
+
+
+
+**Returns:**
+ 
+ - <b>`tuple[pandas or polars DataFrame, pandas or polars DataFrame]`</b>:  A tuple  containing the original DataFrame with the computed features and  DataFrame with future values. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `trend`
+
+```python
+trend(
+    df: DataFrame,
+    freq: Union[str, int],
+    h: int = 0,
+    id_col: str = 'unique_id',
+    time_col: str = 'ds'
+) → Tuple[DataFrame, DataFrame]
+```
+
+Add a trend column with consecutive integers for training and forecasting 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Dataframe with ids, times and values  for the exogenous regressors. 
+ - <b>`freq`</b> (str or int):  Frequency of the data. Must be a valid pandas or  polars offset alias, or an integer. 
+ - <b>`h`</b> (int, optional):  Forecast horizon. Defaults to 0. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie.  Defaults to 'unique_id'. 
+ - <b>`time_col`</b> (str, optional):  Column that identifies each timestep, its  values can be timestamps or integers. Defaults to 'ds'. 
+
+
+
+**Returns:**
+ 
+ - <b>`tuple[pandas or polars DataFrame, pandas or polars DataFrame]`</b>:  A tuple  containing the original DataFrame with the computed features and  DataFrame with future values. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `time_features`
+
+```python
+time_features(
+    df: DataFrame,
+    freq: Union[str, int],
+    features: List[Union[str, Callable]],
+    h: int = 0,
+    id_col: str = 'unique_id',
+    time_col: str = 'ds'
+) → Tuple[DataFrame, DataFrame]
+```
+
+Compute timestamp-based features for training and forecasting 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Dataframe with ids, times and values  for the exogenous regressors. 
+ - <b>`freq`</b> (str or int):  Frequency of the data. Must be a valid pandas or  polars offset alias, or an integer. 
+ - <b>`features`</b> (list of str or callable):  Features to compute. Can be string  aliases of timestamp attributes or functions to apply to the times. 
+ - <b>`h`</b> (int, optional):  Forecast horizon. Defaults to 0. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie.  Defaults to 'unique_id'. 
+ - <b>`time_col`</b> (str, optional):  Column that identifies each timestep, its  values can be timestamps or integers. Defaults to 'ds'. 
+
+
+
+**Returns:**
+ 
+ - <b>`tuple[pandas or polars DataFrame, pandas or polars DataFrame]`</b>:  A tuple  containing the original DataFrame with the computed features and  DataFrame with future values. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `future_exog_to_historic`
+
+```python
+future_exog_to_historic(
+    df: DataFrame,
+    freq: Union[str, int],
+    features: List[str],
+    h: int = 0,
+    id_col: str = 'unique_id',
+    time_col: str = 'ds'
+) → Tuple[DataFrame, DataFrame]
+```
+
+Turn future exogenous features into historic by shifting them `h` steps. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Dataframe with ids, times and values  for the exogenous regressors. 
+ - <b>`freq`</b> (str or int):  Frequency of the data. Must be a valid pandas or  polars offset alias, or an integer. 
+ - <b>`features`</b> (list of str):  Features to be converted into historic. 
+ - <b>`h`</b> (int, optional):  Forecast horizon. Defaults to 0. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie.  Defaults to 'unique_id'. 
+ - <b>`time_col`</b> (str, optional):  Column that identifies each timestep, its  values can be timestamps or integers. Defaults to 'ds'. 
+
+
+
+**Returns:**
+ 
+ - <b>`tuple[pandas or polars DataFrame, pandas or polars DataFrame]`</b>:  A tuple  containing the original DataFrame with the computed features and  DataFrame with future values. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `pipeline`
+
+```python
+pipeline(
+    df: DataFrame,
+    features: List[Callable],
+    freq: Union[str, int],
+    h: int = 0,
+    id_col: str = 'unique_id',
+    time_col: str = 'ds'
+) → Tuple[DataFrame, DataFrame]
+```
+
+Compute several features for training and forecasting 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Dataframe with ids, times and values  for the exogenous regressors. 
+ - <b>`features`</b> (list of callable):  List of features to compute. Must take only  df, freq, h, id_col and time_col (other arguments must be fixed). 
+ - <b>`freq`</b> (str or int):  Frequency of the data. Must be a valid pandas or  polars offset alias, or an integer. 
+ - <b>`h`</b> (int, optional):  Forecast horizon. Defaults to 0. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie.  Defaults to 'unique_id'. 
+ - <b>`time_col`</b> (str, optional):  Column that identifies each timestep, its  values can be timestamps or integers. Defaults to 'ds'. 
+
+
+
+**Returns:**
+ 
+ - <b>`tuple[pandas or polars DataFrame, pandas or polars DataFrame]`</b>:  A tuple  containing the original DataFrame with the computed features and  DataFrame with future values. 
+
+
+
+
+---
+
+_This file was automatically generated via [lazydocs](https://github.com/ml-tooling/lazydocs)._

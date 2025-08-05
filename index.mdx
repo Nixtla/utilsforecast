@@ -1,23 +1,17 @@
----
-description: Forecasting utilities
-output-file: index.html
-title: utilsforecast
----
-
+# utilsforecast
+> Forecasting utilities
 
 ## Install
 
 ### PyPI
 
-
-```sh
+``` sh
 pip install utilsforecast
 ```
 
 ### Conda
 
-
-```sh
+``` sh
 conda install -c conda-forge utilsforecast
 ```
 
@@ -25,16 +19,27 @@ conda install -c conda-forge utilsforecast
 
 ### Generate synthetic data
 
-
-```python
+``` python
 from utilsforecast.data import generate_series
 ```
 
-
-```python
+``` python
 series = generate_series(3, with_trend=True, static_as_categorical=False)
 series
 ```
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 
 |     | unique_id | ds         | y          |
 |-----|-----------|------------|------------|
@@ -50,15 +55,16 @@ series
 | 484 | 2         | 2000-06-14 | 162.679603 |
 | 485 | 2         | 2000-06-15 | 165.089288 |
 
+<p>486 rows × 3 columns</p>
+</div>
+
 ### Plotting
 
-
-```python
+``` python
 from utilsforecast.plotting import plot_series
 ```
 
-
-```python
+``` python
 fig = plot_series(series, plot_random=False, max_insample_length=50, engine='matplotlib')
 fig.savefig('imgs/index.png', bbox_inches='tight')
 ```
@@ -67,18 +73,29 @@ fig.savefig('imgs/index.png', bbox_inches='tight')
 
 ### Preprocessing
 
-
-```python
+``` python
 from utilsforecast.preprocessing import fill_gaps
 ```
 
-
-```python
+``` python
 serie = series[series['unique_id'].eq(0)].tail(10)
 # drop some points
 with_gaps = serie.sample(frac=0.5, random_state=0).sort_values('ds')
 with_gaps
 ```
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 
 |     | unique_id | ds         | y         |
 |-----|-----------|------------|-----------|
@@ -88,10 +105,24 @@ with_gaps
 | 220 | 0         | 2000-08-08 | 19.091509 |
 | 221 | 0         | 2000-08-09 | 20.220739 |
 
+</div>
 
-```python
+``` python
 fill_gaps(with_gaps, freq='D')
 ```
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 
 |     | unique_id | ds         | y         |
 |-----|-----------|------------|-----------|
@@ -105,10 +136,11 @@ fill_gaps(with_gaps, freq='D')
 | 7   | 0         | 2000-08-08 | 19.091509 |
 | 8   | 0         | 2000-08-09 | 20.220739 |
 
+</div>
+
 ### Evaluating
 
-
-```python
+``` python
 from functools import partial
 
 import numpy as np
@@ -117,8 +149,7 @@ from utilsforecast.evaluation import evaluate
 from utilsforecast.losses import mape, mase
 ```
 
-
-```python
+``` python
 valid = series.groupby('unique_id').tail(7).copy()
 train = series.drop(valid.index)
 rng = np.random.RandomState(0)
@@ -127,6 +158,19 @@ valid['rand_model'] = valid['y'] * rng.rand(valid['y'].shape[0])
 daily_mase = partial(mase, seasonality=7)
 evaluate(valid, metrics=[mape, daily_mase], train_df=train)
 ```
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 
 |     | unique_id | metric | seas_naive | rand_model |
 |-----|-----------|--------|------------|------------|
@@ -137,3 +181,4 @@ evaluate(valid, metrics=[mape, daily_mase], train_df=train)
 | 4   | 1         | mase   | 0.991635   | 6.404254   |
 | 5   | 2         | mase   | 1.013596   | 11.365040  |
 
+</div>
