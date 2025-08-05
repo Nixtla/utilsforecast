@@ -28,6 +28,9 @@ dependencies = [
     "pandas>=1.1.1",
 ]
 
+[tool.setuptools.dynamic]
+version = {attr = "utilsforecast.__version__"}
+
 [project.optional-dependencies]
 plotting = [
     "pandas[plot]",
