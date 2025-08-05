@@ -1,6 +1,3 @@
-# utilsforecast
-> Forecasting utilities
-
 ## Install
 
 ### PyPI
