@@ -7,9 +7,6 @@
 
 
 
-**Global Variables**
----------------
-- **pl**
 
 ---
 
@@ -18,7 +15,7 @@
 ## <kbd>function</kbd> `to_numpy`
 
 ```python
-to_numpy(df: Union[DataFrame, pl_DataFrame]) → ndarray
+to_numpy(df: Union[DataFrame, DataFrame]) → ndarray
 ```
 
 
@@ -34,9 +31,9 @@ to_numpy(df: Union[DataFrame, pl_DataFrame]) → ndarray
 
 ```python
 counts_by_id(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     id_col: str
-) → Union[DataFrame, pl_DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -52,7 +49,7 @@ counts_by_id(
 
 ```python
 maybe_compute_sort_indices(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     id_col: str,
     time_col: str
 ) → Optional[ndarray]
@@ -81,10 +78,10 @@ Compute indices that would sort the dataframe
 
 ```python
 assign_columns(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     names: Union[str, List[str]],
-    values: Union[ndarray, Series, pl_Series, List[float]]
-) → Union[DataFrame, pl_DataFrame]
+    values: Union[ndarray, Series, Series, List[float]]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -100,9 +97,9 @@ assign_columns(
 
 ```python
 drop_columns(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     columns: Union[str, List[str]]
-) → Union[DataFrame, pl_DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -118,9 +115,9 @@ drop_columns(
 
 ```python
 take_rows(
-    df: Union[DataFrame, pl_DataFrame, Series, pl_Series, ndarray],
+    df: Union[DataFrame, DataFrame, Series, Series, ndarray],
     idxs: ndarray
-) → Union[DataFrame, pl_DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -136,9 +133,9 @@ take_rows(
 
 ```python
 filter_with_mask(
-    df: Union[Series, pl_Series, DataFrame, pl_DataFrame, Index, ndarray],
-    mask: Union[ndarray, Series, pl_Series]
-) → Union[DataFrame, pl_DataFrame]
+    df: Union[Series, Series, DataFrame, DataFrame, Index, ndarray],
+    mask: Union[ndarray, Series, Series]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -153,7 +150,7 @@ filter_with_mask(
 ## <kbd>function</kbd> `is_nan`
 
 ```python
-is_nan(s: Union[Series, pl_Series]) → Union[Series, pl_Series]
+is_nan(s: Union[Series, Series]) → Union[Series, Series]
 ```
 
 
@@ -168,7 +165,7 @@ is_nan(s: Union[Series, pl_Series]) → Union[Series, pl_Series]
 ## <kbd>function</kbd> `is_none`
 
 ```python
-is_none(s: Union[Series, pl_Series]) → Union[Series, pl_Series]
+is_none(s: Union[Series, Series]) → Union[Series, Series]
 ```
 
 
@@ -183,7 +180,7 @@ is_none(s: Union[Series, pl_Series]) → Union[Series, pl_Series]
 ## <kbd>function</kbd> `is_nan_or_none`
 
 ```python
-is_nan_or_none(s: Union[Series, pl_Series]) → Union[Series, pl_Series]
+is_nan_or_none(s: Union[Series, Series]) → Union[Series, Series]
 ```
 
 
@@ -199,9 +196,9 @@ is_nan_or_none(s: Union[Series, pl_Series]) → Union[Series, pl_Series]
 
 ```python
 match_if_categorical(
-    s1: Union[Series, pl_Series, Index],
-    s2: Union[Series, pl_Series]
-) → Tuple[Union[Series, pl_Series], Union[Series, pl_Series]]
+    s1: Union[Series, Series, Index],
+    s2: Union[Series, Series]
+) → Tuple[Union[Series, Series], Union[Series, Series]]
 ```
 
 
@@ -217,9 +214,9 @@ match_if_categorical(
 
 ```python
 vertical_concat(
-    dfs: List[Union[DataFrame, pl_DataFrame, Series, pl_Series]],
+    dfs: List[Union[DataFrame, DataFrame, Series, Series]],
     match_categories: bool = True
-) → Union[DataFrame, pl_DataFrame, Series, pl_Series]
+) → Union[DataFrame, DataFrame, Series, Series]
 ```
 
 
@@ -235,8 +232,8 @@ vertical_concat(
 
 ```python
 horizontal_concat(
-    dfs: List[Union[DataFrame, pl_DataFrame]]
-) → Union[DataFrame, pl_DataFrame]
+    dfs: List[Union[DataFrame, DataFrame]]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -252,9 +249,9 @@ horizontal_concat(
 
 ```python
 copy_if_pandas(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     deep: bool = False
-) → Union[DataFrame, pl_DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -270,11 +267,11 @@ copy_if_pandas(
 
 ```python
 join(
-    df1: Union[DataFrame, pl_DataFrame, Series, pl_Series],
-    df2: Union[DataFrame, pl_DataFrame, Series, pl_Series],
+    df1: Union[DataFrame, DataFrame, Series, Series],
+    df2: Union[DataFrame, DataFrame, Series, Series],
     on: Union[str, List[str]],
     how: str = 'inner'
-) → Union[DataFrame, pl_DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -290,8 +287,8 @@ join(
 
 ```python
 drop_index_if_pandas(
-    df: Union[DataFrame, pl_DataFrame]
-) → Union[DataFrame, pl_DataFrame]
+    df: Union[DataFrame, DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -307,9 +304,9 @@ drop_index_if_pandas(
 
 ```python
 rename(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     mapping: Dict[str, str]
-) → Union[DataFrame, pl_DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -325,9 +322,9 @@ rename(
 
 ```python
 sort(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     by: Optional[str, List[str]] = None
-) → Union[DataFrame, pl_DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -343,10 +340,10 @@ sort(
 
 ```python
 offset_times(
-    times: Union[Series, pl_Series, Index],
+    times: Union[Series, Series, Index],
     freq: Union[int, str, BaseOffset],
     n: Union[int, ndarray]
-) → Union[Series, pl_Series, Index]
+) → Union[Series, Series, Index]
 ```
 
 
@@ -362,10 +359,10 @@ offset_times(
 
 ```python
 offset_dates(
-    dates: Union[Series, pl_Series, Index],
+    dates: Union[Series, Series, Index],
     freq: Union[int, str, BaseOffset],
-    n: Union[int, Series, pl_Series]
-) → Union[Series, pl_Series, Index]
+    n: Union[int, Series, Series]
+) → Union[Series, Series, Index]
 ```
 
 
@@ -381,10 +378,10 @@ offset_dates(
 
 ```python
 time_ranges(
-    starts: Union[Series, pl_Series, Index],
+    starts: Union[Series, Series, Index],
     freq: Union[int, str, BaseOffset],
     periods: int
-) → Union[Series, pl_Series]
+) → Union[Series, Series]
 ```
 
 
@@ -400,9 +397,9 @@ time_ranges(
 
 ```python
 repeat(
-    s: Union[Series, pl_Series, Index, ndarray],
-    n: Union[int, ndarray, Series, pl_Series]
-) → Union[Series, pl_Series, Index, ndarray]
+    s: Union[Series, Series, Index, ndarray],
+    n: Union[int, ndarray, Series, Series]
+) → Union[Series, Series, Index, ndarray]
 ```
 
 
@@ -419,14 +416,14 @@ repeat(
 ```python
 cv_times(
     times: ndarray,
-    uids: Union[Series, pl_Series, Index],
+    uids: Union[Series, Series, Index],
     indptr: ndarray,
     h: int,
     test_size: int,
     step_size: int,
     id_col: str = 'unique_id',
     time_col: str = 'ds'
-) → Union[DataFrame, pl_DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -442,7 +439,7 @@ cv_times(
 
 ```python
 group_by(
-    df: Union[Series, pl_Series, DataFrame, pl_DataFrame],
+    df: Union[Series, Series, DataFrame, DataFrame],
     by,
     maintain_order=False
 )
@@ -461,11 +458,11 @@ group_by(
 
 ```python
 group_by_agg(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     by,
     aggs,
     maintain_order=False
-) → Union[DataFrame, pl_DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -480,7 +477,7 @@ group_by_agg(
 ## <kbd>function</kbd> `is_in`
 
 ```python
-is_in(s: Union[Series, pl_Series], collection) → Union[Series, pl_Series]
+is_in(s: Union[Series, Series], collection) → Union[Series, Series]
 ```
 
 
@@ -496,10 +493,10 @@ is_in(s: Union[Series, pl_Series], collection) → Union[Series, pl_Series]
 
 ```python
 between(
-    s: Union[Series, pl_Series],
-    lower: Union[Series, pl_Series],
-    upper: Union[Series, pl_Series]
-) → Union[Series, pl_Series]
+    s: Union[Series, Series],
+    lower: Union[Series, Series],
+    upper: Union[Series, Series]
+) → Union[Series, Series]
 ```
 
 
@@ -515,9 +512,9 @@ between(
 
 ```python
 fill_null(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     mapping: Dict[str, Any]
-) → Union[DataFrame, pl_DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -532,7 +529,7 @@ fill_null(
 ## <kbd>function</kbd> `cast`
 
 ```python
-cast(s: Union[Series, pl_Series], dtype: type) → Union[Series, pl_Series]
+cast(s: Union[Series, Series], dtype: type) → Union[Series, Series]
 ```
 
 
@@ -548,7 +545,7 @@ cast(s: Union[Series, pl_Series], dtype: type) → Union[Series, pl_Series]
 
 ```python
 value_cols_to_numpy(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     id_col: str,
     time_col: str,
     target_col: Optional[str]
@@ -568,13 +565,13 @@ value_cols_to_numpy(
 
 ```python
 make_future_dataframe(
-    uids: Union[Series, pl_Series],
-    last_times: Union[Series, pl_Series, Index],
+    uids: Union[Series, Series],
+    last_times: Union[Series, Series, Index],
     freq: Union[int, str, BaseOffset],
     h: int,
     id_col: str = 'unique_id',
     time_col: str = 'ds'
-) → Union[DataFrame, pl_DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -590,10 +587,10 @@ make_future_dataframe(
 
 ```python
 anti_join(
-    df1: Union[DataFrame, pl_DataFrame],
-    df2: Union[DataFrame, pl_DataFrame],
+    df1: Union[DataFrame, DataFrame],
+    df2: Union[DataFrame, DataFrame],
     on: Union[str, List[str]]
-) → Union[DataFrame, pl_DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -609,10 +606,10 @@ anti_join(
 
 ```python
 ensure_sorted(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     id_col: str,
     time_col: str
-) → Union[DataFrame, pl_DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -628,7 +625,7 @@ ensure_sorted(
 
 ```python
 process_df(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     id_col: str,
     time_col: str,
     target_col: Optional[str]
@@ -663,7 +660,7 @@ Extract components from dataframe
 
 ```python
 backtest_splits(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     n_windows: int,
     h: int,
     id_col: str,
@@ -672,7 +669,7 @@ backtest_splits(
     step_size: Optional[int] = None,
     input_size: Optional[int] = None,
     allow_partial_horizons: bool = False
-) → Generator[Tuple[Union[DataFrame, pl_DataFrame], Union[DataFrame, pl_DataFrame], Union[DataFrame, pl_DataFrame]], NoneType, NoneType]
+) → Generator[Tuple[Union[DataFrame, DataFrame], Union[DataFrame, DataFrame], Union[DataFrame, DataFrame]], NoneType, NoneType]
 ```
 
 
@@ -688,12 +685,12 @@ backtest_splits(
 
 ```python
 add_insample_levels(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     models: List[str],
     level: List[Union[int, float]],
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → Union[DataFrame, pl_DataFrame]
+) → Union[DataFrame, DataFrame]
 ```
 
 
@@ -744,8 +741,8 @@ __init__(id_col: str = 'unique_id', time_col: str = 'ds', target_col: str = 'y')
 
 ```python
 process(
-    df: Union[DataFrame, pl_DataFrame]
-) → Tuple[Union[Series, pl_Series], ndarray, ndarray, ndarray, Optional[ndarray]]
+    df: Union[DataFrame, DataFrame]
+) → Tuple[Union[Series, Series], ndarray, ndarray, ndarray, Optional[ndarray]]
 ```
 
 
@@ -753,8 +750,3 @@ process(
 
 
 
-
-
----
-
-_This file was automatically generated via [lazydocs](https://github.com/ml-tooling/lazydocs)._

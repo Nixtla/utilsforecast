@@ -5,9 +5,6 @@
 # <kbd>module</kbd> `utilsforecast.feature_engineering`
 Create exogenous regressors for your models 
 
-**Global Variables**
----------------
-- **pl**
 
 ---
 
@@ -17,14 +14,14 @@ Create exogenous regressors for your models
 
 ```python
 fourier(
-    df: DataFrame,
+    df: ~DFType,
     freq: Union[str, int],
     season_length: int,
     k: int,
     h: int = 0,
     id_col: str = 'unique_id',
     time_col: str = 'ds'
-) → Tuple[DataFrame, DataFrame]
+) → Tuple[~DFType, ~DFType]
 ```
 
 Compute fourier seasonal terms for training and forecasting 
@@ -57,12 +54,12 @@ Compute fourier seasonal terms for training and forecasting
 
 ```python
 trend(
-    df: DataFrame,
+    df: ~DFType,
     freq: Union[str, int],
     h: int = 0,
     id_col: str = 'unique_id',
     time_col: str = 'ds'
-) → Tuple[DataFrame, DataFrame]
+) → Tuple[~DFType, ~DFType]
 ```
 
 Add a trend column with consecutive integers for training and forecasting 
@@ -92,13 +89,13 @@ Add a trend column with consecutive integers for training and forecasting
 
 ```python
 time_features(
-    df: DataFrame,
+    df: ~DFType,
     freq: Union[str, int],
     features: List[Union[str, Callable]],
     h: int = 0,
     id_col: str = 'unique_id',
     time_col: str = 'ds'
-) → Tuple[DataFrame, DataFrame]
+) → Tuple[~DFType, ~DFType]
 ```
 
 Compute timestamp-based features for training and forecasting 
@@ -129,13 +126,13 @@ Compute timestamp-based features for training and forecasting
 
 ```python
 future_exog_to_historic(
-    df: DataFrame,
+    df: ~DFType,
     freq: Union[str, int],
     features: List[str],
     h: int = 0,
     id_col: str = 'unique_id',
     time_col: str = 'ds'
-) → Tuple[DataFrame, DataFrame]
+) → Tuple[~DFType, ~DFType]
 ```
 
 Turn future exogenous features into historic by shifting them `h` steps. 
@@ -166,13 +163,13 @@ Turn future exogenous features into historic by shifting them `h` steps.
 
 ```python
 pipeline(
-    df: DataFrame,
+    df: ~DFType,
     features: List[Callable],
     freq: Union[str, int],
     h: int = 0,
     id_col: str = 'unique_id',
     time_col: str = 'ds'
-) → Tuple[DataFrame, DataFrame]
+) → Tuple[~DFType, ~DFType]
 ```
 
 Compute several features for training and forecasting 
@@ -195,8 +192,3 @@ Compute several features for training and forecasting
  - <b>`tuple[pandas or polars DataFrame, pandas or polars DataFrame]`</b>:  A tuple  containing the original DataFrame with the computed features and  DataFrame with future values. 
 
 
-
-
----
-
-_This file was automatically generated via [lazydocs](https://github.com/ml-tooling/lazydocs)._

@@ -5,9 +5,6 @@
 # <kbd>module</kbd> `utilsforecast.preprocessing`
 Utilities for processing data before training/analysis 
 
-**Global Variables**
----------------
-- **pl**
 
 ---
 
@@ -17,13 +14,13 @@ Utilities for processing data before training/analysis
 
 ```python
 id_time_grid(
-    df: DataFrame,
+    df: ~DFType,
     freq: Union[str, int],
     start: Union[str, int, date, datetime] = 'per_serie',
     end: Union[str, int, date, datetime] = 'global',
     id_col: str = 'unique_id',
     time_col: str = 'ds'
-) → DataFrame
+) → ~DFType
 ```
 
 Generate all expected combiations of ids and times. 
@@ -54,13 +51,13 @@ Generate all expected combiations of ids and times.
 
 ```python
 fill_gaps(
-    df: DataFrame,
+    df: ~DFType,
     freq: Union[str, int],
     start: Union[str, int, date, datetime] = 'per_serie',
     end: Union[str, int, date, datetime] = 'global',
     id_col: str = 'unique_id',
     time_col: str = 'ds'
-) → DataFrame
+) → ~DFType
 ```
 
 Enforce start and end datetimes for dataframe. 
@@ -83,8 +80,3 @@ Enforce start and end datetimes for dataframe.
  - <b>`pandas or polars DataFrame`</b>:  Dataframe with gaps filled. 
 
 
-
-
----
-
-_This file was automatically generated via [lazydocs](https://github.com/ml-tooling/lazydocs)._

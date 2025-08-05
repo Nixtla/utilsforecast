@@ -5,9 +5,6 @@
 # <kbd>module</kbd> `utilsforecast.losses`
 Loss functions for model evaluation. 
 
-**Global Variables**
----------------
-- **pl**
 
 ---
 
@@ -17,11 +14,11 @@ Loss functions for model evaluation.
 
 ```python
 mae(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Mean Absolute Error (MAE) 
@@ -52,11 +49,11 @@ MAE measures the relative prediction accuracy of a forecasting method by calcula
 
 ```python
 mse(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Mean Squared Error (MSE) 
@@ -87,11 +84,11 @@ MSE measures the relative prediction accuracy of a forecasting method by calcula
 
 ```python
 rmse(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Root Mean Squared Error (RMSE) 
@@ -122,11 +119,11 @@ RMSE measures the relative prediction accuracy of a forecasting method by calcul
 
 ```python
 bias(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Forecast estimator bias. 
@@ -157,11 +154,11 @@ Defined as prediction - actual
 
 ```python
 cfe(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Cumulative Forecast Error (CFE) 
@@ -194,11 +191,11 @@ Total signed forecast error per series. Positive values mean under forecast; neg
 
 ```python
 pis(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Compute the raw Absolute Periods In Stock (PIS) for one or multiple models. 
@@ -231,12 +228,12 @@ The PIS metric sums the absolute forecast errors per series without any scaling,
 
 ```python
 spis(
-    df: DataFrame,
-    df_train: DataFrame,
+    df: ~DFType,
+    df_train: ~DFType,
     models: List[str],
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Compute the scaled Absolute Periods In Stock (sAPIS) for one or multiple models. 
@@ -269,11 +266,11 @@ The sPIS metric scales the sum of absolute forecast errors by the mean in-sample
 
 ```python
 mape(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Mean Absolute Percentage Error (MAPE) 
@@ -304,11 +301,11 @@ MAPE measures the relative prediction accuracy of a forecasting method by calcul
 
 ```python
 smape(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Symmetric Mean Absolute Percentage Error (SMAPE) 
@@ -339,13 +336,13 @@ SMAPE measures the relative prediction accuracy of a forecasting method by calcu
 
 ```python
 mase(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     seasonality: int,
-    train_df: DataFrame,
+    train_df: ~DFType,
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Mean Absolute Scaled Error (MASE) 
@@ -381,12 +378,12 @@ References:
 
 ```python
 rmae(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     baseline: str,
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Relative Mean Absolute Error (RMAE) 
@@ -418,11 +415,11 @@ Calculates the RAME between two sets of forecasts (from two different forecastin
 
 ```python
 nd(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Normalized Deviation (ND) 
@@ -452,13 +449,13 @@ ND measures the relative prediction accuracy of a forecasting method by calculat
 
 ```python
 msse(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     seasonality: int,
-    train_df: DataFrame,
+    train_df: ~DFType,
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Mean Squared Scaled Error (MSSE) 
@@ -494,13 +491,13 @@ References:
 
 ```python
 rmsse(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     seasonality: int,
-    train_df: DataFrame,
+    train_df: ~DFType,
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Root Mean Squared Scaled Error (RMSSE) 
@@ -536,12 +533,12 @@ References:
 
 ```python
 quantile_loss(
-    df: DataFrame,
+    df: ~DFType,
     models: Dict[str, str],
     q: float = 0.5,
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Quantile Loss (QL) 
@@ -573,14 +570,14 @@ QL measures the deviation of a quantile forecast. By weighting the absolute devi
 
 ```python
 scaled_quantile_loss(
-    df: DataFrame,
+    df: ~DFType,
     models: Dict[str, str],
     seasonality: int,
-    train_df: DataFrame,
+    train_df: ~DFType,
     q: float = 0.5,
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Scaled Quantile Loss (SQL) 
@@ -617,12 +614,12 @@ References:
 
 ```python
 mqloss(
-    df: DataFrame,
+    df: ~DFType,
     models: Dict[str, List[str]],
     quantiles: ndarray,
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Multi-Quantile loss (MQL) 
@@ -659,14 +656,14 @@ References:
 
 ```python
 scaled_mqloss(
-    df: DataFrame,
+    df: ~DFType,
     models: Dict[str, List[str]],
     quantiles: ndarray,
     seasonality: int,
-    train_df: DataFrame,
+    train_df: ~DFType,
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Scaled Multi-Quantile loss (SMQL) 
@@ -703,12 +700,12 @@ References:
 
 ```python
 coverage(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     level: int,
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Coverage of y with y_hat_lo and y_hat_hi. 
@@ -741,11 +738,11 @@ References:
 
 ```python
 calibration(
-    df: DataFrame,
+    df: ~DFType,
     models: Dict[str, str],
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Fraction of y that is lower than the model's predictions. 
@@ -777,12 +774,12 @@ References:
 
 ```python
 scaled_crps(
-    df: DataFrame,
+    df: ~DFType,
     models: Dict[str, List[str]],
     quantiles: ndarray,
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Scaled Continues Ranked Probability Score 
@@ -817,12 +814,12 @@ References:
 
 ```python
 tweedie_deviance(
-    df: DataFrame,
+    df: ~DFType,
     models: List[str],
     power: float = 1.5,
     id_col: str = 'unique_id',
     target_col: str = 'y'
-) → DataFrame
+) → ~DFType
 ```
 
 Compute the Tweedie deviance loss for one or multiple models, grouped by an identifier. 
@@ -855,8 +852,3 @@ References:
  - <b>`[1] https`</b>: //en.wikipedia.org/wiki/Tweedie_distribution 
 
 
-
-
----
-
-_This file was automatically generated via [lazydocs](https://github.com/ml-tooling/lazydocs)._

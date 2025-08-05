@@ -5,9 +5,6 @@
 # <kbd>module</kbd> `utilsforecast.validation`
 Utilities to validate input data 
 
-**Global Variables**
----------------
-- **pl**
 
 ---
 
@@ -31,7 +28,7 @@ ensure_shallow_copy(df: DataFrame) → DataFrame
 ## <kbd>function</kbd> `ensure_time_dtype`
 
 ```python
-ensure_time_dtype(df: DataFrame, time_col: str = 'ds') → DataFrame
+ensure_time_dtype(df: ~DFType, time_col: str = 'ds') → ~DFType
 ```
 
 Make sure that `time_col` contains timestamps or integers. If it contains strings, try to cast them as timestamps. 
@@ -45,7 +42,7 @@ Make sure that `time_col` contains timestamps or integers. If it contains string
 
 ```python
 validate_format(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     id_col: str = 'unique_id',
     time_col: str = 'ds',
     target_col: Optional[str] = 'y'
@@ -76,7 +73,7 @@ Ensure DataFrame has expected format.
 ## <kbd>function</kbd> `validate_freq`
 
 ```python
-validate_freq(times: Union[Series, pl_Series], freq: Union[str, int]) → None
+validate_freq(times: Union[Series, Series], freq: Union[str, int]) → None
 ```
 
 
@@ -84,8 +81,3 @@ validate_freq(times: Union[Series, pl_Series], freq: Union[str, int]) → None
 
 
 
-
-
----
-
-_This file was automatically generated via [lazydocs](https://github.com/ml-tooling/lazydocs)._

@@ -71,7 +71,7 @@ append_several(
 
 ```python
 from_sorted_df(
-    df: Union[DataFrame, pl_DataFrame],
+    df: Union[DataFrame, DataFrame],
     id_col: str,
     time_col: str,
     target_col: str
@@ -107,8 +107,3 @@ take_from_groups(idx: Union[int, slice]) → Tuple[ndarray, ndarray]
 Select a subset from each group. 
 
 
-
-
----
-
-_This file was automatically generated via [lazydocs](https://github.com/ml-tooling/lazydocs)._
