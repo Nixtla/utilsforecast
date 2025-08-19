@@ -5,7 +5,7 @@ load_docs_scripts:
 	fi
 
 api_docs:
-	lazydocs .datasetsforecast --no-watermark
+	lazydocs .utilsforecast --no-watermark
 	python docs/to_mdx.py
 
 examples_docs:
