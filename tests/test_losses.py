@@ -34,7 +34,7 @@ if POLARS_INSTALLED:
 warnings.filterwarnings("ignore", message="Unknown section References")
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def setup_series():
     models = ["model0", "model1"]
     series = generate_series(10, n_models=2, level=[80])
@@ -85,7 +85,17 @@ def multi_quantile_models():
 
 def pd_vs_pl(pd_df, pl_df, models):
     pd.testing.assert_frame_equal(pd_df[models],
-                                  pl_df[models].to_pandas())
+                                  pl_df.sort('unique_id')[models].to_pandas())
+
+
+def manual_loop(df, models, loss_fn):
+    results = []
+    for uid, uid_df in df.groupby('unique_id', observed=True):
+        uid_res = {'unique_id': uid}
+        for model in models:
+            uid_res[model] = loss_fn(uid_df['y'], uid_df[model])
+        results.append(uid_res)
+    return pd.DataFrame(losses)
 
 
 class TestBasicMetrics:
