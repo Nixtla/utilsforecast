@@ -94,7 +94,7 @@ make all_docs
 Finally to view the documentation
 
 ```sh
-mintlify dev
+make preview_docs
 ```
 
 ## Running tests
