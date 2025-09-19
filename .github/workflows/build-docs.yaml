@@ -86,8 +86,4 @@ jobs:
               repo: 'docs',
               workflow_id: 'mintlify-action.yml',
               ref: 'main',
-              inputs: {
-                version: '${{ github.event.release.tag_name }}',
-                is_release: 'true'
-              }
             });
