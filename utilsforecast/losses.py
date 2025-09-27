@@ -1,6 +1,6 @@
 """Loss functions for model evaluation."""
 
-__all__ = ['mae', 'mse', 'rmse', 'bias', 'cfe', 'pis', 'spis', 'mape', 'smape', 'mase', 'rmae', 'nd', 'msse', 'rmsse',
+__all__ = ['mae', 'mse', 'rmse', 'bias', 'cfe', 'pis', 'spis', 'linex', 'mape', 'smape', 'mase', 'rmae', 'nd', 'msse', 'rmsse',
            'quantile_loss', 'scaled_quantile_loss', 'mqloss', 'scaled_mqloss', 'coverage', 'calibration', 'scaled_crps',
            'tweedie_deviance']
 
@@ -552,6 +552,7 @@ def nd(
     models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
+    replace_inf: bool = False
 ) -> DFType:
     """Normalized Deviation (ND)
 
@@ -578,11 +579,22 @@ def nd(
             .sum()
         )
         denom = df[target_col].abs().groupby(df[id_col], observed=True).sum()
-        res = nom.div(denom, axis=0).fillna(0)
+        res = nom.div(denom, axis=0)
+
+        if not replace_inf:
+            if np.isinf(res.values).any():
+                        print(
+            "Infinities detected in ND calculation due to zero y values with non-zero predictions. "
+            "Consider setting 'replace_inf=True' to replace infs with 0."
+        )
+        if replace_inf:
+            res = res.replace([np.inf, -np.inf], 0).fillna(0)
+        else:
+            res = res.fillna(0)
         res.index.name = id_col
         res = res.reset_index()
+        return res
     else:
-
         def gen_expr_nom(model):
             return pl.col(target_col).sub(pl.col(model)).abs().alias(model)
 
@@ -593,11 +605,30 @@ def nd(
 
         denom = _pl_agg_expr(df, [target_col], id_col, gen_expr_denom, "sum")
         df = nom.join(denom, on=id_col, how="left")
-        res = df.select(
-            [
+        res = df.select([
                 id_col,
                 *[
                     pl.col(model).truediv(pl.col(target_col)).fill_nan(0).alias(model)
+                    for model in models
+                ],
+            ]
+        )
+        if not replace_inf:
+            bool_series_list = res[models].select(pl.all().is_infinite())   
+            mask_series = pl.concat(bool_series_list)
+            
+            if mask_series.any():
+                print("Infinities detected in ND calculation due to zero y values with non-zero predictions."
+                "Consider setting 'replace_inf=True' to replace infs with 0.")
+        if replace_inf:
+            res = df.select(
+            [
+                id_col,
+                *[
+                    (pl.when(pl.col(target_col) == 0)
+                        .then(0)
+                        .otherwise(pl.col(model).truediv(pl.col(target_col))))
+                    .alias(model)
                     for model in models
                 ],
             ]
