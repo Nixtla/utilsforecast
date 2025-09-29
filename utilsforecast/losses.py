@@ -60,6 +60,7 @@ def _scale_loss(
     train_df: DFType,
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff"
 ) -> DFType:
     """
     Args:
@@ -71,6 +72,7 @@ def _scale_loss(
         train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
         pandas or polars DataFrame: dataframe with one row per id and one column per model.
@@ -78,28 +80,34 @@ def _scale_loss(
     References:
         [1] https://robjhyndman.com/papers/mase.pdf
     """
+    if cutoff_col in train_df.columns:
+        group_cols = [cutoff_col, id_col]
+    else:
+        group_cols = [id_col]
 
     if isinstance(train_df, pd.DataFrame):
         loss_df = loss_df.set_index(id_col)
         # assume train_df is sorted
-        lagged = train_df.groupby(id_col, observed=True)[target_col].shift(seasonality)
+        lagged = train_df.groupby(group_cols, observed=True)[target_col].shift(seasonality)
+        
         if scale_type == "absolute_error":
             scale = train_df[target_col].sub(lagged).abs()
         else:
             scale = train_df[target_col].sub(lagged).pow(2)
-        scale = scale.groupby(train_df[id_col], observed=True).mean()
+        
+        scale = scale.groupby(train_df[group_cols], observed=True).mean()
         res = loss_df.div(_zero_to_nan(scale), axis=0).fillna(0)
         res.index.name = id_col
         res = res.reset_index()
     else:
         # assume train_df is sorted
-        lagged = pl.col(target_col).shift(seasonality).over(id_col)
+        lagged = pl.col(target_col).shift(seasonality).over(group_cols)
         if scale_type == "absolute_error":
             scale_expr = pl.col(target_col).sub(lagged).abs().alias("scale")
         else:
             scale_expr = pl.col(target_col).sub(lagged).pow(2).alias("scale")
-        scale = train_df.select([id_col, scale_expr])
-        scale = ufp.group_by(scale, id_col).mean()
+        scale = train_df.select(group_cols + [scale_expr])
+        scale = ufp.group_by(scale, group_cols).mean()
         scale = scale.with_columns(_zero_to_nan(pl.col("scale")))
 
         def gen_expr(model):
@@ -464,6 +472,7 @@ def mase(
     train_df: DFType,
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff"
 ) -> DFType:
     """Mean Absolute Scaled Error (MASE)
 
@@ -482,6 +491,7 @@ def mase(
         train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
         pandas or polars DataFrame: dataframe with one row per id and one column per model.
@@ -498,6 +508,7 @@ def mase(
         train_df=train_df,
         id_col=id_col,
         target_col=target_col,
+        cutoff_col=cutoff_col,
     )
 
 
@@ -613,6 +624,7 @@ def msse(
     train_df: DFType,
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff",
 ) -> DFType:
     """Mean Squared Scaled Error (MSSE)
 
@@ -629,6 +641,7 @@ def msse(
         train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
         pandas or polars DataFrame: dataframe with one row per id and one column per model.
@@ -645,6 +658,7 @@ def msse(
         train_df=train_df,
         id_col=id_col,
         target_col=target_col,
+        cutoff_col=cutoff_col,
     )
 
 
@@ -655,6 +669,7 @@ def rmsse(
     train_df: DFType,
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff",
 ) -> DFType:
     res = msse(
         df,
@@ -663,6 +678,7 @@ def rmsse(
         train_df=train_df,
         id_col=id_col,
         target_col=target_col,
+        cutoff_col=cutoff_col,
     )
     if isinstance(res, pd.DataFrame):
         res[models] = res[models].pow(0.5)
@@ -738,6 +754,7 @@ def scaled_quantile_loss(
     q: float = 0.5,
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff",
 ) -> DFType:
     """Scaled Quantile Loss (SQL)
 
@@ -758,6 +775,7 @@ def scaled_quantile_loss(
         q (float, optional): Quantile for the predictions' comparison. Defaults to 0.5.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
         pandas or polars DataFrame: dataframe with one row per id and one column per model.
@@ -776,6 +794,7 @@ def scaled_quantile_loss(
         train_df=train_df,
         id_col=id_col,
         target_col=target_col,
+        cutoff_col=cutoff_col,
     )
 
 
@@ -837,6 +856,7 @@ def scaled_mqloss(
     train_df: DFType,
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff",
 ) -> DFType:
     """Scaled Multi-Quantile loss (SMQL)
 
@@ -862,6 +882,7 @@ def scaled_mqloss(
         train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
         pandas or polars DataFrame: dataframe with one row per id and one column per model.
@@ -880,6 +901,7 @@ def scaled_mqloss(
         train_df=train_df,
         id_col=id_col,
         target_col=target_col,
+        cutoff_col=cutoff_col,
     )
 
 

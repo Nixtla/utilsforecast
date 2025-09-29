@@ -45,11 +45,12 @@ def _get_model_cols(
     id_col: str,
     time_col: str,
     target_col: str,
+    cutoff_col: str,
 ) -> List[str]:
     return [
         c
         for c in cols
-        if c not in [id_col, time_col, target_col]
+        if c not in [id_col, time_col, target_col, cutoff_col]
         and not re.search(r"-(?:lo|hi)-\d+", c)
     ]
 
@@ -92,6 +93,7 @@ def _distributed_evaluate(
     id_col: str,
     time_col: str,
     target_col: str,
+    cutoff_col: str,
     agg_fn: Optional[str],
 ) -> DistributedDFType:
     import fugue.api as fa
@@ -129,7 +131,7 @@ def _distributed_evaluate(
         df = fa.union(train_df, df)
 
     if models is None:
-        model_cols = _get_model_cols(df_cols, id_col, time_col, target_col)
+        model_cols = _get_model_cols(df_cols, id_col, time_col, target_col, cutoff_col)
     else:
         model_cols = models
     models_schema = ",".join(f"{m}:double" for m in model_cols)
@@ -160,6 +162,7 @@ def evaluate(
     id_col: str = "unique_id",
     time_col: str = "ds",
     target_col: str = "y",
+    cutoff_col: str = "cutoff",
     agg_fn: Optional[str] = None,
 ) -> AnyDFType:
     """Evaluate forecast using different metrics.
@@ -182,6 +185,8 @@ def evaluate(
             can be timestamps or integers. Defaults to 'ds'.
         target_col (str, optional): Column that contains the target.
             Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for
+            each forecast cv. Defaults to 'cutoff'.
         agg_fn (str, optional): Statistic to compute on the scores by id to reduce
             them to a single number. Defaults to None.
 
@@ -200,10 +205,11 @@ def evaluate(
             id_col=id_col,
             time_col=time_col,
             target_col=target_col,
+            cutoff_col=cutoff_col,
             agg_fn=agg_fn,
         )
     if models is None:
-        model_cols = _get_model_cols(df.columns, id_col, time_col, target_col)
+        model_cols = _get_model_cols(df.columns, id_col, time_col, target_col, cutoff_col)
     else:
         model_cols = models
 
