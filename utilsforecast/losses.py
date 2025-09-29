@@ -74,6 +74,7 @@ def _scale_loss(
         train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        time_col (str, optional): Column that contains the time values. Defaults to 'ds'.
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
@@ -155,6 +156,7 @@ def mse(
     models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff",
 ) -> DFType:
     """Mean Squared Error (MSE)
 
@@ -163,21 +165,17 @@ def mse(
     squared deviation of the prediction and the true
     value at a given time, and averages these devations
     over the length of the series."""
-    if isinstance(df, pd.DataFrame):
-        res = (
-            (df[models].sub(df[target_col], axis=0))
-            .pow(2)
-            .groupby(df[id_col], observed=True)
-            .mean()
-        )
-        res.index.name = id_col
-        res = res.reset_index()
+    
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
     else:
+        group_cols = [id_col]
 
-        def gen_expr(model):
-            return pl.col(target_col).sub(pl.col(model)).pow(2).alias(model)
+    res = nw.from_native(df)
+    res = res.with_columns([(nw.col(target_col) - nw.col(m)).pow(2).alias(m) for m in models])
+    res = res.group_by(group_cols).agg([nw.col(m).mean().alias(m) for m in models])
+    res = res.to_native()
 
-        res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
 
@@ -187,6 +185,7 @@ def rmse(
     models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff",
 ) -> DFType:
     """Root Mean Squared Error (RMSE)
 
@@ -198,13 +197,18 @@ def rmse(
     as the original time series so its comparison with other
     series is possible only if they share a common scale.
     RMSE has a direct connection to the L2 norm."""
-    res = mse(df, models, id_col, target_col)
-    if isinstance(res, pd.DataFrame):
-        res[models] = res[models].pow(0.5)
-    else:
-        res = res.with_columns(*[pl.col(c).pow(0.5) for c in models])
-    return res
 
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
+    else:
+        group_cols = [id_col]
+
+    res = nw.from_native(df)
+    res = res.with_columns([(nw.col(target_col) - nw.col(m)).pow(2).alias(m) for m in models])
+    res = res.group_by(group_cols).agg([nw.col(m).mean().sqrt().alias(m) for m in models])
+    res = res.to_native()
+
+    return res
 
 @_base_docstring
 def bias(
@@ -212,24 +216,22 @@ def bias(
     models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff"
 ) -> DFType:
     """Forecast estimator bias.
 
     Defined as prediction - actual"""
-    if isinstance(df, pd.DataFrame):
-        res = (
-            (df[models].sub(df[target_col], axis=0))
-            .groupby(df[id_col], observed=True)
-            .mean()
-        )
-        res.index.name = id_col
-        res = res.reset_index()
+
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
     else:
+        group_cols = [id_col]
 
-        def gen_expr(model):
-            return pl.col(model).sub(pl.col(target_col)).alias(model)
+    res = nw.from_native(df)
+    res = res.with_columns([(nw.col(m) - nw.col(target_col)).alias(m) for m in models])
+    res = res.group_by(group_cols).agg([nw.col(m).mean().alias(m) for m in models])
+    res = res.to_native()
 
-        res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
 
@@ -239,27 +241,24 @@ def cfe(
     models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff"
 ) -> DFType:
     """
     Cumulative Forecast Error (CFE)
 
     Total signed forecast error per series. Positive values mean under forecast; negative mean over forecast.
     """
-    if isinstance(df, pd.DataFrame):
-        res = (
-            df[models]
-            .sub(df[target_col], axis=0)
-            .groupby(df[id_col], observed=True)
-            .sum()
-        )
-        res.index.name = id_col
-        return res.reset_index()
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
     else:
+        group_cols = [id_col]
 
-        def gen_expr(model: str) -> pl.Expr:
-            return pl.col(model).sub(pl.col(target_col)).alias(model)
+    res = nw.from_native(df)
+    res = res.with_columns([(nw.col(m) - nw.col(target_col)).alias(m) for m in models])
+    res = res.group_by(group_cols).agg([nw.col(m).sum().alias(m) for m in models])
+    res = res.to_native()
 
-        return _pl_agg_expr(df, models, id_col, gen_expr, agg="sum")
+    return res
 
 
 @_base_docstring
@@ -268,6 +267,7 @@ def pis(
     models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff"
 ) -> DFType:
     """
     Compute the raw Absolute Periods In Stock (PIS) for one or multiple models.
@@ -275,24 +275,17 @@ def pis(
     The PIS metric sums the absolute forecast errors per series without any scaling,
     yielding a scale-dependent measure of bias.
     """
-    if isinstance(df, pd.DataFrame):
-        res = (
-            df[models]
-            .sub(df[target_col], axis=0)
-            .abs()
-            .groupby(df[id_col], observed=True)
-            .sum()
-        )
-        res.index.name = id_col
-        return res.reset_index()
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
     else:
-        return _pl_agg_expr(
-            df,
-            models,
-            id_col,
-            lambda m: pl.col(m).sub(pl.col(target_col)).abs().alias(m),
-            agg="sum",
-        )
+        group_cols = [id_col]
+
+    res = nw.from_native(df)
+    res = res.with_columns([(nw.col(m) - nw.col(target_col)).abs().alias(m) for m in models])
+    res = res.group_by(group_cols).agg([nw.col(m).sum().alias(m) for m in models])
+    res = res.to_native()
+
+    return res
 
 
 @_base_docstring
@@ -302,6 +295,8 @@ def spis(
     models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
+    time_col: str = "ds",
+    cutoff_col: str = "cutoff"
 ) -> DFType:
     """
     Compute the scaled Absolute Periods In Stock (sAPIS) for one or multiple models.
@@ -309,44 +304,31 @@ def spis(
     The sPIS metric scales the sum of absolute forecast errors by the mean in-sample demand,
     yielding a scale-independent bias measure that can be aggregated across series.
     """
-    if isinstance(df, pd.DataFrame):
-        ins_means = df_train.groupby(id_col)[target_col].mean().rename("insample_mean")
-        abs_err_sum = (
-            (df[models].sub(df[target_col], axis=0))
-            .abs()
-            .groupby(df[id_col], observed=True)
-            .sum()
-        )
-        res = abs_err_sum.div(ins_means, axis=0)
-        res.index.name = id_col
-        return res.reset_index()
-    else:
-        ins_means = df_train.group_by(id_col).agg(
-            pl.col(target_col).mean().alias("insample_mean")
-        )
-        abs_err = _pl_agg_expr(
-            df,
-            models,
-            id_col,
-            lambda m: pl.col(m).sub(pl.col(target_col)).abs().alias(m),
-            agg="sum",
-        )
-        res = (
-            abs_err.join(ins_means, on=id_col, how="left")
-            .with_columns(
-                [(pl.col(m) / pl.col("insample_mean")).alias(m) for m in models]
-            )
-            .drop("insample_mean")
-        )
-        return res
+
+    pis_error = pis(df, models, id_col, target_col, cutoff_col)
+
+    # TODO: below is incorrect, correct it
+    return _scale_loss(
+        loss_df=pis_error,
+        scale_type="absolute_error",
+        models=models,
+        seasonality=1,
+        train_df=df_train,
+        id_col=id_col,
+        target_col=target_col,
+        time_col=time_col,
+        cutoff_col=cutoff_col,
+    )
+
     
 @_base_docstring
 def linex(
     df: DFType,
     models: List[str],
+    a: float = 1.0,
     id_col: str = "unique_id",
     target_col: str = "y",
-    a: float = 1.0,
+    cutoff_col: str = "cutoff",
 ) -> DFType:
     """
     Linex Loss
@@ -361,23 +343,17 @@ def linex(
     if np.isclose(a, 0.0):
         raise ValueError("Parameter a in Linex loss must be non-zero.")
 
-    if isinstance(df, pd.DataFrame):
-        error = df[models].sub(df[target_col], axis=0)
-        loss = (
-            (np.exp(a * error) - a * error - 1)
-            .groupby(df[id_col], observed=True)
-            .mean()
-        )
-        loss.index.name = id_col
-        return loss.reset_index()
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
     else:
+        group_cols = [id_col]
 
-        def gen_expr(model):
-            err = pl.col(model).sub(pl.col(target_col))
-            return (err.mul(a).exp().sub(err.mul(a)).sub(1)).alias(model)
+    res = nw.from_native(df)
+    res = res.with_columns([((a * (nw.col(m) - nw.col(target_col))).exp() - ((a * (nw.col(m) - nw.col(target_col))) - 1)).alias(m) for m in models])
+    res = res.group_by(group_cols).agg([nw.col(m).sum().alias(m) for m in models])
+    res = res.to_native()
 
-        return _pl_agg_expr(df, models, id_col, gen_expr)
-
+    return res
 
 def _zero_to_nan(series: Union[pd.Series, "pl.Expr"]) -> Union[pd.Series, "pl.Expr"]:
     if isinstance(series, pd.Series):
@@ -386,13 +362,13 @@ def _zero_to_nan(series: Union[pd.Series, "pl.Expr"]) -> Union[pd.Series, "pl.Ex
         res = pl.when(series == 0).then(float("nan")).otherwise(series.abs())
     return res
 
-
 @_base_docstring
 def mape(
     df: DFType,
     models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff"
 ) -> DFType:
     """Mean Absolute Percentage Error (MAPE)
 
@@ -402,26 +378,16 @@ def mape(
     averages these devations over the length of the series.
     The closer to zero an observed value is, the higher penalty MAPE loss
     assigns to the corresponding error."""
-    if isinstance(df, pd.DataFrame):
-        res = (
-            df[models]
-            .sub(df[target_col], axis=0)
-            .abs()
-            .div(_zero_to_nan(df[target_col].abs()), axis=0)
-            .groupby(df[id_col], observed=True)
-            .mean()
-        )
-        res.index.name = id_col
-        res = res.reset_index()
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
     else:
+        group_cols = [id_col]
 
-        def gen_expr(model):
-            abs_err = pl.col(target_col).sub(pl.col(model)).abs()
-            abs_target = _zero_to_nan(pl.col(target_col))
-            ratio = abs_err.truediv(abs_target).alias(model)
-            return ratio.fill_nan(None)
+    res = nw.from_native(df)
+    res = res.with_columns([(nw.col(m) - nw.col(target_col)).abs() / (nw.when(nw.col(target_col) == 0.0).then(float("nan")).otherwise(nw.col(target_col).abs())).alias(m) for m in models])
+    res = res.group_by(group_cols).agg([nw.col(m).mean().alias(m) for m in models])
+    res = res.to_native()
 
-        res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
 
@@ -431,6 +397,7 @@ def smape(
     models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff"
 ) -> DFType:
     """Symmetric Mean Absolute Percentage Error (SMAPE)
 
@@ -442,26 +409,18 @@ def smape(
     of the series. This allows the SMAPE to have bounds between
     0% and 100% which is desirable compared to normal MAPE that
     may be undetermined when the target is zero."""
-    if isinstance(df, pd.DataFrame):
-        delta_y = df[models].sub(df[target_col], axis=0).abs()
-        scale = df[models].abs().add(df[target_col].abs(), axis=0)
-        raw = delta_y.div(scale).fillna(0)
-        res = raw.groupby(df[id_col], observed=True).mean()
-        res.index.name = id_col
-        res = res.reset_index()
+
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
     else:
+        group_cols = [id_col]
 
-        def gen_expr(model):
-            abs_err = pl.col(model).sub(pl.col(target_col)).abs()
-            denominator = _zero_to_nan(
-                pl.col(model).abs().add(pl.col(target_col)).abs()
-            )
-            ratio = abs_err.truediv(denominator).alias(model)
-            return ratio.fill_nan(0)
+    res = nw.from_native(df)
+    res = res.with_columns([(nw.col(m) - nw.col(target_col)).abs() / (nw.when((nw.col(target_col).abs() + nw.col(m).abs()) == 0.0).then(float("nan")).otherwise(nw.col(target_col).abs() + nw.col(m).abs())).alias(m) for m in models])
+    res = res.group_by(group_cols).agg([nw.col(m).mean().alias(m) for m in models])
+    res = res.to_native()
 
-        res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
-
 
 def mase(
     df: DFType,
@@ -626,6 +585,7 @@ def msse(
     train_df: DFType,
     id_col: str = "unique_id",
     target_col: str = "y",
+    time_col: str = "ds",
     cutoff_col: str = "cutoff",
 ) -> DFType:
     """Mean Squared Scaled Error (MSSE)
@@ -643,6 +603,7 @@ def msse(
         train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        time_col (str, optional): Column that contains the time values. Defaults to 'ds'.
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
@@ -660,6 +621,7 @@ def msse(
         train_df=train_df,
         id_col=id_col,
         target_col=target_col,
+        time_col=time_col,
         cutoff_col=cutoff_col,
     )
 
@@ -756,6 +718,7 @@ def scaled_quantile_loss(
     q: float = 0.5,
     id_col: str = "unique_id",
     target_col: str = "y",
+    time_col: str = "ds",
     cutoff_col: str = "cutoff",
 ) -> DFType:
     """Scaled Quantile Loss (SQL)
@@ -777,6 +740,7 @@ def scaled_quantile_loss(
         q (float, optional): Quantile for the predictions' comparison. Defaults to 0.5.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        time_col (str, optional): Column that contains the time values. Defaults to 'ds'.
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
@@ -796,6 +760,7 @@ def scaled_quantile_loss(
         train_df=train_df,
         id_col=id_col,
         target_col=target_col,
+        time_col=time_col,
         cutoff_col=cutoff_col,
     )
 
@@ -858,6 +823,7 @@ def scaled_mqloss(
     train_df: DFType,
     id_col: str = "unique_id",
     target_col: str = "y",
+    time_col: str = "ds",
     cutoff_col: str = "cutoff",
 ) -> DFType:
     """Scaled Multi-Quantile loss (SMQL)
@@ -884,6 +850,7 @@ def scaled_mqloss(
         train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        time_col (str, optional): Column that contains the time values. Defaults to 'ds'.
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
@@ -903,6 +870,7 @@ def scaled_mqloss(
         train_df=train_df,
         id_col=id_col,
         target_col=target_col,
+        time_col=time_col,
         cutoff_col=cutoff_col,
     )
 
