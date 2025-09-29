@@ -89,7 +89,8 @@ def multi_quantile_models():
 
 def pd_vs_pl(pd_df, pl_df, models):
     pd.testing.assert_frame_equal(pd_df[models],
-                                  pl_df[models].to_pandas())
+                                  pl_df.to_pandas().sort_values(["unique_id"], ignore_index=True)[models],
+                                  check_names=False,)
 
 
 class TestBasicMetrics:
@@ -100,7 +101,7 @@ class TestBasicMetrics:
             mae(series_pl, models),
             models,
         )
-
+        
     def test_mse(self, setup_series):
         series, series_pl, models = setup_series
         pd_vs_pl(
@@ -178,7 +179,7 @@ class TestBasicMetrics:
         Validates scaled sum of absolute errors per series (Pandas and Polars).
         """
         # In-sample data for scaling (mean per series)
-        df_train = pd.DataFrame({
+        train_df = pd.DataFrame({
             "unique_id": ["A", "A", "B", "B"],
             "y": [1, 3, 2, 6]
         })
@@ -200,7 +201,7 @@ class TestBasicMetrics:
         # Pandas test
         out_pd = spis(
             df=df,
-            df_train=df_train,
+            train_df=train_df,
             models=["y_hat"],
             id_col="unique_id",
             target_col="y",
@@ -210,12 +211,12 @@ class TestBasicMetrics:
         # Polars test
         out_pl = spis(
             df=pl.DataFrame(df),
-            df_train=pl.DataFrame(df_train),
+            train_df=pl.DataFrame(train_df),
             models=["y_hat"],
             id_col="unique_id",
             target_col="y",
         )
-        pd.testing.assert_frame_equal(out_pl.to_pandas(), expected)
+        pd.testing.assert_frame_equal(out_pl.to_pandas().sort_values(by=["unique_id"], ignore_index=True), expected)
         
     def test_linex_loss_numerical(self):
         """
@@ -242,7 +243,7 @@ class TestBasicMetrics:
 
         # Polars test
         out_pl = linex(pl.DataFrame(df), ["model1"], a=a)
-        pd.testing.assert_frame_equal(out_pl.to_pandas(), expected)
+        pd.testing.assert_frame_equal(out_pl.to_pandas().sort_values(by=["unique_id"], ignore_index=True), expected)
 
 
 class TestPercentageErrors:
