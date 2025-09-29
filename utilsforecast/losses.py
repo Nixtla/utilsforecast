@@ -5,7 +5,7 @@ __all__ = ['mae', 'mse', 'rmse', 'bias', 'cfe', 'pis', 'spis', 'mape', 'smape', 
            'tweedie_deviance']
 
 
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Union
 
 import narwhals as nw
 import numpy as np
@@ -13,7 +13,7 @@ import pandas as pd
 
 import utilsforecast.processing as ufp
 
-from .compat import DataFrame, DFType, pl, pl_DataFrame, pl_Expr
+from .compat import DFType, pl, pl_Expr
 
 
 def _base_docstring(*args, **kwargs) -> Callable:
@@ -35,22 +35,6 @@ def _base_docstring(*args, **kwargs) -> Callable:
         return f
 
     return docstring_decorator(*args, **kwargs)
-
-
-def _pl_agg_expr(
-    df: pl_DataFrame,
-    models: Union[List[str], List[Tuple[str, str]]],
-    id_col: str,
-    gen_expr: Callable[[Any], "pl.Expr"],
-    agg: str = "mean",
-) -> pl_DataFrame:
-    exprs = [gen_expr(model) for model in models]
-    df = df.select([id_col, *exprs])
-    gb = ufp.group_by(df, id_col, maintain_order=True)
-    if agg == "mean":
-        return gb.mean()
-    else:
-        return gb.sum()
 
 
 def _scale_loss(
@@ -91,7 +75,7 @@ def _scale_loss(
     if scale_type == "absolute_error":
         scale_expr = [(nw.col(target_col) - lagged).abs().alias("scale")]
     else:
-        scale_expr = [(nw.col(target_col) - lagged).pow(2).alias("scale")]
+        scale_expr = [((nw.col(target_col) - lagged) ** 2).alias("scale")]
 
     group_cols: list[str]
     if cutoff_col in loss_df.columns:
@@ -172,7 +156,7 @@ def mse(
         group_cols = [id_col]
 
     res = nw.from_native(df)
-    res = res.with_columns([(nw.col(target_col) - nw.col(m)).pow(2).alias(m) for m in models])
+    res = res.with_columns([((nw.col(target_col) - nw.col(m)) ** 2).alias(m) for m in models])
     res = res.group_by(group_cols).agg([nw.col(m).mean().alias(m) for m in models])
     res = res.to_native()
 
@@ -204,7 +188,7 @@ def rmse(
         group_cols = [id_col]
 
     res = nw.from_native(df)
-    res = res.with_columns([(nw.col(target_col) - nw.col(m)).pow(2).alias(m) for m in models])
+    res = res.with_columns([((nw.col(target_col) - nw.col(m)) ** 2).alias(m) for m in models])
     res = res.group_by(group_cols).agg([nw.col(m).mean().sqrt().alias(m) for m in models])
     res = res.to_native()
 
@@ -291,7 +275,7 @@ def pis(
 @_base_docstring
 def spis(
     df: DFType,
-    df_train: DFType,
+    train_df: DFType,
     models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
@@ -305,20 +289,39 @@ def spis(
     yielding a scale-independent bias measure that can be aggregated across series.
     """
 
-    pis_error = pis(df, models, id_col, target_col, cutoff_col)
+    loss_df = pis(df, models, id_col, target_col, cutoff_col)
 
-    # TODO: below is incorrect, correct it
-    return _scale_loss(
-        loss_df=pis_error,
-        scale_type="absolute_error",
-        models=models,
-        seasonality=1,
-        train_df=df_train,
-        id_col=id_col,
-        target_col=target_col,
-        time_col=time_col,
-        cutoff_col=cutoff_col,
+    loss_nw = nw.from_native(loss_df)
+    train_nw = nw.from_native(train_df)
+    scale_expr = [nw.col(target_col).alias("scale")]
+
+    group_cols: list[str]
+    if cutoff_col in loss_df.columns:
+        scale = train_nw.select([id_col, time_col] + scale_expr)
+        group_cols = [cutoff_col, id_col]
+        scale = scale.with_columns(time_col, nw.col("scale").rolling_mean(window_size=int(1e12), min_samples=1).over(id_col).alias("scale"))
+        full_nw = loss_nw.join(scale, left_on=group_cols, right_on=[time_col, id_col], how="left")
+        full_nw = full_nw.with_columns(nw.when(nw.col("scale") == 0).then(float("nan")).otherwise(nw.col("scale")).alias("scale"))
+    else:
+        scale = train_nw.select([id_col] + scale_expr)
+        group_cols = [id_col]
+        scale = train_nw.select([id_col] + scale_expr)
+        scale = scale.group_by(id_col).agg([nw.col("scale").mean()])
+        full_nw = loss_nw.join(scale, on=group_cols, how="left")
+
+    res = full_nw.select(
+        [
+            *group_cols,
+            *[
+                (nw.col(model) / nw.col("scale")).fill_nan(0).alias(model)
+                for model in models
+            ],
+        ]
     )
+    res = res.group_by(group_cols).agg([nw.col(m).mean().alias(m) for m in models])
+    res = res.to_native()
+
+    return res
 
     
 @_base_docstring
@@ -349,8 +352,8 @@ def linex(
         group_cols = [id_col]
 
     res = nw.from_native(df)
-    res = res.with_columns([((a * (nw.col(m) - nw.col(target_col))).exp() - ((a * (nw.col(m) - nw.col(target_col))) - 1)).alias(m) for m in models])
-    res = res.group_by(group_cols).agg([nw.col(m).sum().alias(m) for m in models])
+    res = res.with_columns([((a * (nw.col(m) - nw.col(target_col))).exp() - (a * (nw.col(m) - nw.col(target_col))) - 1).alias(m) for m in models])
+    res = res.group_by(group_cols).agg([nw.col(m).mean().alias(m) for m in models])
     res = res.to_native()
 
     return res
@@ -524,6 +527,7 @@ def nd(
     models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff"
 ) -> DFType:
     """Normalized Deviation (ND)
 
@@ -538,44 +542,38 @@ def nd(
         models: Columns that identify the models predictions.
         id_col: Column that identifies each serie. Defaults to 'unique_id'.
         target_col: Column that contains the target. Defaults to 'y'.
+        cutoff_col: Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
         Dataframe with one row per id and one column per model.
     """
-    if isinstance(df, pd.DataFrame):
-        nom = (
-            (df[models].sub(df[target_col], axis=0))
-            .abs()
-            .groupby(df[id_col], observed=True)
-            .sum()
-        )
-        denom = df[target_col].abs().groupby(df[id_col], observed=True).sum()
-        res = nom.div(denom, axis=0).fillna(0)
-        res.index.name = id_col
-        res = res.reset_index()
+    group_cols: list[str]
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
     else:
+        group_cols = [id_col]
 
-        def gen_expr_nom(model):
-            return pl.col(target_col).sub(pl.col(model)).abs().alias(model)
+    res = nw.from_native(df)
+    nom = res.with_columns([(nw.col(target_col) - nw.col(m)).abs().alias(m) for m in models])
+    nom = nom.group_by(group_cols).agg([nw.col(m).sum().alias(m) for m in models])
 
-        nom = _pl_agg_expr(df, models, id_col, gen_expr_nom, "sum")
+    denom = res.with_columns([nw.col(target_col).abs()])
+    denom = denom.group_by(group_cols).agg([nw.col(target_col).sum().alias(target_col)])
 
-        def gen_expr_denom(target_col):
-            return pl.col(target_col).abs().alias(target_col)
+    res = nom.join(denom, on=group_cols, how="left")
 
-        denom = _pl_agg_expr(df, [target_col], id_col, gen_expr_denom, "sum")
-        df = nom.join(denom, on=id_col, how="left")
-        res = df.select(
-            [
-                id_col,
-                *[
-                    pl.col(model).truediv(pl.col(target_col)).fill_nan(0).alias(model)
-                    for model in models
-                ],
-            ]
-        )
+    res = res.select(
+        [
+            *group_cols,
+            *[
+                (nw.col(model) / (nw.col(target_col))).fill_nan(0).alias(model)
+                for model in models
+            ],
+        ]
+    )
+    res = res.to_native()
 
-    return res
+    return res    
 
 
 def msse(
@@ -644,10 +642,10 @@ def rmsse(
         target_col=target_col,
         cutoff_col=cutoff_col,
     )
-    if isinstance(res, pd.DataFrame):
-        res[models] = res[models].pow(0.5)
-    else:
-        res = res.with_columns(pl.col(models).pow(0.5))
+    res_nw = nw.from_native(res)
+    res_nw = res_nw.with_columns([(nw.col(m) ** 2).alias(m) for m in models])
+    res = res_nw.to_native()
+
     return res
 
 
@@ -662,6 +660,7 @@ def quantile_loss(
     q: float = 0.5,
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff",
 ) -> DFType:
     """Quantile Loss (QL)
 
@@ -676,39 +675,23 @@ def quantile_loss(
         q (float, optional): Quantile for the predictions' comparison. Defaults to 0.5.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
         pandas or polars DataFrame: dataframe with one row per id and one column per model.
     """
-    if isinstance(df, pd.DataFrame):
-        res: Optional[pd.DataFrame] = None
-        for model_name, pred_col in models.items():
-            delta_y = df[target_col].sub(df[pred_col], axis=0)
-            model_res = (
-                np.maximum(q * delta_y, (q - 1) * delta_y)
-                .groupby(df[id_col], observed=True)
-                .mean()
-                .rename(model_name)
-                .reset_index()
-            )
-            if res is None:
-                res = model_res
-            else:
-                res[model_name] = model_res[model_name]
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
     else:
+        group_cols = [id_col]
 
-        def gen_expr(model):
-            model_name, pred_col = model
-            delta_y = pl.col(target_col).sub(pl.col(pred_col))
-            try:
-                col_max = pl.max_horizontal([q * delta_y, (q - 1) * delta_y])
-            except AttributeError:
-                col_max = pl.max([q * delta_y, (q - 1) * delta_y])
-            return col_max.alias(model_name)
+    res = nw.from_native(df)
+    res = res.with_columns([(nw.col(target_col) - nw.col(m)).alias(m) for m in models])
+    res = res.with_columns([(nw.when(nw.col(m) >= 0).then(q * nw.col(m)).otherwise((q - 1) * nw.col(m))).alias(m) for m in models])
+    res = res.group_by(group_cols).agg([nw.col(m).mean().alias(m) for m in models])
+    res = res.to_native()
 
-        res = _pl_agg_expr(df, list(models.items()), id_col, gen_expr)
     return res
-
 
 def scaled_quantile_loss(
     df: DFType,
@@ -750,7 +733,7 @@ def scaled_quantile_loss(
         [1] https://www.sciencedirect.com/science/article/pii/S0169207021001722
     """
     q_loss = quantile_loss(
-        df=df, models=models, q=q, id_col=id_col, target_col=target_col
+        df=df, models=models, q=q, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col
     )
     return _scale_loss(
         loss_df=q_loss,
@@ -771,6 +754,7 @@ def mqloss(
     quantiles: np.ndarray,
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff"
 ) -> DFType:
     """Multi-Quantile loss (MQL)
 
@@ -791,6 +775,7 @@ def mqloss(
         quantiles (numpy array): Quantiles to compare against.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
         pandas or polars DataFrame: dataframe with one row per id and one column per model.
@@ -798,20 +783,30 @@ def mqloss(
     References:
         [1] https://www.jstor.org/stable/2629907
     """
-    res: Optional[DataFrame] = None
-    error = np.empty((df.shape[0], quantiles.size))
-    for model, predictions in models.items():
-        for j, q_preds in enumerate(predictions):
-            error[:, j] = (df[target_col] - df[q_preds]).to_numpy()
-        loss = np.maximum(error * quantiles, error * (quantiles - 1)).mean(axis=1)
-        model_res = type(df)({id_col: df[id_col], model: loss})
-        model_res = ufp.group_by_agg(
-            model_res, by=id_col, aggs={model: "mean"}, maintain_order=True
-        )
-        if res is None:
-            res = model_res
-        else:
-            res = ufp.assign_columns(res, model, model_res[model])
+
+    # q_losses = []
+    # for q in quantiles:
+    #     q_models = {model: preds[i] for model, preds in models.items() for i, quantile in enumerate(quantiles) if np.isclose(quantile, q)}
+    #     q_loss = quantile_loss(df, q_models, q, id_col, target_col, cutoff_col)
+    #     q_losses.append(q_loss)
+    # res = nw.concat(q_losses, how="horizontal")
+    # res = res.to_native()
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
+    else:
+        group_cols = [id_col]
+    # assert 1==2, f"{models}, {quantiles}"
+    res = (
+        nw.concat(
+            [
+                nw.from_native(quantile_loss(df, models={model: preds[i] for model, preds in models.items() for i in range(len(quantiles))}, q=q, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col))
+                for i, q in enumerate(quantiles)
+            ]
+        , how="horizontal")
+    )    
+    res = res.group_by(group_cols).agg([nw.col(col).mean().alias(nw.col) for col in res.columns if col not in group_cols])
+    res = res.to_native()
+
     return res
 
 
@@ -860,7 +855,7 @@ def scaled_mqloss(
         [1] https://www.sciencedirect.com/science/article/pii/S0169207021001722
     """
     mq_loss = mqloss(
-        df=df, models=models, quantiles=quantiles, id_col=id_col, target_col=target_col
+        df=df, models=models, quantiles=quantiles, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col
     )
     return _scale_loss(
         loss_df=mq_loss,
@@ -881,6 +876,7 @@ def coverage(
     level: int,
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff",
 ) -> DFType:
     """Coverage of y with y_hat_lo and y_hat_hi.
 
@@ -890,6 +886,7 @@ def coverage(
         level (int): Confidence level used for intervals.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
         pandas or polars DataFrame: dataframe with one row per id and one column per model.
@@ -897,31 +894,16 @@ def coverage(
     References:
         [1] https://www.jstor.org/stable/2629907
     """
-    if isinstance(df, pd.DataFrame):
-        out = np.empty((df.shape[0], len(models)))
-        for j, model in enumerate(models):
-            out[:, j] = df[target_col].between(
-                df[f"{model}-lo-{level}"], df[f"{model}-hi-{level}"]
-            )
-        res = (
-            pd.DataFrame(out, columns=models, index=df.index)
-            .groupby(df[id_col], observed=True)
-            .mean()
-        )
-        res.index.name = id_col
-        res = res.reset_index()
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
     else:
+        group_cols = [id_col]
 
-        def gen_expr(model):
-            return (
-                pl.col(target_col)
-                .is_between(
-                    pl.col(f"{model}-lo-{level}"), pl.col(f"{model}-hi-{level}")
-                )
-                .alias(model)
-            )
+    res = nw.from_native(df)
+    res = res.with_columns([(nw.col(target_col).is_between(nw.col(f"{m}-lo-{level}"), nw.col(f"{m}-hi-{level}"))).alias(m) for m in models])
+    res = res.group_by(group_cols).agg([nw.col(m).mean().alias(m) for m in models])
+    res = res.to_native()
 
-        res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
 
@@ -930,6 +912,7 @@ def calibration(
     models: Dict[str, str],
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff",
 ) -> DFType:
     """
     Fraction of y that is lower than the model's predictions.
@@ -939,6 +922,7 @@ def calibration(
         models (dict from str to str): Mapping from model name to the model predictions.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
         pandas or polars DataFrame: dataframe with one row per id and one column per model.
@@ -946,24 +930,16 @@ def calibration(
     References:
         [1] https://www.jstor.org/stable/2629907
     """
-    if isinstance(df, pd.DataFrame):
-        out = np.empty((df.shape[0], len(models)))
-        for j, q_preds in enumerate(models.values()):
-            out[:, j] = df[target_col].le(df[q_preds])
-        res = (
-            pd.DataFrame(out, columns=models.keys(), index=df.index)
-            .groupby(df[id_col], observed=True)
-            .mean()
-        )
-        res.index.name = id_col
-        res = res.reset_index()
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
     else:
+        group_cols = [id_col]
 
-        def gen_expr(model):
-            model_name, q_preds = model
-            return pl.col(target_col).le(pl.col(q_preds)).alias(model_name)
+    res = nw.from_native(df)
+    res = res.with_columns([(nw.col(target_col) <= nw.col(m)).alias(m) for m in list(models.items())])
+    res = res.group_by(group_cols).agg([nw.col(m).mean().alias(m) for m in list(models.items())])
+    res = res.to_native()
 
-        res = _pl_agg_expr(df, list(models.items()), id_col, gen_expr)
     return res
 
 
@@ -973,6 +949,7 @@ def scaled_crps(
     quantiles: np.ndarray,
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff",
 ) -> DFType:
     """Scaled Continues Ranked Probability Score
 
@@ -987,6 +964,7 @@ def scaled_crps(
         quantiles (numpy array): Quantiles to compare against.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
         pandas or polars DataFrame: dataframe with one row per id and one column per model.
@@ -996,31 +974,24 @@ def scaled_crps(
     """
     eps: np.float64 = np.finfo(np.float64).eps
     quantiles = np.asarray(quantiles)
-    loss = mqloss(df, models, quantiles, id_col, target_col)
-    sizes = ufp.counts_by_id(df, id_col)
-    if isinstance(loss, pd.DataFrame):
-        loss = loss.set_index(id_col)
-        sizes = sizes.set_index(id_col)
-        assert isinstance(df, pd.DataFrame)
-        norm = df[target_col].abs().groupby(df[id_col], observed=True).sum()
-        res = 2 * loss.mul(sizes["counts"], axis=0).div(norm + eps, axis=0)
-        res.index.name = id_col
-        res = res.reset_index()
+    loss = mqloss(df, models, quantiles, id_col, target_col, cutoff_col)
+    loss_nw = nw.from_native(loss)
+
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
     else:
+        group_cols = [id_col]
 
-        def gen_expr(model):
-            return (
-                2 * pl.col(model) * pl.col("counts") / (pl.col("norm") + eps)
-            ).alias(model)
-
-        grouped_df = ufp.group_by(df, id_col, maintain_order=True)
-        norm = grouped_df.agg(pl.col(target_col).abs().sum().alias("norm"))
-        res = _pl_agg_expr(
-            loss.join(sizes, on=id_col).join(norm, on=id_col),
-            list(models.keys()),
-            id_col,
-            gen_expr,
-        )
+    df_nw = nw.from_native(df)
+    grouped_df = df_nw.group_by(group_cols)
+    sizes = grouped_df.len()
+    norm = grouped_df.agg(nw.col(target_col).abs().sum().alias("norm"))
+    loss_nw = loss_nw.join(sizes, on=group_cols, how="left")
+    loss_nw = loss_nw.join(norm, on=group_cols, how="left")
+    loss_nw = loss_nw.with_columns([((2 * nw.col(m) * nw.col("len")) / (nw.col("norm") + eps)).alias(m) for m in list(models.keys())])
+    res = loss_nw.group_by(group_cols).agg([nw.col(m).mean().alias(m) for m in list(models.keys())])
+    res = res.to_native()
+    
     return res
 
 
@@ -1030,6 +1001,7 @@ def tweedie_deviance(
     power: float = 1.5,
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff"
 ) -> DFType:
     """
     Compute the Tweedie deviance loss for one or multiple models, grouped by an identifier.
@@ -1049,6 +1021,7 @@ def tweedie_deviance(
         power (float, optional): Tweedie power parameter. Determines the compound distribution. Defaults to 1.5.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
         pandas or polars DataFrame: DataFrame with one row per id and one column per model, containing the mean Tweedie deviance.
@@ -1069,84 +1042,66 @@ def tweedie_deviance(
             "All predictions must be strictly positive for Tweedie deviance."
         )
 
-    if isinstance(df, pd.DataFrame):
-        y_true = df[target_col]
-        y_pred = df[models]
-        delta_y = y_pred.sub(y_true, axis=0)
-        if power == 0:
-            dev = delta_y.pow(2)
-        elif power == 1:
-            with np.errstate(divide="ignore", invalid="ignore"):
-                dev = np.log(y_pred).sub(np.log(y_true), axis=0)
-                dev = -2 * dev.mul(y_true, axis=0).sub(delta_y, axis=0)
-            zero_mask = y_true == 0
-            dev.loc[zero_mask] = 2 * y_pred[zero_mask]
-        elif power == 2:
-            with np.errstate(divide="ignore", invalid="ignore"):
-                dev = np.log(y_pred).sub(np.log(y_true), axis=0)
-                dev = 2 * (dev.add((1 / y_pred).mul(y_true, axis=0), axis=0) - 1)
-        else:
-            dev1 = y_true.clip(lower=0).pow(2 - power).div((1 - power) * (2 - power))
-            dev2 = -y_pred.pow(1 - power).div(1 - power).mul(y_true, axis=0)
-            dev3 = y_pred.pow(2 - power).div(2 - power)
-            dev = 2 * dev2.add(dev1, axis=0).add(dev3, axis=0)
-        # Group by id_col and calculate mean deviance for each model
-        res = dev.groupby(df[id_col], observed=True).mean()
-        res.index.name = id_col
-        res = res.reset_index()
-
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
     else:
-        if power == 0:
+        group_cols = [id_col]
 
-            def gen_expr(model):
-                return (pl.col(model) - pl.col(target_col)).pow(2).alias(model)
 
-        elif power == 1:
+    if power == 0:
 
-            def gen_expr(model):
-                return (
-                    pl.when(pl.col(target_col) == 0)
-                    .then(2 * pl.col(model))
-                    .otherwise(
-                        2
-                        * (
-                            pl.col(target_col)
-                            * (pl.col(target_col).log() - pl.col(model).log())
-                            - (pl.col(target_col) - pl.col(model))
-                        )
-                    )
-                    .alias(model)
-                )
+        def gen_expr(model):
+            return ((nw.col(model) - nw.col(target_col)) ** 2).alias(model)
 
-        elif power == 2:
+    elif power == 1:
 
-            def gen_expr(model):
-                return (
-                    2
-                    * (pl.col(model).log() - pl.col(target_col).log())
-                    .add(pl.col(target_col).truediv(pl.col(model)))
-                    .sub(1)
-                ).alias(model)
-
-        else:
-
-            def gen_expr(model):
-                return (
+        def gen_expr(model):
+            return (
+                nw.when(nw.col(target_col) == 0)
+                .then(2 * nw.col(model))
+                .otherwise(
                     2
                     * (
-                        pl.col(target_col)
-                        .clip(0)
-                        .pow(2 - power)
-                        .truediv((1 - power) * (2 - power))
+                        nw.col(target_col)
+                        * (nw.col(target_col).log() - nw.col(model).log())
+                        - (nw.col(target_col) - nw.col(model))
                     )
-                    .sub(
-                        pl.col(target_col)
-                        .mul(pl.col(model).pow(1 - power))
-                        .truediv(1 - power)
-                    )
-                    .add(pl.col(model).pow(2 - power).truediv(2 - power))
-                ).alias(model)
+                )
+                .alias(model)
+            )
 
-        res = _pl_agg_expr(df, models, id_col, gen_expr)
+    elif power == 2:
+
+        def gen_expr(model):
+            return (
+                2
+                * (nw.col(model).log() - nw.col(target_col).log())
+                 + (nw.col(target_col) / (nw.col(model)))
+                - 1
+            ).alias(model)
+
+    else:
+
+        def gen_expr(model):
+            return (
+                2
+                * (
+                    nw.col(target_col)
+                    .clip(0)
+                    ** (2 - power)
+                    / ((1 - power) * (2 - power))
+                )
+                + (
+                    nw.col(target_col)
+                    * (nw.col(model) ** (1 - power))
+                    / (1 - power)
+                )
+                + (nw.col(model) ** (2 - power) / (2 - power))
+            ).alias(model)
+
+    res = nw.from_native(df)
+    res = res.with_columns([gen_expr(m) for m in models])
+    res = res.group_by(group_cols).agg([nw.col(m).mean().alias(m) for m in models])
+    res = res.to_native()
 
     return res
