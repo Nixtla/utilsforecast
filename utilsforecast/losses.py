@@ -7,6 +7,7 @@ __all__ = ['mae', 'mse', 'rmse', 'bias', 'cfe', 'pis', 'spis', 'mape', 'smape', 
 
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+import narwhals as nw
 import numpy as np
 import pandas as pd
 
@@ -60,6 +61,7 @@ def _scale_loss(
     train_df: DFType,
     id_col: str = "unique_id",
     target_col: str = "y",
+    time_col: str = "ds",
     cutoff_col: str = "cutoff"
 ) -> DFType:
     """
@@ -80,41 +82,41 @@ def _scale_loss(
     References:
         [1] https://robjhyndman.com/papers/mase.pdf
     """
-    if cutoff_col in train_df.columns:
+    loss_nw = nw.from_native(loss_df)
+    train_nw = nw.from_native(train_df)
+
+    lagged = nw.col(target_col).shift(seasonality).over(id_col)
+
+    if scale_type == "absolute_error":
+        scale_expr = [(nw.col(target_col) - lagged).abs().alias("scale")]
+    else:
+        scale_expr = [(nw.col(target_col) - lagged).pow(2).alias("scale")]
+
+    group_cols: list[str]
+    if cutoff_col in loss_df.columns:
+        scale = train_nw.select([id_col, time_col] + scale_expr)
         group_cols = [cutoff_col, id_col]
+        scale = scale.with_columns(time_col, nw.col("scale").rolling_mean(window_size=int(1e12), min_samples=1).over(id_col).alias("scale"))
+        full_nw = loss_nw.join(scale, left_on=group_cols, right_on=[time_col, id_col], how="left")
+        full_nw = full_nw.with_columns(nw.when(nw.col("scale") == 0).then(float("nan")).otherwise(nw.col("scale")).alias("scale"))
     else:
+        scale = train_nw.select([id_col] + scale_expr)
         group_cols = [id_col]
+        scale = train_nw.select([id_col] + scale_expr)
+        scale = scale.group_by(id_col).agg([nw.col("scale").mean()])
+        full_nw = loss_nw.join(scale, on=group_cols, how="left")
 
-    if isinstance(train_df, pd.DataFrame):
-        loss_df = loss_df.set_index(id_col)
-        # assume train_df is sorted
-        lagged = train_df.groupby(group_cols, observed=True)[target_col].shift(seasonality)
-        
-        if scale_type == "absolute_error":
-            scale = train_df[target_col].sub(lagged).abs()
-        else:
-            scale = train_df[target_col].sub(lagged).pow(2)
-        
-        scale = scale.groupby(train_df[group_cols], observed=True).mean()
-        res = loss_df.div(_zero_to_nan(scale), axis=0).fillna(0)
-        res.index.name = id_col
-        res = res.reset_index()
-    else:
-        # assume train_df is sorted
-        lagged = pl.col(target_col).shift(seasonality).over(group_cols)
-        if scale_type == "absolute_error":
-            scale_expr = pl.col(target_col).sub(lagged).abs().alias("scale")
-        else:
-            scale_expr = pl.col(target_col).sub(lagged).pow(2).alias("scale")
-        scale = train_df.select(group_cols + [scale_expr])
-        scale = ufp.group_by(scale, group_cols).mean()
-        scale = scale.with_columns(_zero_to_nan(pl.col("scale")))
-
-        def gen_expr(model):
-            return pl.col(model).truediv(pl.col("scale")).fill_nan(0).alias(model)
-
-        full_df = loss_df.join(scale, on=id_col, how="left")
-        res = _pl_agg_expr(full_df, models, id_col, gen_expr)
+    res = full_nw.select(
+        [
+            *group_cols,
+            *[
+                (nw.col(model) / nw.col("scale")).fill_nan(0).alias(model)
+                for model in models
+            ],
+        ]
+    )
+    res = res.group_by(group_cols).agg([nw.col(m).mean().alias(m) for m in models])
+    res = res.to_native()
 
     return res
 
@@ -125,6 +127,7 @@ def mae(
     models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
+    cutoff_col: str = "cutoff",
 ) -> DFType:
     """Mean Absolute Error (MAE)
 
@@ -133,21 +136,16 @@ def mae(
     deviation of the prediction and the true
     value at a given time and averages these devations
     over the length of the series."""
-    if isinstance(df, pd.DataFrame):
-        res = (
-            (df[models].sub(df[target_col], axis=0))
-            .abs()
-            .groupby(df[id_col], observed=True)
-            .mean()
-        )
-        res.index.name = id_col
-        res = res.reset_index()
+    if cutoff_col in df.columns:
+        group_cols = [cutoff_col, id_col]
     else:
+        group_cols = [id_col]
 
-        def gen_expr(model):
-            return pl.col(target_col).sub(pl.col(model)).abs().alias(model)
+    res = nw.from_native(df)
+    res = res.with_columns([(nw.col(target_col) - nw.col(m)).abs().alias(m) for m in models])
+    res = res.group_by(group_cols).agg([nw.col(m).mean().alias(m) for m in models])
+    res = res.to_native()
 
-        res = _pl_agg_expr(df, models, id_col, gen_expr)
     return res
 
 
@@ -472,6 +470,7 @@ def mase(
     train_df: DFType,
     id_col: str = "unique_id",
     target_col: str = "y",
+    time_col: str = "ds",
     cutoff_col: str = "cutoff"
 ) -> DFType:
     """Mean Absolute Scaled Error (MASE)
@@ -491,6 +490,7 @@ def mase(
         train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        time_col (str, optional): Column that contains the time values. Defaults to 'ds'.
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cv. Defaults to 'cutoff'.
 
     Returns:
@@ -499,7 +499,8 @@ def mase(
     References:
         [1] https://robjhyndman.com/papers/mase.pdf
     """
-    mean_abs_err = mae(df, models, id_col, target_col)
+    mean_abs_err = mae(df, models, id_col, target_col, cutoff_col)
+        
     return _scale_loss(
         loss_df=mean_abs_err,
         scale_type="absolute_error",
@@ -508,6 +509,7 @@ def mase(
         train_df=train_df,
         id_col=id_col,
         target_col=target_col,
+        time_col=time_col,
         cutoff_col=cutoff_col,
     )
 

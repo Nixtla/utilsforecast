@@ -265,6 +265,7 @@ def evaluate(
         kwargs = dict(df=df, models=model_cols, id_col=id_col, target_col=target_col)
         if metric_requires_y_train[metric_name]:
             kwargs["train_df"] = train_df
+            kwargs["cutoff_col"] = cutoff_col
         metric_params = inspect.signature(metric).parameters
         if "baseline" in metric_params:
             metric_name = f"{metric_name}_{metric_params['baseline'].default}"
