@@ -4,11 +4,11 @@ __all__ = ['mae', 'mse', 'rmse', 'bias', 'cfe', 'pis', 'spis', 'mape', 'smape', 
            'quantile_loss', 'scaled_quantile_loss', 'mqloss', 'scaled_mqloss', 'coverage', 'calibration', 'scaled_crps',
            'tweedie_deviance']
 
-from typing import Callable, Optional, Union
+from typing import Callable, Union
 
-import narwhals as nw
+import narwhals.stable.v2 as nw
 import numpy as np
-from narwhals.typing import IntoDataFrameT
+from narwhals.stable.v2.typing import IntoDataFrameT
 
 
 def _base_docstring(*args, **kwargs) -> Callable:
@@ -45,6 +45,7 @@ def _nw_agg_expr(
         .select([id_col, *exprs])
         .group_by(id_col)
         .agg(getattr(nw.all(), agg)())
+        .sort(id_col)
         .to_native()   
     )
 
@@ -209,7 +210,7 @@ def spis(
     yielding a scale-independent bias measure that can be aggregated across series.
     """
     df = nw.from_native(df)
-    scales = df.group_by(id_col).agg(nw.col(target_col).mean().alias("scale"))
+    scales = df_train.group_by(id_col).agg(nw.col(target_col).mean().alias("scale"))
     raw = pis(df=df, models=models, id_col=id_col, target_col=target_col)
     return _scale_loss(df=raw, models=models, scales=scales, id_col=id_col)
 
@@ -394,15 +395,24 @@ def nd(
     """
     def gen_expr(model):
         return (
-            (nw.col(target_col) - nw.col(model)).abs() /
-            _zero_to_nan(nw.col(target_col).abs())
+            (nw.col(target_col) - nw.col(model)).abs()
         ).alias(model)
-    
-    return _nw_agg_expr(
-        df=df,
-        models=models,
-        id_col=id_col,
-        gen_expr=gen_expr,
+
+    return (
+        nw.from_native(df)
+        .select(
+            id_col,
+            nw.col(target_col).abs().alias("scale"),
+            *[gen_expr(m) for m in models],
+        )
+        .group_by(id_col)
+        .agg(nw.all().sum())
+        .select(
+            id_col,
+            *[nw.col(m) / nw.col("scale") for m in models]
+        )
+        .sort(id_col)
+        .to_native()
     )
 
 
@@ -568,7 +578,7 @@ def scaled_quantile_loss(
     return _scale_loss(
         df=qloss_df,
         scales=scales,
-        models=models,
+        models=list(models.keys()),
         id_col=id_col,
     )
 
