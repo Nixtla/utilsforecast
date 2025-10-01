@@ -1,6 +1,7 @@
 import inspect
 import math
 import warnings
+from functools import partial
 
 import narwhals.stable.v2 as nw
 import numpy as np
@@ -134,6 +135,28 @@ def nd_single(y_true, y_pred, **kwargs):
     return np.abs(y_true - y_pred).sum() / np.abs(y_true).sum()
 
 
+def coverage_single(y_true, y_pred_lo, y_pred_hi, **kwargs):
+    return np.mean((y_true >= y_pred_lo) & (y_true <= y_pred_hi))
+
+
+def tweedie_deviance_single(y_true, y_pred, power, **kwargs):
+    if power == 0:
+        return np.mean((y_true - y_pred) ** 2)
+    elif power == 1:
+        return np.mean(2 * (y_true * np.log(y_true / y_pred) - (y_true - y_pred)))
+    elif power == 2:
+        return np.mean(2 * (np.log(y_pred) - np.log(y_true)) + y_true / y_pred - 1)
+    else:
+        return np.mean(
+            2
+            * (
+                (y_true ** (2 - power)) / ((1 - power) * (2 - power))
+                - (y_true * (y_pred ** (1 - power))) / (1 - power)
+                + (y_pred ** (2 - power)) / (2 - power)
+            )
+        )
+
+
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
 @pytest.mark.parametrize(
     "utils_fn,single_fn",
@@ -149,11 +172,25 @@ def nd_single(y_true, y_pred, **kwargs):
         (ufl.msse, msse_single),
         (ufl.rmsse, rmsse_single),
         (ufl.nd, nd_single),
+        (ufl.coverage, coverage_single),
+        (
+            partial(ufl.tweedie_deviance, power=0),
+            partial(tweedie_deviance_single, power=0),
+        ),
+        (
+            partial(ufl.tweedie_deviance, power=1),
+            partial(tweedie_deviance_single, power=1),
+        ),
+        (
+            partial(ufl.tweedie_deviance, power=2),
+            partial(tweedie_deviance_single, power=2),
+        ),
     ],
 )
 def test_loss(engine, utils_fn, single_fn):
     series, models = setup_series(engine)
     seasonality = 7
+    level = 80
     baseline = models[0]
     loss_params = inspect.signature(utils_fn).parameters
     kwargs = {}
@@ -163,25 +200,102 @@ def test_loss(engine, utils_fn, single_fn):
         kwargs["train_df"] = series
     if "baseline" in loss_params:
         kwargs["baseline"] = baseline
+    if "level" in loss_params:
+        kwargs["level"] = level
     actual = utils_fn(series, models, **kwargs)
 
     df = nw.from_native(series)
     results = []
-    for uid, uid_df in df.group_by("unique_id"):
+    for (uid,), uid_df in df.group_by("unique_id"):
         uid_res = {"unique_id": uid}
         y_true = uid_df["y"].to_numpy()
         for model in models:
+            single_kwargs = {}
+            if "level" in loss_params:
+                single_kwargs["y_pred_lo"] = uid_df[f"{model}-lo-{level}"].to_numpy()
+                single_kwargs["y_pred_hi"] = uid_df[f"{model}-hi-{level}"].to_numpy()
             y_pred = uid_df[model].to_numpy()
+            uid_res[model] = single_fn(
+                y_true,
+                y_pred=y_pred,
+                y_train=y_true,
+                seasonality=seasonality,
+                baseline=uid_df[baseline].to_numpy(),
+                **single_kwargs,
+            )
+        results.append(uid_res)
+
+    expected = nw.from_native(type(series)(results)).sort("unique_id")
+    actual = nw.from_native(actual).sort("unique_id")
+    np.testing.assert_allclose(actual[models], expected[models])
+
+
+def quantile_loss_single(y_true, y_pred, q, **kwargs):
+    delta_y = y_true - y_pred
+    return np.maximum(q * delta_y, (q - 1) * delta_y).mean()
+
+
+def scaled_quantile_loss_single(y_true, y_pred, q, y_train, seasonality, **kwargs):
+    qloss = quantile_loss_single(y_true, y_pred, q)
+    scale = mae_single(y_train[seasonality:], y_train[:-seasonality])
+    return qloss / scale
+
+
+def calibration_single(y_true, y_pred, **kwargs):
+    return np.mean(y_true < y_pred)
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+@pytest.mark.parametrize("q", [0.1, 0.9])
+@pytest.mark.parametrize(
+    "utils_fn,single_fn",
+    [
+        (ufl.quantile_loss, quantile_loss_single),
+        (ufl.scaled_quantile_loss, scaled_quantile_loss_single),
+        (ufl.calibration, calibration_single),
+    ],
+)
+def test_single_quantile_losses(engine, utils_fn, single_fn, q):
+    series, models = setup_series(engine)
+    q_models = {
+        0.1: {
+            "model0": "model0-lo-80",
+            "model1": "model1-lo-80",
+        },
+        0.9: {
+            "model0": "model0-hi-80",
+            "model1": "model1-hi-80",
+        },
+    }
+    seasonality = 7
+    loss_params = inspect.signature(utils_fn).parameters
+    kwargs = {}
+    if "seasonality" in loss_params:
+        kwargs["seasonality"] = seasonality
+    if "train_df" in loss_params:
+        kwargs["train_df"] = series
+    if "q" in loss_params:
+        kwargs["q"] = q
+    actual = utils_fn(series, q_models[q], **kwargs)
+
+    df = nw.from_native(series)
+    results = []
+    for (uid,), uid_df in df.group_by("unique_id"):
+        uid_res = {"unique_id": uid}
+        y_true = uid_df["y"].to_numpy()
+        for model, pred_col in q_models[q].items():
+            y_pred = uid_df[pred_col].to_numpy()
             uid_res[model] = single_fn(
                 y_true,
                 y_pred,
                 y_train=y_true,
-                seasonality=7,
-                baseline=uid_df[baseline].to_numpy(),
+                seasonality=seasonality,
+                q=q,
             )
         results.append(uid_res)
-    expected = pd.DataFrame(results)
 
+    expected = nw.from_native(type(series)(results)).sort("unique_id")
+    actual = nw.from_native(actual).sort("unique_id")
     np.testing.assert_allclose(actual[models], expected[models])
 
 
@@ -343,7 +457,6 @@ class TestProbabilisticMetrics:
 
 
 class TestTweedieDeviance:
-
     @pytest.mark.parametrize("power", [0, 1, 1.5, 2, 3])
     def test_non_zero_handling(self, setup_series, power):
         series, series_pl, models = setup_series
@@ -357,9 +470,9 @@ class TestTweedieDeviance:
             models,
         )
         # Test for NaNs
-        assert (
-            not td_pd[models].isna().any().any()
-        ), f"NaNs found in pd DataFrame for power {power}"
+        assert not td_pd[models].isna().any().any(), (
+            f"NaNs found in pd DataFrame for power {power}"
+        )
         assert (
             not td_pl.select(pl.col(models).is_null().any()).sum_horizontal().item()
         ), f"NaNs found in pl DataFrame for power {power}"
@@ -389,9 +502,9 @@ class TestTweedieDeviance:
             models,
         )
         # Test for NaNs
-        assert (
-            not td_pd[models].isna().any().any()
-        ), f"NaNs found in pd DataFrame for power {power}"
+        assert not td_pd[models].isna().any().any(), (
+            f"NaNs found in pd DataFrame for power {power}"
+        )
         assert (
             not td_pl.select(pl.col(models).is_null().any()).sum_horizontal().item()
         ), f"NaNs found in pl DataFrame for power {power}"

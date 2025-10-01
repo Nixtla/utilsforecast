@@ -1,8 +1,29 @@
 """Loss functions for model evaluation."""
 
-__all__ = ['mae', 'mse', 'rmse', 'bias', 'cfe', 'pis', 'spis', 'mape', 'smape', 'mase', 'rmae', 'nd', 'msse', 'rmsse',
-           'quantile_loss', 'scaled_quantile_loss', 'mqloss', 'scaled_mqloss', 'coverage', 'calibration', 'scaled_crps',
-           'tweedie_deviance']
+__all__ = [
+    "mae",
+    "mse",
+    "rmse",
+    "bias",
+    "cfe",
+    "pis",
+    "spis",
+    "mape",
+    "smape",
+    "mase",
+    "rmae",
+    "nd",
+    "msse",
+    "rmsse",
+    "quantile_loss",
+    "scaled_quantile_loss",
+    "mqloss",
+    "scaled_mqloss",
+    "coverage",
+    "calibration",
+    "scaled_crps",
+    "tweedie_deviance",
+]
 
 from typing import Callable, Union
 
@@ -46,7 +67,7 @@ def _nw_agg_expr(
         .group_by(id_col)
         .agg(getattr(nw.all(), agg)())
         .sort(id_col)
-        .to_native()   
+        .to_native()
     )
 
 
@@ -83,7 +104,7 @@ def mae(
         df=df,
         models=models,
         id_col=id_col,
-        gen_expr=lambda m: (nw.col(target_col) - nw.col(m)).abs().alias(m)
+        gen_expr=lambda m: (nw.col(target_col) - nw.col(m)).abs().alias(m),
     )
 
 
@@ -105,7 +126,7 @@ def mse(
         df=df,
         models=models,
         id_col=id_col,
-        gen_expr=lambda m: ((nw.col(target_col) - nw.col(m)) ** 2).alias(m)
+        gen_expr=lambda m: ((nw.col(target_col) - nw.col(m)) ** 2).alias(m),
     )
 
 
@@ -128,9 +149,7 @@ def rmse(
     RMSE has a direct connection to the L2 norm."""
     df = mse(df=df, models=models, id_col=id_col, target_col=target_col)
     return (
-        nw.from_native(df)
-        .with_columns(*[nw.col(m).sqrt() for m in models])
-        .to_native()
+        nw.from_native(df).with_columns(*[nw.col(m).sqrt() for m in models]).to_native()
     )
 
 
@@ -148,7 +167,7 @@ def bias(
         df=df,
         models=models,
         id_col=id_col,
-        gen_expr=lambda m: (nw.col(m) - nw.col(target_col)).alias(m)
+        gen_expr=lambda m: (nw.col(m) - nw.col(target_col)).alias(m),
     )
 
 
@@ -234,11 +253,12 @@ def mape(
     averages these devations over the length of the series.
     The closer to zero an observed value is, the higher penalty MAPE loss
     assigns to the corresponding error."""
+
     def gen_expr(model):
         abs_err = (nw.col(target_col) - nw.col(model)).abs()
         abs_target = _zero_to_nan(nw.col(target_col)).abs()
         return (abs_err / abs_target).alias(model)
-    
+
     return _nw_agg_expr(
         df=df,
         models=models,
@@ -264,11 +284,10 @@ def smape(
     of the series. This allows the SMAPE to have bounds between
     0% and 100% which is desirable compared to normal MAPE that
     may be undetermined when the target is zero."""
+
     def gen_expr(model):
         abs_err = (nw.col(model) - nw.col(target_col)).abs()
-        denominator = _zero_to_nan(
-            nw.col(model).abs() + nw.col(target_col).abs()
-        )
+        denominator = _zero_to_nan(nw.col(model).abs() + nw.col(target_col).abs())
         return (abs_err / denominator).alias(model).fill_null(0)
 
     return _nw_agg_expr(
@@ -311,10 +330,11 @@ def mase(
     References:
         [1] https://robjhyndman.com/papers/mase.pdf
     """
+
     def scale_expr(_m):
         lagged = nw.col(target_col).shift(seasonality).over(id_col)
-        return (nw.col(target_col) - lagged).abs().alias("scale")   
-    
+        return (nw.col(target_col) - lagged).abs().alias("scale")
+
     mae_df = mae(df=df, models=models, id_col=id_col, target_col=target_col)
     scales = _nw_agg_expr(
         df=train_df,
@@ -393,10 +413,9 @@ def nd(
     Returns:
         Dataframe with one row per id and one column per model.
     """
+
     def gen_expr(model):
-        return (
-            (nw.col(target_col) - nw.col(model)).abs()
-        ).alias(model)
+        return ((nw.col(target_col) - nw.col(model)).abs()).alias(model)
 
     return (
         nw.from_native(df)
@@ -407,10 +426,7 @@ def nd(
         )
         .group_by(id_col)
         .agg(nw.all().sum())
-        .select(
-            id_col,
-            *[nw.col(m) / nw.col("scale") for m in models]
-        )
+        .select(id_col, *[nw.col(m) / nw.col("scale") for m in models])
         .sort(id_col)
         .to_native()
     )
@@ -447,13 +463,10 @@ def msse(
         [1] https://otexts.com/fpp3/accuracy.html
     """
     mse_df = mse(df=df, models=models, id_col=id_col, target_col=target_col)
-    baseline = (
-        nw.from_native(train_df)
-        .with_columns(scale=nw.col(target_col).shift(seasonality).over(id_col))
+    baseline = nw.from_native(train_df).with_columns(
+        scale=nw.col(target_col).shift(seasonality).over(id_col)
     )
-    scales = mse(
-        df=baseline, models=["scale"], id_col=id_col, target_col=target_col
-    )
+    scales = mse(df=baseline, models=["scale"], id_col=id_col, target_col=target_col)
     return _scale_loss(
         df=mse_df,
         scales=scales,
@@ -514,12 +527,12 @@ def quantile_loss(
     Returns:
         pandas or polars DataFrame: dataframe with one row per id and one column per model.
     """
+
     def gen_expr(model):
         model_name, pred_col = model
         delta_y = nw.col(target_col) - nw.col(pred_col)
         return nw.max_horizontal(
-            (q * delta_y).alias("a"),
-            ((q - 1) * delta_y).alias("b")
+            (q * delta_y).alias("a"), ((q - 1) * delta_y).alias("b")
         ).alias(model_name)
 
     return _nw_agg_expr(
@@ -568,13 +581,10 @@ def scaled_quantile_loss(
     qloss_df = quantile_loss(
         df=df, models=models, q=q, id_col=id_col, target_col=target_col
     )
-    baseline = (
-        nw.from_native(train_df)
-        .with_columns(scale=nw.col(target_col).shift(seasonality).over(id_col))
+    baseline = nw.from_native(train_df).with_columns(
+        scale=nw.col(target_col).shift(seasonality).over(id_col)
     )
-    scales = mae(
-        df=baseline, models=["scale"], id_col=id_col, target_col=target_col
-    )
+    scales = mae(df=baseline, models=["scale"], id_col=id_col, target_col=target_col)
     return _scale_loss(
         df=qloss_df,
         scales=scales,
@@ -675,13 +685,10 @@ def scaled_mqloss(
     mql_df = mqloss(
         df=df, models=models, quantiles=quantiles, id_col=id_col, target_col=target_col
     )
-    baseline = (
-        nw.from_native(train_df)
-        .with_columns(scale=nw.col(target_col).shift(seasonality).over(id_col))
+    baseline = nw.from_native(train_df).with_columns(
+        scale=nw.col(target_col).shift(seasonality).over(id_col)
     )
-    scales = mae(
-        df=baseline, models=["scale"], id_col=id_col, target_col=target_col
-    )
+    scales = mae(df=baseline, models=["scale"], id_col=id_col, target_col=target_col)
     return _scale_loss(
         df=mql_df,
         scales=scales,
@@ -712,12 +719,11 @@ def coverage(
     References:
         [1] https://www.jstor.org/stable/2629907
     """
+
     def gen_expr(model):
         return (
             nw.col(target_col)
-            .is_between(
-                nw.col(f"{model}-lo-{level}"), nw.col(f"{model}-hi-{level}")
-            )
+            .is_between(nw.col(f"{model}-lo-{level}"), nw.col(f"{model}-hi-{level}"))
             .alias(model)
         )
 
@@ -750,6 +756,7 @@ def calibration(
     References:
         [1] https://www.jstor.org/stable/2629907
     """
+
     def gen_expr(model):
         model_name, q_preds = model
         return (nw.col(target_col) <= nw.col(q_preds)).alias(model_name)
@@ -795,14 +802,14 @@ def scaled_crps(
     loss = mqloss(
         df=df, models=models, quantiles=quantiles, id_col=id_col, target_col=target_col
     )
+
     def gen_expr(model):
-        return (
-            2 * nw.col(model) * nw.col("counts") / (nw.col("norm") + eps)
-        ).alias(model)
+        return (2 * nw.col(model) * nw.col("counts") / (nw.col("norm") + eps)).alias(
+            model
+        )
 
     stats = (
-        df
-        .with_columns(target_col=nw.col(target_col).abs())
+        df.with_columns(target_col=nw.col(target_col).abs())
         .group_by(id_col)
         .agg(
             counts=nw.col(id_col).len(),
@@ -888,8 +895,7 @@ def tweedie_deviance(
 
         def gen_expr(model):
             return (
-                2
-                * (nw.col(model).log() - nw.col(target_col).log())
+                2 * (nw.col(model).log() - nw.col(target_col).log())
                 + (nw.col(target_col) / nw.col(model))
                 - 1
             ).alias(model)
@@ -900,16 +906,10 @@ def tweedie_deviance(
             return (
                 2
                 * (
-                    nw.col(target_col)
-                    .clip(0)
-                    ** (2 - power)
+                    nw.col(target_col).clip(0) ** (2 - power)
                     / ((1 - power) * (2 - power))
                 )
-                - (
-                    nw.col(target_col)
-                    * (nw.col(model) ** (1 - power))
-                    / (1 - power)
-                )
+                - (nw.col(target_col) * (nw.col(model) ** (1 - power)) / (1 - power))
                 + (nw.col(model) ** (2 - power) / (2 - power))
             ).alias(model)
 
