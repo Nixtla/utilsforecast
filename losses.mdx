@@ -229,7 +229,7 @@ The PIS metric sums the absolute forecast errors per series without any scaling,
 ```python
 spis(
     df: ~DFType,
-    df_train: ~DFType,
+    train_df: ~DFType,
     models: List[str],
     id_col: str = 'unique_id',
     target_col: str = 'y'
@@ -239,6 +239,49 @@ spis(
 Compute the scaled Absolute Periods In Stock (sAPIS) for one or multiple models. 
 
 The sPIS metric scales the sum of absolute forecast errors by the mean in-sample demand, yielding a scale-independent bias measure that can be aggregated across series. 
+
+
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actual values and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `linex`
+
+```python
+linex(
+    df: ~DFType,
+    models: List[str],
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    a: float = 1.0
+) → ~DFType
+```
+
+Linex Loss 
+
+The Linex (Linear Exponential) loss penalizes over- and under-forecasting asymmetrically depending on the parameter a. 
+
+
+- If a > 0, under-forecasting (y > y_hat) is penalized more. 
+- If a < 0, over-forecasting (y_hat > y) is penalized more. 
+- a must not be 0. 
 
 
 
