@@ -229,7 +229,7 @@ The PIS metric sums the absolute forecast errors per series without any scaling,
 ```python
 spis(
     df: ~DFType,
-    df_train: ~DFType,
+    train_df: ~DFType,
     models: List[str],
     id_col: str = 'unique_id',
     target_col: str = 'y'
