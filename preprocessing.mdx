@@ -1,82 +1,73 @@
+# Preprocessing
 
-
-
-
-# <kbd>module</kbd> `utilsforecast.preprocessing`
-Utilities for processing data before training/analysis 
-
-
----
-
-
-
-## <kbd>function</kbd> `id_time_grid`
+### `id_time_grid`
 
 ```python
 id_time_grid(
-    df: ~DFType,
-    freq: Union[str, int],
-    start: Union[str, int, date, datetime] = 'per_serie',
-    end: Union[str, int, date, datetime] = 'global',
-    id_col: str = 'unique_id',
-    time_col: str = 'ds'
-) → ~DFType
+    df, freq, start="per_serie", end="global", id_col="unique_id", time_col="ds"
+)
 ```
 
-Generate all expected combiations of ids and times. 
+Generate all expected combiations of ids and times.
 
+**Parameters:**
 
+Name | Type | Description | Default
+---- | ---- | ----------- | -------
+`df` | <code>pandas or polars DataFrame</code> | Input data | *required*
+`freq` | <code>[str](#str) or [int](#int)</code> | Series' frequency | *required*
+`start` | <code>([str](#str), [int](#int), [date](#datetime.date) or [datetime](#datetime.datetime))</code> | Initial timestamp for the series.
 
-**Args:**
- 
- - <b>`df`</b> (pandas or polars DataFrame):  Input data 
- - <b>`freq`</b> (str or int):  Series' frequency 
- - <b>`start`</b> (str, int, date or datetime, optional):  Initial timestamp for the series.  * 'per_serie' uses each serie's first timestamp  * 'global' uses the first timestamp seen in the data  * Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)  Defaults to "per_serie". 
- - <b>`end`</b> (str, int, date or datetime, optional):  Initial timestamp for the series.  * 'per_serie' uses each serie's last timestamp  * 'global' uses the last timestamp seen in the data  * Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)  Defaults to "global". 
- - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
- - <b>`time_col`</b> (str, optional):  Column that identifies each timestamp. Defaults to 'ds'. 
-
-
+- 'per_serie' uses each serie's first timestamp
+- 'global' uses the first timestamp seen in the data
+- Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)
+  Defaults to "per_serie". | <code>'per_serie'</code>
+  `end` | <code>([str](#str), [int](#int), [date](#datetime.date) or [datetime](#datetime.datetime))</code> | Initial timestamp for the series.
+- 'per_serie' uses each serie's last timestamp
+- 'global' uses the last timestamp seen in the data
+- Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)
+  Defaults to "global". | <code>'global'</code>
+  `id_col` | <code>[str](#str)</code> | Column that identifies each serie. Defaults to 'unique_id'. | <code>'unique_id'</code>
+  `time_col` | <code>[str](#str)</code> | Column that identifies each timestamp. Defaults to 'ds'. | <code>'ds'</code>
 
 **Returns:**
- 
- - <b>`pandas or polars DataFrame`</b>:  Dataframe with expected ids and times. 
 
+Type | Description
+---- | -----------
+<code>[DFType](#utilsforecast.compat.DFType)</code> | pandas or polars DataFrame: Dataframe with expected ids and times.
 
----
-
-
-
-## <kbd>function</kbd> `fill_gaps`
+### `fill_gaps`
 
 ```python
 fill_gaps(
-    df: ~DFType,
-    freq: Union[str, int],
-    start: Union[str, int, date, datetime] = 'per_serie',
-    end: Union[str, int, date, datetime] = 'global',
-    id_col: str = 'unique_id',
-    time_col: str = 'ds'
-) → ~DFType
+    df, freq, start="per_serie", end="global", id_col="unique_id", time_col="ds"
+)
 ```
 
-Enforce start and end datetimes for dataframe. 
+Enforce start and end datetimes for dataframe.
 
+**Parameters:**
 
+Name | Type | Description | Default
+---- | ---- | ----------- | -------
+`df` | <code>pandas or polars DataFrame</code> | Input data | *required*
+`freq` | <code>[str](#str) or [int](#int)</code> | Series' frequency | *required*
+`start` | <code>([str](#str), [int](#int), [date](#datetime.date) or [datetime](#datetime.datetime))</code> | Initial timestamp for the series.
 
-**Args:**
- 
- - <b>`df`</b> (pandas or polars DataFrame):  Input data 
- - <b>`freq`</b> (str or int):  Series' frequency 
- - <b>`start`</b> (str, int, date or datetime, optional):  Initial timestamp for the series.  * 'per_serie' uses each serie's first timestamp  * 'global' uses the first timestamp seen in the data  * Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)  Defaults to "per_serie". 
- - <b>`end`</b> (str, int, date or datetime, optional):  Initial timestamp for the series.  * 'per_serie' uses each serie's last timestamp  * 'global' uses the last timestamp seen in the data  * Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)  Defaults to "global". 
- - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
- - <b>`time_col`</b> (str, optional):  Column that identifies each timestamp. Defaults to 'ds'. 
-
-
+- 'per_serie' uses each serie's first timestamp
+- 'global' uses the first timestamp seen in the data
+- Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)
+  Defaults to "per_serie". | <code>'per_serie'</code>
+  `end` | <code>([str](#str), [int](#int), [date](#datetime.date) or [datetime](#datetime.datetime))</code> | Initial timestamp for the series.
+- 'per_serie' uses each serie's last timestamp
+- 'global' uses the last timestamp seen in the data
+- Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)
+  Defaults to "global". | <code>'global'</code>
+  `id_col` | <code>[str](#str)</code> | Column that identifies each serie. Defaults to 'unique_id'. | <code>'unique_id'</code>
+  `time_col` | <code>[str](#str)</code> | Column that identifies each timestamp. Defaults to 'ds'. | <code>'ds'</code>
 
 **Returns:**
- 
- - <b>`pandas or polars DataFrame`</b>:  Dataframe with gaps filled. 
 
-
+Type | Description
+---- | -----------
+<code>[DFType](#utilsforecast.compat.DFType)</code> | pandas or polars DataFrame: Dataframe with gaps filled.
