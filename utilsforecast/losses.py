@@ -5,6 +5,7 @@ __all__ = ['mae', 'mse', 'rmse', 'bias', 'cfe', 'pis', 'spis', 'linex', 'mape', 
            'tweedie_deviance']
 
 
+import warnings
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -583,7 +584,7 @@ def nd(
 
         if not replace_inf:
             if np.isinf(res.values).any():
-                        print(
+                        warnings.warn(
             "Infinities detected in ND calculation due to zero y values with non-zero predictions. "
             "Consider setting 'replace_inf=True' to replace infs with 0."
         )
@@ -618,7 +619,7 @@ def nd(
             mask_series = pl.concat(bool_series_list)
             
             if mask_series.any():
-                print("Infinities detected in ND calculation due to zero y values with non-zero predictions."
+                warnings.warn("Infinities detected in ND calculation due to zero y values with non-zero predictions."
                 "Consider setting 'replace_inf=True' to replace infs with 0.")
         if replace_inf:
             res = df.select(
