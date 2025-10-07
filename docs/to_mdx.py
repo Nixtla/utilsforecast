@@ -32,8 +32,8 @@ def process_files(input_dir):
 def copy_readme():
     """Copy README.md to index.mdx with proper header"""
     header = """---
-description: Fast implementations of common forecasting routines
-title: "coreforecast"
+description: Forecasting utilities
+title: "utilsforecast"
 ---
 """
     readme_text = Path("README.md").read_text()
