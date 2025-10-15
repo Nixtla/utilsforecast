@@ -6,20 +6,78 @@ from functools import partial
 import narwhals.stable.v2 as nw
 import numpy as np
 import pandas as pd
+import polars as pl
 import pytest
 
 import utilsforecast.losses as ufl
 from utilsforecast.data import generate_series
+from utilsforecast.losses import (
+    bias,
+    calibration,
+    cfe,
+    coverage,
+    linex,
+    mae,
+    mape,
+    mase,
+    mqloss,
+    mse,
+    msse,
+    nd,
+    pis,
+    quantile_loss,
+    rmae,
+    rmse,
+    rmsse,
+    scaled_crps,
+    scaled_mqloss,
+    scaled_quantile_loss,
+    smape,
+    spis,
+    tweedie_deviance,
+)
 
 
 warnings.filterwarnings("ignore", message="Unknown section References")
 
 
-# @pytest.fixture(scope="module")
-def setup_series(engine):
+def pd_vs_pl(pd_result, pl_result, models):
+    """Helper function to compare pandas and polars dataframe results."""
+    import polars as pl
+
+    if isinstance(pl_result, pl.DataFrame):
+        pl_result = pl_result.to_pandas()
+
+    # Normalize unique_id to string to handle int vs string categorical differences
+    pd_result = pd_result.copy()
+    pl_result = pl_result.copy()
+    pd_result["unique_id"] = pd_result["unique_id"].astype(str)
+    pl_result["unique_id"] = pl_result["unique_id"].astype(str)
+
+    pd.testing.assert_frame_equal(
+        pd_result.sort_values("unique_id").reset_index(drop=True)[["unique_id", *models]],
+        pl_result.sort_values("unique_id").reset_index(drop=True)[["unique_id", *models]],
+        check_dtype=False,  # Ignore dtype differences between pandas and polars conversions
+        check_categorical=False,
+    )
+
+
+# Helper function for parametrized tests
+def _setup_series_engine(engine):
+    """Helper function to generate test series data for a specific engine."""
     models = ["model0", "model1"]
     series = generate_series(10, n_models=2, level=[80], engine=engine)
     return series, models
+
+
+# Fixture for class-based tests (matches main branch)
+@pytest.fixture
+def setup_series():
+    """Fixture that generates pandas and polars test series data."""
+    models = ["model0", "model1"]
+    series = generate_series(10, n_models=2, level=[80])
+    series_pl = generate_series(10, n_models=2, level=[80], engine="polars")
+    return series, series_pl, models
 
 
 @pytest.fixture
@@ -157,6 +215,134 @@ def tweedie_deviance_single(y_true, y_pred, power, **kwargs):
         )
 
 
+class TestAdditionalLosses:
+    """Tests for additional loss functions: cfe, pis, spis, linex"""
+
+    def test_cfe(self, setup_series):
+        series, series_pl, models = setup_series
+        pd_vs_pl(
+            cfe(series, models),
+            cfe(series_pl, models),
+            models,
+        )
+
+    def test_pis(self, setup_series):
+        series, series_pl, models = setup_series
+        pd_vs_pl(
+            pis(series, models),
+            pis(series_pl, models),
+            models,
+        )
+
+    def test_linex(self, setup_series):
+        series, series_pl, models = setup_series
+        pd_vs_pl(
+            linex(series, models),
+            linex(series_pl, models),
+            models,
+        )
+
+    def test_pis_numerical(self):
+        """
+        Numerical check for PIS (Prediction Interval Score) using absolute error.
+        Verifies output per unique_id for both Pandas and Polars.
+        """
+        df = pd.DataFrame({
+            "unique_id": ["A", "A", "B", "B"],
+            "y":         [10,   15,   5,   7],
+            "y_hat":     [12,   14,   4,  10],
+        })
+
+        expected = pd.DataFrame({
+            "unique_id": ["A", "B"],
+            "y_hat": [3, 4]  # ints to match actual output
+        })
+
+        out_pd = pis(df, ["y_hat"])
+        pd.testing.assert_frame_equal(out_pd, expected)
+
+        out_pl = pis(pl.DataFrame(df), ["y_hat"])
+        pd.testing.assert_frame_equal(out_pl.to_pandas(), expected)
+        
+    def test_spis_numerical(self):
+        """
+        Numerical check for Scaled Prediction Interval Score (SPIS).
+        Validates scaled sum of absolute errors per series (Pandas and Polars).
+        """
+        # In-sample data for scaling (mean per series)
+        train_df = pd.DataFrame({
+            "unique_id": ["A", "A", "B", "B"],
+            "y": [1, 3, 2, 6]
+        })
+
+        df = pd.DataFrame({
+            "unique_id": ["A", "A", "B", "B"],
+            "y":        [3, 3, 2, 8],
+            "y_hat":    [6, 2, 3, 5]
+        })
+
+        # Expected:
+        # A: |3−6| + |3−2| = 3+1 = 4   → 4 / mean([1,3]) = 4 / 2 = 2.0
+        # B: |2−3| + |8−5| = 1+3 = 4   → 4 / mean([2,6]) = 4 / 4 = 1.0
+        expected = pd.DataFrame({
+            "unique_id": ["A", "B"],
+            "y_hat": [2.0, 1.0]
+        })
+
+        # Pandas test
+        out_pd = spis(
+            df=df,
+            train_df=train_df,
+            models=["y_hat"],
+            id_col="unique_id",
+            target_col="y",
+        )
+        pd.testing.assert_frame_equal(
+            out_pd.sort_values("unique_id").reset_index(drop=True),
+            expected
+        )
+
+        # Polars test
+        out_pl = spis(
+            df=pl.DataFrame(df),
+            train_df=pl.DataFrame(train_df),
+            models=["y_hat"],
+            id_col="unique_id",
+            target_col="y",
+        )
+        pd.testing.assert_frame_equal(
+            out_pl.to_pandas().sort_values("unique_id").reset_index(drop=True),
+            expected
+        )
+        
+    def test_linex_loss_numerical(self):
+        """
+        Numerical check for Linex loss with a=0.2 for both Pandas and Polars.
+        """
+        df = pd.DataFrame({
+        "unique_id": ["A", "A", "A"],
+        "y": [1.0, 2.0, 3.0],
+        "model1": [1.0, 2.5, 2.0],  # errors: 0.0, 0.5, -1.0
+        })
+
+        a = 0.2
+        errors = [0.0, 0.5, -1.0]
+        expected_val = np.mean([np.exp(a * e) - a * e - 1 for e in errors])
+
+        expected = pd.DataFrame({
+            "unique_id": ["A"],
+            "model1": [expected_val]
+        })
+
+        # Pandas test
+        out_pd = linex(df, ["model1"], a=a)
+        pd.testing.assert_frame_equal(out_pd, expected)
+
+        # Polars test
+        out_pl = linex(pl.DataFrame(df), ["model1"], a=a)
+        pd.testing.assert_frame_equal(out_pl.to_pandas(), expected)
+
+
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
 @pytest.mark.parametrize(
     "utils_fn,single_fn",
@@ -188,7 +374,7 @@ def tweedie_deviance_single(y_true, y_pred, power, **kwargs):
     ],
 )
 def test_loss(engine, utils_fn, single_fn):
-    series, models = setup_series(engine)
+    series, models = _setup_series_engine(engine)
     seasonality = 7
     level = 80
     baseline = models[0]
@@ -256,7 +442,7 @@ def calibration_single(y_true, y_pred, **kwargs):
     ],
 )
 def test_single_quantile_losses(engine, utils_fn, single_fn, q):
-    series, models = setup_series(engine)
+    series, models = _setup_series_engine(engine)
     q_models = {
         0.1: {
             "model0": "model0-lo-80",

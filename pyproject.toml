@@ -23,6 +23,7 @@ classifiers = [
 ]
 keywords = ["time-series", "analysis", "forecasting"]
 dependencies = [
+    "narwhals[pandas]>=1.20.0",
     "numpy",
     "packaging",
     "pandas>=1.1.1",
@@ -61,7 +62,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/Nixtla/utilsforecast"
-Documentation = "https://Nixtla.github.io/utilsforecast"
+Documentation = "https://nixtlaverse.verse.io/utilsforecast"
 Repository = "https://github.com/Nixtla/utilsforecast"
 
 

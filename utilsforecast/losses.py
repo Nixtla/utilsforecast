@@ -23,6 +23,7 @@ __all__ = [
     "calibration",
     "scaled_crps",
     "tweedie_deviance",
+    "linex",
 ]
 
 from typing import Callable, Union
@@ -217,7 +218,7 @@ def pis(
 @_base_docstring
 def spis(
     df: IntoDataFrameT,
-    df_train: IntoDataFrameT,
+    train_df: IntoDataFrameT,
     models: list[str],
     id_col: str = "unique_id",
     target_col: str = "y",
@@ -228,10 +229,42 @@ def spis(
     The sPIS metric scales the sum of absolute forecast errors by the mean in-sample demand,
     yielding a scale-independent bias measure that can be aggregated across series.
     """
-    df = nw.from_native(df)
-    scales = df_train.group_by(id_col).agg(nw.col(target_col).mean().alias("scale"))
+    scales = nw.from_native(train_df).group_by(id_col).agg(nw.col(target_col).mean().alias("scale"))
     raw = pis(df=df, models=models, id_col=id_col, target_col=target_col)
     return _scale_loss(df=raw, models=models, scales=scales, id_col=id_col)
+
+
+@_base_docstring
+def linex(
+    df: IntoDataFrameT,
+    models: list[str],
+    id_col: str = "unique_id",
+    target_col: str = "y",
+    a: float = 1.0,
+) -> IntoDataFrameT:
+    """
+    Linex Loss
+
+    The Linex (Linear Exponential) loss penalizes over- and under-forecasting
+    asymmetrically depending on the parameter a.
+
+    - If a > 0, under-forecasting (y > y_hat) is penalized more.
+    - If a < 0, over-forecasting (y_hat > y) is penalized more.
+    - a must not be 0.
+    """
+    if np.isclose(a, 0.0):
+        raise ValueError("Parameter a in Linex loss must be non-zero.")
+
+    def gen_expr(model):
+        err = nw.col(model) - nw.col(target_col)
+        return ((err * a).exp() - (err * a) - 1).alias(model)
+
+    return _nw_agg_expr(
+        df=df,
+        models=models,
+        id_col=id_col,
+        gen_expr=gen_expr,
+    )
 
 
 def _zero_to_nan(series):
