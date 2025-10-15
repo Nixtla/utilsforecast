@@ -1,15 +1,22 @@
+import inspect
+import math
 import warnings
+from functools import partial
 
+import narwhals.stable.v2 as nw
 import numpy as np
 import pandas as pd
+import polars as pl
 import pytest
 
-from utilsforecast.compat import POLARS_INSTALLED
+import utilsforecast.losses as ufl
 from utilsforecast.data import generate_series
 from utilsforecast.losses import (
     bias,
     calibration,
+    cfe,
     coverage,
+    linex,
     mae,
     mape,
     mase,
@@ -17,6 +24,7 @@ from utilsforecast.losses import (
     mse,
     msse,
     nd,
+    pis,
     quantile_loss,
     rmae,
     rmse,
@@ -25,21 +33,47 @@ from utilsforecast.losses import (
     scaled_mqloss,
     scaled_quantile_loss,
     smape,
-    tweedie_deviance,
-    cfe,
-    pis,
     spis,
-    linex,
+    tweedie_deviance,
 )
 
-if POLARS_INSTALLED:
-    import polars as pl
 
 warnings.filterwarnings("ignore", message="Unknown section References")
 
 
+def pd_vs_pl(pd_result, pl_result, models):
+    """Helper function to compare pandas and polars dataframe results."""
+    import polars as pl
+
+    if isinstance(pl_result, pl.DataFrame):
+        pl_result = pl_result.to_pandas()
+
+    # Normalize unique_id to string to handle int vs string categorical differences
+    pd_result = pd_result.copy()
+    pl_result = pl_result.copy()
+    pd_result["unique_id"] = pd_result["unique_id"].astype(str)
+    pl_result["unique_id"] = pl_result["unique_id"].astype(str)
+
+    pd.testing.assert_frame_equal(
+        pd_result.sort_values("unique_id").reset_index(drop=True)[["unique_id", *models]],
+        pl_result.sort_values("unique_id").reset_index(drop=True)[["unique_id", *models]],
+        check_dtype=False,  # Ignore dtype differences between pandas and polars conversions
+        check_categorical=False,
+    )
+
+
+# Helper function for parametrized tests
+def _setup_series_engine(engine):
+    """Helper function to generate test series data for a specific engine."""
+    models = ["model0", "model1"]
+    series = generate_series(10, n_models=2, level=[80], engine=engine)
+    return series, models
+
+
+# Fixture for class-based tests (matches main branch)
 @pytest.fixture
 def setup_series():
+    """Fixture that generates pandas and polars test series data."""
     models = ["model0", "model1"]
     series = generate_series(10, n_models=2, level=[80])
     series_pl = generate_series(10, n_models=2, level=[80], engine="polars")
@@ -87,44 +121,103 @@ def multi_quantile_models():
     }
 
 
-def pd_vs_pl(pd_df, pl_df, models):
-    pd.testing.assert_frame_equal(pd_df[models],
-                                  pl_df[models].to_pandas())
+def manual_loop(df, models, loss_fn, seasonality=None, baseline=None):
+    df = nw.from_native(df)
+    results = []
+    requires_train = "y_train" in inspect.signature(loss_fn).parameters
+    for uid, uid_df in df.group_by("unique_id"):
+        uid_res = {"unique_id": uid}
+        y_true = uid_df["y"].to_numpy()
+        kwargs = {}
+        if requires_train:
+            kwargs["y_train"] = y_true
+        if seasonality is not None:
+            kwargs["seasonality"] = seasonality
+        if baseline is not None:
+            kwargs["y_pred_baseline"] = uid_df[baseline].to_numpy()
+        for model in models:
+            y_pred = uid_df[model].to_numpy()
+            uid_res[model] = loss_fn(y_true, y_pred, **kwargs)
+        results.append(uid_res)
+    return pd.DataFrame(results)
 
 
-class TestBasicMetrics:
-    def test_mae(self, setup_series):
-        series, series_pl, models = setup_series
-        pd_vs_pl(
-            mae(series, models),
-            mae(series_pl, models),
-            models,
+def mae_single(y_true, y_pred, **kwargs):
+    return np.abs(y_true - y_pred).mean()
+
+
+def mse_single(y_true, y_pred, **kwargs):
+    return np.square(y_true - y_pred).mean()
+
+
+def rmse_single(y_true, y_pred, **kwargs):
+    return np.sqrt(np.square(y_true - y_pred).mean())
+
+
+def bias_single(y_true, y_pred, **kwargs):
+    return np.mean(y_pred - y_true)
+
+
+def mape_single(y_true, y_pred, **kwargs):
+    return np.mean(np.abs(y_true - y_pred) / y_true)
+
+
+def smape_single(y_true, y_pred, **kwargs):
+    return np.mean(np.abs(y_true - y_pred) / (y_true + y_pred))
+
+
+def mase_single(y_true, y_pred, y_train, seasonality, **kwargs):
+    scale = np.abs(y_train[:-seasonality] - y_train[seasonality:]).mean()
+    return np.abs(y_true - y_pred).mean() / scale
+
+
+def rmae_single(y_true, y_pred, baseline, **kwargs):
+    num = np.abs(y_true - y_pred).mean()
+    den = np.abs(y_true - baseline).mean()
+    return num / den
+
+
+def msse_single(y_true, y_pred, seasonality, y_train, **kwargs):
+    num = np.square(y_true - y_pred).mean()
+    den = np.square(y_train[:-seasonality] - y_train[seasonality:]).mean()
+    return num / den
+
+
+def rmsse_single(y_true, y_pred, seasonality, y_train, **kwargs):
+    num = np.square(y_true - y_pred).mean()
+    den = np.square(y_train[:-seasonality] - y_train[seasonality:]).mean()
+    return math.sqrt(num / den)
+
+
+def nd_single(y_true, y_pred, **kwargs):
+    return np.abs(y_true - y_pred).sum() / np.abs(y_true).sum()
+
+
+def coverage_single(y_true, y_pred_lo, y_pred_hi, **kwargs):
+    return np.mean((y_true >= y_pred_lo) & (y_true <= y_pred_hi))
+
+
+def tweedie_deviance_single(y_true, y_pred, power, **kwargs):
+    if power == 0:
+        return np.mean((y_true - y_pred) ** 2)
+    elif power == 1:
+        return np.mean(2 * (y_true * np.log(y_true / y_pred) - (y_true - y_pred)))
+    elif power == 2:
+        return np.mean(2 * (np.log(y_pred) - np.log(y_true)) + y_true / y_pred - 1)
+    else:
+        return np.mean(
+            2
+            * (
+                (y_true ** (2 - power)) / ((1 - power) * (2 - power))
+                - (y_true * (y_pred ** (1 - power))) / (1 - power)
+                + (y_pred ** (2 - power)) / (2 - power)
+            )
         )
 
-    def test_mse(self, setup_series):
-        series, series_pl, models = setup_series
-        pd_vs_pl(
-            mse(series, models),
-            mse(series_pl, models),
-            models,
-        )
 
-    def test_rmse(self, setup_series):
-        series, series_pl, models = setup_series
-        pd_vs_pl(
-            rmse(series, models),
-            rmse(series_pl, models),
-            models,
-        )
+class TestAdditionalLosses:
+    """Tests for additional loss functions: cfe, pis, spis, linex"""
 
-    def test_bias(self, setup_series):
-        series, series_pl, models = setup_series
-        pd_vs_pl(
-            bias(series, models),
-            bias(series_pl, models),
-            models,
-        )
-        
     def test_cfe(self, setup_series):
         series, series_pl, models = setup_series
         pd_vs_pl(
@@ -132,7 +225,7 @@ class TestBasicMetrics:
             cfe(series_pl, models),
             models,
         )
-        
+
     def test_pis(self, setup_series):
         series, series_pl, models = setup_series
         pd_vs_pl(
@@ -140,7 +233,7 @@ class TestBasicMetrics:
             pis(series_pl, models),
             models,
         )
-        
+
     def test_linex(self, setup_series):
         series, series_pl, models = setup_series
         pd_vs_pl(
@@ -148,7 +241,6 @@ class TestBasicMetrics:
             linex(series_pl, models),
             models,
         )
-        
 
     def test_pis_numerical(self):
         """
@@ -205,7 +297,10 @@ class TestBasicMetrics:
             id_col="unique_id",
             target_col="y",
         )
-        pd.testing.assert_frame_equal(out_pd, expected)
+        pd.testing.assert_frame_equal(
+            out_pd.sort_values("unique_id").reset_index(drop=True),
+            expected
+        )
 
         # Polars test
         out_pl = spis(
@@ -215,7 +310,10 @@ class TestBasicMetrics:
             id_col="unique_id",
             target_col="y",
         )
-        pd.testing.assert_frame_equal(out_pl.to_pandas(), expected)
+        pd.testing.assert_frame_equal(
+            out_pl.to_pandas().sort_values("unique_id").reset_index(drop=True),
+            expected
+        )
         
     def test_linex_loss_numerical(self):
         """
@@ -245,64 +343,146 @@ class TestBasicMetrics:
         pd.testing.assert_frame_equal(out_pl.to_pandas(), expected)
 
 
-class TestPercentageErrors:
-    def test_mape(self, setup_series):
-        series, series_pl, models = setup_series
-        pd_vs_pl(
-            mape(series, models),
-            mape(series_pl, models),
-            models,
-        )
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+@pytest.mark.parametrize(
+    "utils_fn,single_fn",
+    [
+        (ufl.mae, mae_single),
+        (ufl.mse, mse_single),
+        (ufl.rmse, rmse_single),
+        (ufl.bias, bias_single),
+        (ufl.mape, mape_single),
+        (ufl.smape, smape_single),
+        (ufl.mase, mase_single),
+        (ufl.rmae, rmae_single),
+        (ufl.msse, msse_single),
+        (ufl.rmsse, rmsse_single),
+        (ufl.nd, nd_single),
+        (ufl.coverage, coverage_single),
+        (
+            partial(ufl.tweedie_deviance, power=0),
+            partial(tweedie_deviance_single, power=0),
+        ),
+        (
+            partial(ufl.tweedie_deviance, power=1),
+            partial(tweedie_deviance_single, power=1),
+        ),
+        (
+            partial(ufl.tweedie_deviance, power=2),
+            partial(tweedie_deviance_single, power=2),
+        ),
+    ],
+)
+def test_loss(engine, utils_fn, single_fn):
+    series, models = _setup_series_engine(engine)
+    seasonality = 7
+    level = 80
+    baseline = models[0]
+    loss_params = inspect.signature(utils_fn).parameters
+    kwargs = {}
+    if "seasonality" in loss_params:
+        kwargs["seasonality"] = seasonality
+    if "train_df" in loss_params:
+        kwargs["train_df"] = series
+    if "baseline" in loss_params:
+        kwargs["baseline"] = baseline
+    if "level" in loss_params:
+        kwargs["level"] = level
+    actual = utils_fn(series, models, **kwargs)
 
-    def test_smape(self, setup_series):
-        series, series_pl, models = setup_series
-        pd_vs_pl(
-            smape(series, models),
-            smape(series_pl, models),
-            models,
-        )
+    df = nw.from_native(series)
+    results = []
+    for (uid,), uid_df in df.group_by("unique_id"):
+        uid_res = {"unique_id": uid}
+        y_true = uid_df["y"].to_numpy()
+        for model in models:
+            single_kwargs = {}
+            if "level" in loss_params:
+                single_kwargs["y_pred_lo"] = uid_df[f"{model}-lo-{level}"].to_numpy()
+                single_kwargs["y_pred_hi"] = uid_df[f"{model}-hi-{level}"].to_numpy()
+            y_pred = uid_df[model].to_numpy()
+            uid_res[model] = single_fn(
+                y_true,
+                y_pred=y_pred,
+                y_train=y_true,
+                seasonality=seasonality,
+                baseline=uid_df[baseline].to_numpy(),
+                **single_kwargs,
+            )
+        results.append(uid_res)
+
+    expected = nw.from_native(type(series)(results)).sort("unique_id")
+    actual = nw.from_native(actual).sort("unique_id")
+    np.testing.assert_allclose(actual[models], expected[models])
 
 
-class TestScaleIndependentErrors:
-    def test_mase(self, setup_series):
-        series, series_pl, models = setup_series
-        pd_vs_pl(
-            mase(series, models, 7, series),
-            mase(series_pl, models, 7, series_pl),
-            models,
-        )
+def quantile_loss_single(y_true, y_pred, q, **kwargs):
+    delta_y = y_true - y_pred
+    return np.maximum(q * delta_y, (q - 1) * delta_y).mean()
 
-    def test_rmae(self, setup_series):
-        series, series_pl, models = setup_series
-        pd_vs_pl(
-            rmae(series, models, models[0]),
-            rmae(series_pl, models, models[0]),
-            models,
-        )
 
-    def test_msse(self, setup_series):
-        series, series_pl, models = setup_series
-        pd_vs_pl(
-            msse(series, models, 7, series),
-            msse(series_pl, models, 7, series_pl),
-            models,
-        )
+def scaled_quantile_loss_single(y_true, y_pred, q, y_train, seasonality, **kwargs):
+    qloss = quantile_loss_single(y_true, y_pred, q)
+    scale = mae_single(y_train[seasonality:], y_train[:-seasonality])
+    return qloss / scale
 
-    def test_rmsse(self, setup_series):
-        series, series_pl, models = setup_series
-        pd_vs_pl(
-            rmsse(series, models, 7, series),
-            rmsse(series_pl, models, 7, series_pl),
-            models,
-        )
 
-    def test_nd(self, setup_series):
-        series, series_pl, models = setup_series
-        pd_vs_pl(
-            nd(series, models),
-            nd(series_pl, models),
-            models,
-        )
+def calibration_single(y_true, y_pred, **kwargs):
+    return np.mean(y_true < y_pred)
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+@pytest.mark.parametrize("q", [0.1, 0.9])
+@pytest.mark.parametrize(
+    "utils_fn,single_fn",
+    [
+        (ufl.quantile_loss, quantile_loss_single),
+        (ufl.scaled_quantile_loss, scaled_quantile_loss_single),
+        (ufl.calibration, calibration_single),
+    ],
+)
+def test_single_quantile_losses(engine, utils_fn, single_fn, q):
+    series, models = _setup_series_engine(engine)
+    q_models = {
+        0.1: {
+            "model0": "model0-lo-80",
+            "model1": "model1-lo-80",
+        },
+        0.9: {
+            "model0": "model0-hi-80",
+            "model1": "model1-hi-80",
+        },
+    }
+    seasonality = 7
+    loss_params = inspect.signature(utils_fn).parameters
+    kwargs = {}
+    if "seasonality" in loss_params:
+        kwargs["seasonality"] = seasonality
+    if "train_df" in loss_params:
+        kwargs["train_df"] = series
+    if "q" in loss_params:
+        kwargs["q"] = q
+    actual = utils_fn(series, q_models[q], **kwargs)
+
+    df = nw.from_native(series)
+    results = []
+    for (uid,), uid_df in df.group_by("unique_id"):
+        uid_res = {"unique_id": uid}
+        y_true = uid_df["y"].to_numpy()
+        for model, pred_col in q_models[q].items():
+            y_pred = uid_df[pred_col].to_numpy()
+            uid_res[model] = single_fn(
+                y_true,
+                y_pred,
+                y_train=y_true,
+                seasonality=seasonality,
+                q=q,
+            )
+        results.append(uid_res)
+
+    expected = nw.from_native(type(series)(results)).sort("unique_id")
+    actual = nw.from_native(actual).sort("unique_id")
+    np.testing.assert_allclose(actual[models], expected[models])
 
 
 class TestQuantileLoss:
@@ -461,14 +641,14 @@ class TestProbabilisticMetrics:
             models,
         )
 
-class TestTweedieDeviance:
 
+class TestTweedieDeviance:
     @pytest.mark.parametrize("power", [0, 1, 1.5, 2, 3])
     def test_non_zero_handling(self, setup_series, power):
         series, series_pl, models = setup_series
-    # for power in [0, 1, 1.5, 2, 3]:
+        # for power in [0, 1, 1.5, 2, 3]:
         # Test Pandas vs Polars
-        td_pd = tweedie_deviance(series,   models, target_col="y", power=power)
+        td_pd = tweedie_deviance(series, models, target_col="y", power=power)
         td_pl = tweedie_deviance(series_pl, models, target_col="y", power=power)
         pd_vs_pl(
             td_pd,
@@ -476,25 +656,31 @@ class TestTweedieDeviance:
             models,
         )
         # Test for NaNs
-        assert not td_pd[models].isna().any().any(), f"NaNs found in pd DataFrame for power {power}"
-        assert not td_pl.select(pl.col(models).is_null().any()).sum_horizontal().item(), f"NaNs found in pl DataFrame for power {power}"
+        assert not td_pd[models].isna().any().any(), (
+            f"NaNs found in pd DataFrame for power {power}"
+        )
+        assert (
+            not td_pl.select(pl.col(models).is_null().any()).sum_horizontal().item()
+        ), f"NaNs found in pl DataFrame for power {power}"
         # Test for infinites
         is_infinite = td_pd[models].isin([np.inf, -np.inf]).any().any()
         assert not is_infinite, f"Infinities found in pd DataFrame for power {power}"
-        is_infinite_pl = td_pl.select(pl.col(models).is_infinite().any()).sum_horizontal().item()
+        is_infinite_pl = (
+            td_pl.select(pl.col(models).is_infinite().any()).sum_horizontal().item()
+        )
         assert not is_infinite_pl, f"Infinities found in pl DataFrame for power {power}"
 
     @pytest.mark.parametrize("power", [0, 1, 1.5])
     def test_zero_handling(self, setup_series, power):
         series, series_pl, models = setup_series
         # Test zero handling (skip power >=2 since it requires all y > 0)
-        series.loc[0, 'y'] = 0.0  # Set a zero value to test the zero handling
-        series.loc[49, 'y'] = 0.0  # Set another zero value to test the zero handling
-        series_pl[0, 'y'] = 0.0  # Set a zero value to test the zero handling
-        series_pl[49, 'y'] = 0.0  # Set another zero value to test the zero handling
+        series.loc[0, "y"] = 0.0  # Set a zero value to test the zero handling
+        series.loc[49, "y"] = 0.0  # Set another zero value to test the zero handling
+        series_pl[0, "y"] = 0.0  # Set a zero value to test the zero handling
+        series_pl[49, "y"] = 0.0  # Set another zero value to test the zero handling
 
         # Test Pandas vs Polars
-        td_pd = tweedie_deviance(series,   models, target_col="y", power=power)
+        td_pd = tweedie_deviance(series, models, target_col="y", power=power)
         td_pl = tweedie_deviance(series_pl, models, target_col="y", power=power)
         pd_vs_pl(
             td_pd,
@@ -502,10 +688,16 @@ class TestTweedieDeviance:
             models,
         )
         # Test for NaNs
-        assert not td_pd[models].isna().any().any(), f"NaNs found in pd DataFrame for power {power}"
-        assert not td_pl.select(pl.col(models).is_null().any()).sum_horizontal().item(), f"NaNs found in pl DataFrame for power {power}"
+        assert not td_pd[models].isna().any().any(), (
+            f"NaNs found in pd DataFrame for power {power}"
+        )
+        assert (
+            not td_pl.select(pl.col(models).is_null().any()).sum_horizontal().item()
+        ), f"NaNs found in pl DataFrame for power {power}"
         # Test for infinites
         is_infinite = td_pd[models].isin([np.inf, -np.inf]).any().any()
         assert not is_infinite, f"Infinities found in pd DataFrame for power {power}"
-        is_infinite_pl = td_pl.select(pl.col(models).is_infinite().any()).sum_horizontal().item()
+        is_infinite_pl = (
+            td_pl.select(pl.col(models).is_infinite().any()).sum_horizontal().item()
+        )
         assert not is_infinite_pl, f"Infinities found in pl DataFrame for power {power}"
