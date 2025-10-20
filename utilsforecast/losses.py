@@ -23,6 +23,7 @@ __all__ = [
     "calibration",
     "scaled_crps",
     "tweedie_deviance",
+    "linex"
 ]
 
 from typing import Callable, Union
