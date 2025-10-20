@@ -26,7 +26,7 @@ __all__ = [
     "linex"
 ]
 
-from typing import Callable, Union
+from typing import Callable, Dict, List, Union
 
 import narwhals.stable.v2 as nw
 import numpy as np
@@ -74,7 +74,7 @@ def _nw_agg_expr(
 
 def _scale_loss(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     scales: IntoDataFrameT,
     id_col: str,
 ) -> IntoDataFrameT:
@@ -90,7 +90,7 @@ def _scale_loss(
 @_base_docstring
 def mae(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
 ) -> IntoDataFrameT:
@@ -112,7 +112,7 @@ def mae(
 @_base_docstring
 def mse(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
 ) -> IntoDataFrameT:
@@ -134,7 +134,7 @@ def mse(
 @_base_docstring
 def rmse(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
 ) -> IntoDataFrameT:
@@ -157,7 +157,7 @@ def rmse(
 @_base_docstring
 def bias(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
 ) -> IntoDataFrameT:
@@ -175,7 +175,7 @@ def bias(
 @_base_docstring
 def cfe(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
 ) -> IntoDataFrameT:
@@ -196,7 +196,7 @@ def cfe(
 @_base_docstring
 def pis(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
 ) -> IntoDataFrameT:
@@ -219,7 +219,7 @@ def pis(
 def spis(
     df: IntoDataFrameT,
     df_train: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
 ) -> IntoDataFrameT:
@@ -243,7 +243,7 @@ def _zero_to_nan(series):
 @_base_docstring
 def mape(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
 ) -> IntoDataFrameT:
@@ -272,7 +272,7 @@ def mape(
 @_base_docstring
 def smape(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
 ) -> IntoDataFrameT:
@@ -302,7 +302,7 @@ def smape(
 
 def mase(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     seasonality: int,
     train_df: IntoDataFrameT,
     id_col: str = "unique_id",
@@ -354,7 +354,7 @@ def mase(
 
 def rmae(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     baseline: str,
     id_col: str = "unique_id",
     target_col: str = "y",
@@ -394,7 +394,7 @@ def rmae(
 
 def nd(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
 ) -> IntoDataFrameT:
@@ -436,7 +436,7 @@ def nd(
 
 def msse(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     seasonality: int,
     train_df: IntoDataFrameT,
     id_col: str = "unique_id",
@@ -479,7 +479,7 @@ def msse(
 
 def rmsse(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     seasonality: int,
     train_df: IntoDataFrameT,
     id_col: str = "unique_id",
@@ -507,7 +507,7 @@ rmsse.__doc__ = msse.__doc__.replace(  # type: ignore[union-attr]
 
 def quantile_loss(
     df: IntoDataFrameT,
-    models: dict[str, str],
+    models: Dict[str, str],
     q: float = 0.5,
     id_col: str = "unique_id",
     target_col: str = "y",
@@ -547,7 +547,7 @@ def quantile_loss(
 
 def scaled_quantile_loss(
     df: IntoDataFrameT,
-    models: dict[str, str],
+    models: Dict[str, str],
     seasonality: int,
     train_df: IntoDataFrameT,
     q: float = 0.5,
@@ -597,7 +597,7 @@ def scaled_quantile_loss(
 
 def mqloss(
     df: IntoDataFrameT,
-    models: dict[str, list[str]],
+    models: Dict[str, List[str]],
     quantiles: np.ndarray,
     id_col: str = "unique_id",
     target_col: str = "y",
@@ -646,7 +646,7 @@ def mqloss(
 
 def scaled_mqloss(
     df: IntoDataFrameT,
-    models: dict[str, list[str]],
+    models: Dict[str, List[str]],
     quantiles: np.ndarray,
     seasonality: int,
     train_df: IntoDataFrameT,
@@ -701,7 +701,7 @@ def scaled_mqloss(
 
 def coverage(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     level: int,
     id_col: str = "unique_id",
     target_col: str = "y",
@@ -739,7 +739,7 @@ def coverage(
 
 def calibration(
     df: IntoDataFrameT,
-    models: dict[str, str],
+    models: Dict[str, str],
     id_col: str = "unique_id",
     target_col: str = "y",
 ) -> IntoDataFrameT:
@@ -773,7 +773,7 @@ def calibration(
 
 def scaled_crps(
     df: IntoDataFrameT,
-    models: dict[str, list[str]],
+    models: Dict[str, List[str]],
     quantiles: np.ndarray,
     id_col: str = "unique_id",
     target_col: str = "y",
@@ -828,7 +828,7 @@ def scaled_crps(
 
 def tweedie_deviance(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     power: float = 1.5,
     id_col: str = "unique_id",
     target_col: str = "y",
@@ -926,7 +926,7 @@ def tweedie_deviance(
 @_base_docstring
 def linex(
     df: IntoDataFrameT,
-    models: list[str],
+    models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
     a: float = 1.0,
