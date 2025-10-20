@@ -920,3 +920,40 @@ def tweedie_deviance(
         id_col=id_col,
         gen_expr=gen_expr,
     )
+
+
+@_base_docstring
+def linex(
+    df: IntoDataFrameT,
+    models: list[str],
+    id_col: str = "unique_id",
+    target_col: str = "y",
+    a: float = 1.0,
+) -> IntoDataFrameT:
+    """Linex Loss (Linear Exponential)
+
+    The Linex loss penalizes over- and under-forecasting
+    asymmetrically depending on the parameter a.
+
+    - If a > 0, under-forecasting (y > y_hat) is penalized more.
+    - If a < 0, over-forecasting (y_hat > y) is penalized more.
+    - a must not be 0.
+
+    Formula: exp(a·error) - a·error - 1, where error = prediction - actual.
+
+    Args:
+        a (float, optional): Asymmetry parameter. Must be non-zero. Defaults to 1.0.
+    """
+    if np.isclose(a, 0.0):
+        raise ValueError("Parameter a in Linex loss must be non-zero.")
+
+    def gen_expr(model):
+        error = nw.col(model) - nw.col(target_col)
+        return ((error * a).exp() - error * a - 1).alias(model)
+
+    return _nw_agg_expr(
+        df=df,
+        models=models,
+        id_col=id_col,
+        gen_expr=gen_expr,
+    )
