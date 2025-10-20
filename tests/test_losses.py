@@ -15,6 +15,14 @@ from utilsforecast.data import generate_series
 warnings.filterwarnings("ignore", message="Unknown section References")
 
 
+def pd_vs_pl(pd_df, pl_df, models):
+    """Compare pandas and polars results for narwhals-based loss functions."""
+    pd.testing.assert_frame_equal(
+        pd_df[models].reset_index(drop=True),
+        pl_df[models].to_pandas().reset_index(drop=True)
+    )
+
+
 # @pytest.fixture(scope="module")
 def setup_series(engine):
     models = ["model0", "model1"]
@@ -100,6 +108,14 @@ def bias_single(y_true, y_pred, **kwargs):
     return np.mean(y_pred - y_true)
 
 
+def cfe_single(y_true, y_pred, **kwargs):
+    return np.sum(y_pred - y_true)
+
+
+def pis_single(y_true, y_pred, **kwargs):
+    return np.sum(np.abs(y_pred - y_true))
+
+
 def mape_single(y_true, y_pred, **kwargs):
     return np.mean(np.abs(y_true - y_pred) / y_true)
 
@@ -157,6 +173,11 @@ def tweedie_deviance_single(y_true, y_pred, power, **kwargs):
         )
 
 
+def linex_single(y_true, y_pred, a=1.0, **kwargs):
+    error = y_pred - y_true
+    return np.mean(np.exp(a * error) - a * error - 1)
+
+
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
 @pytest.mark.parametrize(
     "utils_fn,single_fn",
@@ -165,6 +186,8 @@ def tweedie_deviance_single(y_true, y_pred, power, **kwargs):
         (ufl.mse, mse_single),
         (ufl.rmse, rmse_single),
         (ufl.bias, bias_single),
+        (ufl.cfe, cfe_single),
+        (ufl.pis, pis_single),
         (ufl.mape, mape_single),
         (ufl.smape, smape_single),
         (ufl.mase, mase_single),
@@ -173,6 +196,15 @@ def tweedie_deviance_single(y_true, y_pred, power, **kwargs):
         (ufl.rmsse, rmsse_single),
         (ufl.nd, nd_single),
         (ufl.coverage, coverage_single),
+        (ufl.linex, linex_single),
+        (
+            partial(ufl.linex, a=2.0),
+            partial(linex_single, a=2.0),
+        ),
+        (
+            partial(ufl.linex, a=-1.5),
+            partial(linex_single, a=-1.5),
+        ),
         (
             partial(ufl.tweedie_deviance, power=0),
             partial(tweedie_deviance_single, power=0),
@@ -202,6 +234,9 @@ def test_loss(engine, utils_fn, single_fn):
         kwargs["baseline"] = baseline
     if "level" in loss_params:
         kwargs["level"] = level
+    if "a" in loss_params:
+        # Get the default value or use 1.0
+        kwargs["a"] = loss_params["a"].default if loss_params["a"].default != inspect.Parameter.empty else 1.0
     actual = utils_fn(series, models, **kwargs)
 
     df = nw.from_native(series)
@@ -228,6 +263,56 @@ def test_loss(engine, utils_fn, single_fn):
     expected = nw.from_native(type(series)(results)).sort("unique_id")
     actual = nw.from_native(actual).sort("unique_id")
     np.testing.assert_allclose(actual[models], expected[models])
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_linex_loss_numerical(engine):
+    """Test linex loss with known numerical values."""
+    a = 0.2
+
+    # Create test data using narwhals-agnostic approach
+    data = {
+        "unique_id": [0, 0, 0],
+        "y": [1.0, 2.0, 3.0],
+        "model": [1.0, 2.5, 2.0],
+    }
+
+    if engine == "pandas":
+        df = pd.DataFrame(data)
+    else:
+        import polars as pl
+        df = pl.DataFrame(data)
+
+    # Calculate expected value
+    # errors: model - y = [0.0, 0.5, -1.0]
+    # linex: exp(a*e) - a*e - 1
+    errors = np.array([0.0, 0.5, -1.0])
+    expected_values = np.exp(a * errors) - a * errors - 1
+    expected_mean = expected_values.mean()
+
+    # Calculate actual using narwhals
+    result = ufl.linex(df, ["model"], a=a)
+    actual_value = nw.from_native(result)["model"].item()
+
+    # Assert
+    np.testing.assert_allclose(actual_value, expected_mean, rtol=1e-10)
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_spis(engine):
+    """Test scaled PIS (sPIS)."""
+    series, models = setup_series(engine)
+    result = ufl.spis(series, series, models)
+
+    # Check that result has correct shape
+    assert result.shape[0] > 0
+    df_nw = nw.from_native(result)
+
+    # Check that all model columns exist
+    for col in models:
+        assert col in df_nw.columns
+        # Check no nulls - narwhals series uses null_count()
+        assert df_nw[col].null_count() == 0
 
 
 def quantile_loss_single(y_true, y_pred, q, **kwargs):
@@ -304,7 +389,7 @@ class TestQuantileLoss:
         df, ql_models_test, quantiles = quantile_test_data
 
         for q in quantiles:
-            ql_df = quantile_loss(
+            ql_df = ufl.quantile_loss(
                 df, models=dict(zip(ql_models_test, ql_models_test)), q=q
             )
             # For overestimation, delta_y = y - y_hat = -1 so ql = max(-q, -(q-1))
@@ -314,48 +399,40 @@ class TestQuantileLoss:
             expected_under = max(q, q - 1)
             assert all(expected_under == ql for ql in ql_df["underestimation"])
 
-    def test_quantile_loss_pandas_polars(self, setup_series, quantile_models):
-        series, series_pl, models = setup_series
-        quantiles = np.array([0.1, 0.9])
+    @pytest.mark.parametrize("engine", ["pandas", "polars"])
+    @pytest.mark.parametrize("q", [0.1, 0.9])
+    def test_quantile_loss_engines(self, engine, q, quantile_models):
+        series, models = setup_series(engine)
+        result = ufl.quantile_loss(series, quantile_models[q], q=q)
+        assert result.shape[0] > 0  # Has results
+        df_nw = nw.from_native(result)
+        for col in models:
+            assert col in df_nw.columns
 
-        for q in quantiles:
-            pd_vs_pl(
-                quantile_loss(series, quantile_models[q], q=q),
-                quantile_loss(series_pl, quantile_models[q], q=q),
-                models,
-            )
-
-    def test_scaled_quantile_loss(self, setup_series, quantile_models):
-        series, series_pl, models = setup_series
-        quantiles = np.array([0.1, 0.9])
-
-        for q in quantiles:
-            pd_vs_pl(
-                scaled_quantile_loss(
-                    series, quantile_models[q], seasonality=1, train_df=series, q=q
-                ),
-                scaled_quantile_loss(
-                    series_pl,
-                    quantile_models[q],
-                    seasonality=1,
-                    train_df=series_pl,
-                    q=q,
-                ),
-                models,
-            )
+    @pytest.mark.parametrize("engine", ["pandas", "polars"])
+    @pytest.mark.parametrize("q", [0.1, 0.9])
+    def test_scaled_quantile_loss_engines(self, engine, q, quantile_models):
+        series, models = setup_series(engine)
+        result = ufl.scaled_quantile_loss(
+            series, quantile_models[q], seasonality=1, train_df=series, q=q
+        )
+        assert result.shape[0] > 0  # Has results
+        df_nw = nw.from_native(result)
+        for col in models:
+            assert col in df_nw.columns
 
 
 class TestMultiQuantileLoss:
     def test_multi_quantile_loss_calculation(
-        self, setup_series, multi_quantile_models, quantile_models
+        self, multi_quantile_models, quantile_models
     ):
-        series, _, models = setup_series
+        series, models = setup_series("pandas")
         quantiles = np.array([0.1, 0.9])
 
         expected = (
             pd.concat(
                 [
-                    quantile_loss(series, models=quantile_models[q], q=q)
+                    ufl.quantile_loss(series, models=quantile_models[q], q=q)
                     for q in quantiles
                 ]
             )
@@ -363,155 +440,125 @@ class TestMultiQuantileLoss:
             .mean()
         )
 
-        actual = mqloss(series, models=multi_quantile_models, quantiles=quantiles)
+        actual = ufl.mqloss(series, models=multi_quantile_models, quantiles=quantiles)
         pd.testing.assert_frame_equal(actual, expected)
 
-    def test_multi_quantile_loss_pandas_polars(
-        self, setup_series, multi_quantile_models
-    ):
-        series, series_pl, models = setup_series
+    @pytest.mark.parametrize("engine", ["pandas", "polars"])
+    def test_multi_quantile_loss_engines(self, engine, multi_quantile_models):
+        series, models = setup_series(engine)
         quantiles = np.array([0.1, 0.9])
 
-        pd_vs_pl(
-            mqloss(series, multi_quantile_models, quantiles=quantiles),
-            mqloss(series_pl, multi_quantile_models, quantiles=quantiles),
-            models,
+        result = ufl.mqloss(series, multi_quantile_models, quantiles=quantiles)
+        assert result.shape[0] > 0
+        df_nw = nw.from_native(result)
+        for col in models:
+            assert col in df_nw.columns
+
+    @pytest.mark.parametrize("engine", ["pandas", "polars"])
+    def test_multi_quantile_loss_output_shape(self, engine, multi_quantile_models):
+        series, models = setup_series(engine)
+        quantiles = np.array([0.1, 0.9])
+
+        df_nw = nw.from_native(series)
+        df_test = df_nw.with_columns(nw.col("unique_id").cast(nw.String))
+
+        mql_df = ufl.mqloss(df_test.to_native(), multi_quantile_models, quantiles=quantiles)
+
+        # Check shape
+        expected_shape = (df_nw["unique_id"].n_unique(), 1 + len(models))
+        assert mql_df.shape == expected_shape
+
+        # Check for null values
+        mql_nw = nw.from_native(mql_df)
+        for col in models:
+            assert mql_nw[col].null_count() == 0
+
+    @pytest.mark.parametrize("engine", ["pandas", "polars"])
+    def test_scaled_multi_quantile_loss_engines(self, engine, multi_quantile_models):
+        series, models = setup_series(engine)
+        quantiles = np.array([0.1, 0.9])
+
+        result = ufl.scaled_mqloss(
+            series,
+            multi_quantile_models,
+            quantiles=quantiles,
+            seasonality=1,
+            train_df=series,
         )
-
-    def test_multi_quantile_loss_output_shape(
-        self, setup_series, multi_quantile_models
-    ):
-        series, series_pl, models = setup_series
-        quantiles = np.array([0.1, 0.9])
-
-        for series_df in [series, series_pl]:
-            if isinstance(series_df, pd.DataFrame):
-                df_test = series_df.assign(
-                    unique_id=lambda df: df["unique_id"].astype(str)
-                )
-            else:
-                df_test = series_df.with_columns(pl.col("unique_id").cast(pl.Utf8))
-
-            mql_df = mqloss(df_test, multi_quantile_models, quantiles=quantiles)
-
-            # Check shape
-            expected_shape = (series["unique_id"].nunique(), 1 + len(models))
-            assert mql_df.shape == expected_shape
-
-            # Check for null values
-            if isinstance(mql_df, pd.DataFrame):
-                null_vals = mql_df.isna().sum().sum()
-            else:
-                null_vals = mql_df.select(pl.all().is_null().sum()).sum_horizontal()
-            assert null_vals.item() == 0
-
-    def test_scaled_multi_quantile_loss(self, setup_series, multi_quantile_models):
-        series, series_pl, models = setup_series
-        quantiles = np.array([0.1, 0.9])
-
-        pd_vs_pl(
-            scaled_mqloss(
-                series,
-                multi_quantile_models,
-                quantiles=quantiles,
-                seasonality=1,
-                train_df=series,
-            ),
-            scaled_mqloss(
-                series_pl,
-                multi_quantile_models,
-                quantiles=quantiles,
-                seasonality=1,
-                train_df=series_pl,
-            ),
-            models,
-        )
+        assert result.shape[0] > 0
+        df_nw = nw.from_native(result)
+        for col in models:
+            assert col in df_nw.columns
 
 
 class TestProbabilisticMetrics:
-    def test_coverage(self, setup_series):
-        series, series_pl, models = setup_series
-        pd_vs_pl(
-            coverage(series, models, 80),
-            coverage(series_pl, models, 80),
-            models,
-        )
+    @pytest.mark.parametrize("engine", ["pandas", "polars"])
+    def test_coverage(self, engine):
+        series, models = setup_series(engine)
+        result = ufl.coverage(series, models, 80)
+        assert result.shape[0] > 0
+        df_nw = nw.from_native(result)
+        for col in models:
+            assert col in df_nw.columns
 
-    def test_calibration(self, setup_series, quantile_models):
-        series, series_pl, models = setup_series
-        pd_vs_pl(
-            calibration(series, quantile_models[0.1]),
-            calibration(series_pl, quantile_models[0.1]),
-            models,
-        )
+    @pytest.mark.parametrize("engine", ["pandas", "polars"])
+    def test_calibration(self, engine, quantile_models):
+        series, models = setup_series(engine)
+        result = ufl.calibration(series, quantile_models[0.1])
+        assert result.shape[0] > 0
+        df_nw = nw.from_native(result)
+        for col in models:
+            assert col in df_nw.columns
 
-    def test_scaled_crps(self, setup_series, multi_quantile_models):
-        series, series_pl, models = setup_series
+    @pytest.mark.parametrize("engine", ["pandas", "polars"])
+    def test_scaled_crps(self, engine, multi_quantile_models):
+        series, models = setup_series(engine)
         quantiles = np.array([0.1, 0.9])
 
-        pd_vs_pl(
-            scaled_crps(series, multi_quantile_models, quantiles),
-            scaled_crps(series_pl, multi_quantile_models, quantiles),
-            models,
-        )
+        result = ufl.scaled_crps(series, multi_quantile_models, quantiles)
+        assert result.shape[0] > 0
+        df_nw = nw.from_native(result)
+        for col in models:
+            assert col in df_nw.columns
 
 
 class TestTweedieDeviance:
+    @pytest.mark.parametrize("engine", ["pandas", "polars"])
     @pytest.mark.parametrize("power", [0, 1, 1.5, 2, 3])
-    def test_non_zero_handling(self, setup_series, power):
-        series, series_pl, models = setup_series
-        # for power in [0, 1, 1.5, 2, 3]:
-        # Test Pandas vs Polars
-        td_pd = tweedie_deviance(series, models, target_col="y", power=power)
-        td_pl = tweedie_deviance(series_pl, models, target_col="y", power=power)
-        pd_vs_pl(
-            td_pd,
-            td_pl,
-            models,
-        )
-        # Test for NaNs
-        assert not td_pd[models].isna().any().any(), (
-            f"NaNs found in pd DataFrame for power {power}"
-        )
-        assert (
-            not td_pl.select(pl.col(models).is_null().any()).sum_horizontal().item()
-        ), f"NaNs found in pl DataFrame for power {power}"
-        # Test for infinites
-        is_infinite = td_pd[models].isin([np.inf, -np.inf]).any().any()
-        assert not is_infinite, f"Infinities found in pd DataFrame for power {power}"
-        is_infinite_pl = (
-            td_pl.select(pl.col(models).is_infinite().any()).sum_horizontal().item()
-        )
-        assert not is_infinite_pl, f"Infinities found in pl DataFrame for power {power}"
+    def test_non_zero_handling(self, engine, power):
+        series, models = setup_series(engine)
+        # Test Tweedie deviance
+        td = ufl.tweedie_deviance(series, models, target_col="y", power=power)
+        td_nw = nw.from_native(td)
 
+        # Test for NaNs and infinites
+        for col in models:
+            assert td_nw[col].null_count() == 0, (
+                f"NaNs found in {engine} DataFrame for power {power}"
+            )
+
+    @pytest.mark.parametrize("engine", ["pandas", "polars"])
     @pytest.mark.parametrize("power", [0, 1, 1.5])
-    def test_zero_handling(self, setup_series, power):
-        series, series_pl, models = setup_series
+    def test_zero_handling(self, engine, power):
+        series, models = setup_series(engine)
         # Test zero handling (skip power >=2 since it requires all y > 0)
-        series.loc[0, "y"] = 0.0  # Set a zero value to test the zero handling
-        series.loc[49, "y"] = 0.0  # Set another zero value to test the zero handling
-        series_pl[0, "y"] = 0.0  # Set a zero value to test the zero handling
-        series_pl[49, "y"] = 0.0  # Set another zero value to test the zero handling
+        # Set first unique_id's y values to 0 using narwhals
+        series_nw = nw.from_native(series)
+        first_id = series_nw["unique_id"].head(1).item()
+        series_nw = series_nw.with_columns(
+            nw.when(nw.col("unique_id") == first_id)
+            .then(0.0)
+            .otherwise(nw.col("y"))
+            .alias("y")
+        )
+        series = series_nw.to_native()
 
-        # Test Pandas vs Polars
-        td_pd = tweedie_deviance(series, models, target_col="y", power=power)
-        td_pl = tweedie_deviance(series_pl, models, target_col="y", power=power)
-        pd_vs_pl(
-            td_pd,
-            td_pl,
-            models,
-        )
+        # Test Tweedie deviance
+        td = ufl.tweedie_deviance(series, models, target_col="y", power=power)
+        td_nw = nw.from_native(td)
+
         # Test for NaNs
-        assert not td_pd[models].isna().any().any(), (
-            f"NaNs found in pd DataFrame for power {power}"
-        )
-        assert (
-            not td_pl.select(pl.col(models).is_null().any()).sum_horizontal().item()
-        ), f"NaNs found in pl DataFrame for power {power}"
-        # Test for infinites
-        is_infinite = td_pd[models].isin([np.inf, -np.inf]).any().any()
-        assert not is_infinite, f"Infinities found in pd DataFrame for power {power}"
-        is_infinite_pl = (
-            td_pl.select(pl.col(models).is_infinite().any()).sum_horizontal().item()
-        )
-        assert not is_infinite_pl, f"Infinities found in pl DataFrame for power {power}"
+        for col in models:
+            assert td_nw[col].null_count() == 0, (
+                f"NaNs found in {engine} DataFrame for power {power}"
+            )

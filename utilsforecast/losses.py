@@ -230,6 +230,7 @@ def spis(
     yielding a scale-independent bias measure that can be aggregated across series.
     """
     df = nw.from_native(df)
+    df_train = nw.from_native(df_train)
     scales = df_train.group_by(id_col).agg(nw.col(target_col).mean().alias("scale"))
     raw = pis(df=df, models=models, id_col=id_col, target_col=target_col)
     return _scale_loss(df=raw, models=models, scales=scales, id_col=id_col)
