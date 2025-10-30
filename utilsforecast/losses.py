@@ -784,27 +784,28 @@ def mqloss(
         [1] https://www.jstor.org/stable/2629907
     """
 
-    # q_losses = []
-    # for q in quantiles:
-    #     q_models = {model: preds[i] for model, preds in models.items() for i, quantile in enumerate(quantiles) if np.isclose(quantile, q)}
-    #     q_loss = quantile_loss(df, q_models, q, id_col, target_col, cutoff_col)
-    #     q_losses.append(q_loss)
-    # res = nw.concat(q_losses, how="horizontal")
-    # res = res.to_native()
     if cutoff_col in df.columns:
         group_cols = [cutoff_col, id_col]
     else:
         group_cols = [id_col]
-    # assert 1==2, f"{models}, {quantiles}"
+
+    # Not the most efficient implementation
+    quantile_preds = {}
+    for q, idx in zip(quantiles, range(len(quantiles))):  # Assumes quantiles are ordered
+        quantile_preds[q] = {
+            model: forecasts[idx]
+            for model, forecasts in models.items()
+        }
+
     res = (
         nw.concat(
             [
-                nw.from_native(quantile_loss(df, models={model: preds[i] for model, preds in models.items() for i in range(len(quantiles))}, q=q, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col))
-                for i, q in enumerate(quantiles)
+                nw.from_native(quantile_loss(df, models=quantile_preds[q], q=q, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col))
+                for q in quantiles
             ]
-        , how="horizontal")
+        )
     )    
-    res = res.group_by(group_cols).agg([nw.col(col).mean().alias(nw.col) for col in res.columns if col not in group_cols])
+    res = res.group_by(group_cols).agg([nw.col(col).mean().alias(col) for col in res.columns if col not in group_cols])
     res = res.to_native()
 
     return res
