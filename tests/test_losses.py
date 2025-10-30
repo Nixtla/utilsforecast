@@ -116,6 +116,10 @@ def pis_single(y_true, y_pred, **kwargs):
     return np.sum(np.abs(y_pred - y_true))
 
 
+def spis_single(y_true, y_pred, **kwargs):
+    return np.sum(np.abs(y_pred - y_true)) / np.mean(y_true)
+
+
 def mape_single(y_true, y_pred, **kwargs):
     return np.mean(np.abs(y_true - y_pred) / y_true)
 
@@ -188,6 +192,7 @@ def linex_single(y_true, y_pred, a=1.0, **kwargs):
         (ufl.bias, bias_single),
         (ufl.cfe, cfe_single),
         (ufl.pis, pis_single),
+        (ufl.spis, spis_single),
         (ufl.mape, mape_single),
         (ufl.smape, smape_single),
         (ufl.mase, mase_single),
@@ -302,7 +307,7 @@ def test_linex_loss_numerical(engine):
 def test_spis(engine):
     """Test scaled PIS (sPIS)."""
     series, models = setup_series(engine)
-    result = ufl.spis(series, series, models)
+    result = ufl.spis(df=series, train_df=series, models=models)
 
     # Check that result has correct shape
     assert result.shape[0] > 0

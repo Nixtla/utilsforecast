@@ -215,11 +215,10 @@ def pis(
     )
 
 
-@_base_docstring
 def spis(
     df: IntoDataFrameT,
-    df_train: IntoDataFrameT,
     models: List[str],
+    train_df: IntoDataFrameT,
     id_col: str = "unique_id",
     target_col: str = "y",
 ) -> IntoDataFrameT:
@@ -228,10 +227,20 @@ def spis(
 
     The sPIS metric scales the sum of absolute forecast errors by the mean in-sample demand,
     yielding a scale-independent bias measure that can be aggregated across series.
+
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, actuals and predictions.
+        models (list of str): Columns that identify the models predictions.
+        train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
+
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.    
     """
     df = nw.from_native(df)
-    df_train = nw.from_native(df_train)
-    scales = df_train.group_by(id_col).agg(nw.col(target_col).mean().alias("scale"))
+    train_df = nw.from_native(train_df)
+    scales = train_df.group_by(id_col).agg(nw.col(target_col).mean().alias("scale"))
     raw = pis(df=df, models=models, id_col=id_col, target_col=target_col)
     return _scale_loss(df=raw, models=models, scales=scales, id_col=id_col)
 
