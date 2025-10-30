@@ -48,7 +48,6 @@ def _base_docstring(*args, **kwargs) -> Callable:
         models (list of str): Columns that identify the models predictions.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
-        time_col (str, optional): Column that contains the time values. Defaults to 'ds'.
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'.
 
     Returns:
@@ -363,7 +362,6 @@ def mase(
         train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
-        time_col (str, optional): Column that contains the time values. Defaults to 'ds'.
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'.
 
     Returns:
@@ -496,7 +494,6 @@ def msse(
         train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
-        time_col (str, optional): Column that contains the time values. Defaults to 'ds'.
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'.
 
     Returns:
@@ -621,7 +618,6 @@ def scaled_quantile_loss(
         q (float, optional): Quantile for the predictions' comparison. Defaults to 0.5.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
-        time_col (str, optional): Column that contains the time values. Defaults to 'ds'.
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'.
 
     Returns:
@@ -741,7 +737,6 @@ def scaled_mqloss(
         train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
-        time_col (str, optional): Column that contains the time values. Defaults to 'ds'.
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'.
 
     Returns:
