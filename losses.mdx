@@ -17,7 +17,8 @@ mae(
     df: ~IntoDataFrameT,
     models: List[str],
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -33,6 +34,7 @@ MAE measures the relative prediction accuracy of a forecasting method by calcula
  - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -52,7 +54,8 @@ mse(
     df: ~IntoDataFrameT,
     models: List[str],
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -68,6 +71,7 @@ MSE measures the relative prediction accuracy of a forecasting method by calcula
  - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -87,7 +91,8 @@ rmse(
     df: ~IntoDataFrameT,
     models: List[str],
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -103,6 +108,7 @@ RMSE measures the relative prediction accuracy of a forecasting method by calcul
  - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -122,7 +128,8 @@ bias(
     df: ~IntoDataFrameT,
     models: List[str],
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -138,6 +145,7 @@ Defined as prediction - actual
  - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -157,7 +165,8 @@ cfe(
     df: ~IntoDataFrameT,
     models: List[str],
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -175,6 +184,7 @@ Total signed forecast error per series. Positive values mean under forecast; neg
  - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -194,7 +204,8 @@ pis(
     df: ~IntoDataFrameT,
     models: List[str],
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -212,6 +223,7 @@ The PIS metric sums the absolute forecast errors per series without any scaling,
  - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -232,7 +244,8 @@ spis(
     models: List[str],
     train_df: ~IntoDataFrameT,
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -249,6 +262,7 @@ The sPIS metric scales the sum of absolute forecast errors by the mean in-sample
  - <b>`train_df`</b> (pandas or polars DataFrame):  Training dataframe with id and actual values. Must be sorted by time. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -268,7 +282,8 @@ mape(
     df: ~IntoDataFrameT,
     models: List[str],
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -284,6 +299,7 @@ MAPE measures the relative prediction accuracy of a forecasting method by calcul
  - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -303,7 +319,8 @@ smape(
     df: ~IntoDataFrameT,
     models: List[str],
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -319,6 +336,7 @@ SMAPE measures the relative prediction accuracy of a forecasting method by calcu
  - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -340,7 +358,8 @@ mase(
     seasonality: int,
     train_df: ~IntoDataFrameT,
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -358,6 +377,7 @@ MASE measures the relative prediction accuracy of a forecasting method by compar
  - <b>`train_df`</b> (pandas or polars DataFrame):  Training dataframe with id and actual values. Must be sorted by time. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -381,7 +401,8 @@ rmae(
     models: List[str],
     baseline: str,
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -398,6 +419,7 @@ Calculates the RAME between two sets of forecasts (from two different forecastin
  - <b>`baseline`</b> (str):  Column that identifies the baseline model predictions. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -417,7 +439,8 @@ nd(
     df: ~IntoDataFrameT,
     models: List[str],
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -429,15 +452,17 @@ ND measures the relative prediction accuracy of a forecasting method by calculat
 
 **Args:**
  
- - <b>`df`</b>:  Input dataframe with id, times, actuals and predictions. 
- - <b>`models`</b>:  Columns that identify the models predictions. 
- - <b>`id_col`</b>:  Column that identifies each serie. Defaults to 'unique_id'. 
- - <b>`target_col`</b>:  Column that contains the target. Defaults to 'y'. 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actual values and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
 **Returns:**
- Dataframe with one row per id and one column per model. 
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
 
 
 ---
@@ -453,7 +478,8 @@ msse(
     seasonality: int,
     train_df: ~IntoDataFrameT,
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -471,6 +497,7 @@ MSSE measures the relative prediction accuracy of a forecasting method by compar
  - <b>`train_df`</b> (pandas or polars DataFrame):  Training dataframe with id and actual values. Must be sorted by time. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -495,7 +522,8 @@ rmsse(
     seasonality: int,
     train_df: ~IntoDataFrameT,
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -513,6 +541,7 @@ MSSE measures the relative prediction accuracy of a forecasting method by compar
  - <b>`train_df`</b> (pandas or polars DataFrame):  Training dataframe with id and actual values. Must be sorted by time. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -536,7 +565,8 @@ quantile_loss(
     models: Dict[str, str],
     q: float = 0.5,
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -553,6 +583,7 @@ QL measures the deviation of a quantile forecast. By weighting the absolute devi
  - <b>`q`</b> (float, optional):  Quantile for the predictions' comparison. Defaults to 0.5. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -575,7 +606,8 @@ scaled_quantile_loss(
     train_df: ~IntoDataFrameT,
     q: float = 0.5,
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -594,6 +626,7 @@ SQL measures the deviation of a quantile forecast scaled by the mean absolute er
  - <b>`q`</b> (float, optional):  Quantile for the predictions' comparison. Defaults to 0.5. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -617,7 +650,8 @@ mqloss(
     models: Dict[str, List[str]],
     quantiles: ndarray,
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -636,6 +670,7 @@ The limit behavior of MQL allows to measure the accuracy of a full predictive di
  - <b>`quantiles`</b> (numpy array):  Quantiles to compare against. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -661,7 +696,8 @@ scaled_mqloss(
     seasonality: int,
     train_df: ~IntoDataFrameT,
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -680,6 +716,7 @@ SMQL calculates the average multi-quantile Loss for a given set of quantiles, ba
  - <b>`train_df`</b> (pandas or polars DataFrame):  Training dataframe with id and actual values. Must be sorted by time. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -703,7 +740,8 @@ coverage(
     models: List[str],
     level: int,
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -718,6 +756,7 @@ Coverage of y with y_hat_lo and y_hat_hi.
  - <b>`level`</b> (int):  Confidence level used for intervals. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -740,7 +779,8 @@ calibration(
     df: ~IntoDataFrameT,
     models: Dict[str, str],
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -754,6 +794,7 @@ Fraction of y that is lower than the model's predictions.
  - <b>`models`</b> (dict from str to str):  Mapping from model name to the model predictions. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -777,7 +818,8 @@ scaled_crps(
     models: Dict[str, List[str]],
     quantiles: ndarray,
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -794,6 +836,7 @@ Calculates a scaled variation of the CRPS, as proposed by Rangapuram (2021), to 
  - <b>`quantiles`</b> (numpy array):  Quantiles to compare against. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -817,7 +860,8 @@ tweedie_deviance(
     models: List[str],
     power: float = 1.5,
     id_col: str = 'unique_id',
-    target_col: str = 'y'
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
 ) → ~IntoDataFrameT
 ```
 
@@ -840,6 +884,7 @@ The `power` parameter defines the specific compound distribution:
  - <b>`power`</b> (float, optional):  Tweedie power parameter. Determines the compound distribution. Defaults to 1.5. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 
@@ -863,6 +908,7 @@ linex(
     models: List[str],
     id_col: str = 'unique_id',
     target_col: str = 'y',
+    cutoff_col: str = 'cutoff',
     a: float = 1.0
 ) → ~IntoDataFrameT
 ```
@@ -894,6 +940,7 @@ Formula: exp(a·error) - a·error - 1, where error = prediction - actual.
  - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
 
 
 

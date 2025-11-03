@@ -22,6 +22,7 @@ evaluate(
     id_col: str = 'unique_id',
     time_col: str = 'ds',
     target_col: str = 'y',
+    cutoff_col: str = 'cutoff',
     agg_fn: Optional[str] = None
 ) → ~AnyDFType
 ```
@@ -40,6 +41,7 @@ Evaluate forecast using different metrics.
  - <b>`id_col`</b> (str, optional):  Column that identifies each serie.  Defaults to 'unique_id'. 
  - <b>`time_col`</b> (str, optional):  Column that identifies each timestep, its values  can be timestamps or integers. Defaults to 'ds'. 
  - <b>`target_col`</b> (str, optional):  Column that contains the target.  Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for  each forecast cross-validation fold. Defaults to 'cutoff'. 
  - <b>`agg_fn`</b> (str, optional):  Statistic to compute on the scores by id to reduce  them to a single number. Defaults to None. 
 
 
