@@ -91,9 +91,12 @@ def _scale_loss(
 ) -> IntoDataFrameT:
     exprs = [(nw.col(m) / nw.col("scale")).alias(m) for m in models]
     group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
+    # Determine join columns based on what's in scales dataframe
+    # (scales from train_df won't have cutoff, but scales from predictions will)
+    scales_group_cols = _get_group_cols(df=scales, id_col=id_col, cutoff_col=cutoff_col)
     return (
         nw.from_native(df)
-        .join(nw.from_native(scales), on=group_cols)
+        .join(nw.from_native(scales), on=scales_group_cols)
         .select([*group_cols, *exprs])
         .to_native()
     )
@@ -503,9 +506,9 @@ def msse(
         [1] https://otexts.com/fpp3/accuracy.html
     """
     mse_df = mse(df=df, models=models, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
-    group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
+    train_group_cols = _get_group_cols(df=train_df, id_col=id_col, cutoff_col=cutoff_col)
     baseline = nw.from_native(train_df).with_columns(
-        scale=nw.col(target_col).shift(seasonality).over(*group_cols)
+        scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
     )
     scales = mse(df=baseline, models=["scale"], id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
     return _scale_loss(
@@ -629,9 +632,9 @@ def scaled_quantile_loss(
     qloss_df = quantile_loss(
         df=df, models=models, q=q, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col
     )
-    group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
+    train_group_cols = _get_group_cols(df=train_df, id_col=id_col, cutoff_col=cutoff_col)
     baseline = nw.from_native(train_df).with_columns(
-        scale=nw.col(target_col).shift(seasonality).over(*group_cols)
+        scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
     )
     scales = mae(df=baseline, models=["scale"], id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
     return _scale_loss(
@@ -748,9 +751,9 @@ def scaled_mqloss(
     mql_df = mqloss(
         df=df, models=models, quantiles=quantiles, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col
     )
-    group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
+    train_group_cols = _get_group_cols(df=train_df, id_col=id_col, cutoff_col=cutoff_col)
     baseline = nw.from_native(train_df).with_columns(
-        scale=nw.col(target_col).shift(seasonality).over(*group_cols)
+        scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
     )
     scales = mae(df=baseline, models=["scale"], id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
     return _scale_loss(
