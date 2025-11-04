@@ -89,7 +89,9 @@ def generate_cv_series(n_series=5, n_models=2, level=None, n_cutoffs=3, engine="
         seed: Random seed
 
     Returns:
-        tuple: (cv_df, train_df) where cv_df has cutoff column and train_df is the training data
+        tuple: (cv_df, train_df) where both dataframes include a cutoff column.
+            cv_df contains predictions with cutoff information.
+            train_df contains training data for each cutoff (for per-fold scale computation).
     """
     from utilsforecast.data import generate_series
     from utilsforecast.processing import backtest_splits
@@ -120,7 +122,7 @@ def generate_cv_series(n_series=5, n_models=2, level=None, n_cutoffs=3, engine="
 
     # Perform cross-validation splits
     cv_list = []
-    train_df = None
+    train_list = []
 
     for cutoffs_df, train, valid in backtest_splits(
         df=df,
@@ -161,11 +163,17 @@ def generate_cv_series(n_series=5, n_models=2, level=None, n_cutoffs=3, engine="
                     )
 
         cv_list.append(valid_with_cutoff)
-        train_df = train  # Keep the last training fold
+
+        # Add cutoff information to training data for per-fold scale computation
+        train_with_cutoff = ufp.join(train, cutoffs_df, on="unique_id", how="left")
+        train_list.append(train_with_cutoff)
 
     # Concatenate all validation folds using ufp.vertical_concat
     # Set match_categories=False since we have more than 2 dataframes
     cv_df = ufp.vertical_concat(cv_list, match_categories=False)
+
+    # Concatenate all training folds with cutoff information
+    train_df = ufp.vertical_concat(train_list, match_categories=False)
 
     return cv_df, train_df
 
@@ -709,3 +717,150 @@ def test_multiple_cutoffs_consistency(engine):
     # So we should have one row per metric (no unique_id column)
     assert "unique_id" not in eval_agg_nw.columns, "unique_id should be aggregated out"
     assert "metric" in eval_agg_nw.columns, "metric column should be present"
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_cutoff_aggregation_equivalence(engine):
+    """Test that dropping cutoff vs keeping cutoff then averaging produces different results.
+
+    For linear non-scaled metrics (mae, mse):
+        - Dropping cutoff then evaluating should equal evaluating with cutoff then averaging
+        - This property holds because these metrics use linear averaging
+
+    For scaled metrics (mase, msse, rmsse, spis):
+        - These two approaches should produce DIFFERENT results
+        - When train_df has cutoff column, each cutoff uses its own training window
+        - This produces different scales per cutoff, leading to different aggregated values
+        - Scenario A (drop cutoff): All data pooled → one scale per series
+        - Scenario B (keep cutoff then average): Different scales per cutoff → different result
+
+    Note: RMSE does not have the equivalence property because sqrt is non-linear.
+    """
+    # Generate CV data with multiple cutoffs
+    cv_df, train_df = generate_cv_series(n_series=5, n_models=2, n_cutoffs=3, engine=engine)
+    models = ["model0", "model1"]
+
+    # ========== Test Non-Scaled Metrics ==========
+    # These should be equivalent when dropping cutoff vs keeping cutoff then averaging
+
+    non_scaled_metrics = [mae, mse]
+
+    for metric in non_scaled_metrics:
+        metric_name = metric.__name__
+
+        # Scenario A: Drop cutoff column, then evaluate
+        # This aggregates over all forecasts as if it's one big evaluation
+        cv_df_no_cutoff = ufp.drop_columns(cv_df, "cutoff")
+        eval_no_cutoff = metric(
+            df=cv_df_no_cutoff,
+            models=models,
+            id_col="unique_id",
+            target_col="y"
+        )
+        eval_no_cutoff_nw = nw.from_native(eval_no_cutoff)
+
+        # Should have one row per series (no cutoff dimension)
+        actual_n_series = nw.from_native(cv_df)["unique_id"].n_unique()
+        assert eval_no_cutoff_nw.shape[0] == actual_n_series, (
+            f"{metric_name}: Expected {actual_n_series} rows (one per series), "
+            f"got {eval_no_cutoff_nw.shape[0]}"
+        )
+
+        # Scenario B: Keep cutoff, evaluate, then manually average across cutoffs
+        eval_with_cutoff = metric(
+            df=cv_df,
+            models=models,
+            id_col="unique_id",
+            target_col="y",
+            cutoff_col="cutoff"
+        )
+        eval_with_cutoff_nw = nw.from_native(eval_with_cutoff)
+
+        # Manually compute mean across cutoffs for each series
+        eval_averaged = (
+            eval_with_cutoff_nw
+            .group_by("unique_id")
+            .agg([nw.col(m).mean().alias(m) for m in models])
+            .sort("unique_id")
+        )
+
+        # Sort both for comparison
+        eval_no_cutoff_sorted = eval_no_cutoff_nw.sort("unique_id")
+
+        # For non-scaled metrics, these should be approximately equal
+        for model in models:
+            no_cutoff_values = eval_no_cutoff_sorted[model].to_numpy()
+            averaged_values = eval_averaged[model].to_numpy()
+
+            assert np.allclose(no_cutoff_values, averaged_values, rtol=1e-10), (
+                f"{metric_name} ({model}): Non-scaled metric should be equivalent when "
+                f"dropping cutoff vs keeping cutoff then averaging.\n"
+                f"Drop-then-eval: {no_cutoff_values}\n"
+                f"Eval-then-average: {averaged_values}"
+            )
+
+    # ========== Test Scaled Metrics ==========
+    # These should be DIFFERENT when dropping cutoff vs keeping cutoff then averaging
+
+    # Verify train_df has cutoff column for per-fold scale computation
+    train_df_nw = nw.from_native(train_df)
+    assert "cutoff" in train_df_nw.columns, (
+        "train_df must have cutoff column for proper per-fold scale computation"
+    )
+
+    scaled_metrics = [
+        ("mase", partial(mase, seasonality=7)),
+        ("msse", partial(msse, seasonality=7)),
+        ("rmsse", partial(rmsse, seasonality=7)),
+        ("spis", spis),  # spis doesn't require seasonality
+    ]
+
+    for metric_name, metric_fn in scaled_metrics:
+        # Scenario A: Drop cutoff column, then evaluate
+        # This pools all data together, computing one scale per series
+        cv_df_no_cutoff = ufp.drop_columns(cv_df, "cutoff")
+        train_df_no_cutoff = ufp.drop_columns(train_df, "cutoff")
+        eval_no_cutoff = metric_fn(
+            df=cv_df_no_cutoff,
+            models=models,
+            id_col="unique_id",
+            target_col="y",
+            train_df=train_df_no_cutoff
+        )
+        eval_no_cutoff_nw = nw.from_native(eval_no_cutoff)
+
+        # Scenario B: Keep cutoff, evaluate, then manually average across cutoffs
+        eval_with_cutoff = metric_fn(
+            df=cv_df,
+            models=models,
+            id_col="unique_id",
+            target_col="y",
+            train_df=train_df,
+            cutoff_col="cutoff"
+        )
+        eval_with_cutoff_nw = nw.from_native(eval_with_cutoff)
+
+        # Manually compute mean across cutoffs for each series
+        eval_averaged = (
+            eval_with_cutoff_nw
+            .group_by("unique_id")
+            .agg([nw.col(m).mean().alias(m) for m in models])
+            .sort("unique_id")
+        )
+
+        # Sort both for comparison
+        eval_no_cutoff_sorted = eval_no_cutoff_nw.sort("unique_id")
+
+        # For scaled metrics, these should be DIFFERENT
+        for model in models:
+            no_cutoff_values = eval_no_cutoff_sorted[model].to_numpy()
+            averaged_values = eval_averaged[model].to_numpy()
+
+            # Check that they are NOT approximately equal (should differ significantly)
+            are_different = not np.allclose(no_cutoff_values, averaged_values, rtol=1e-5)
+            assert are_different, (
+                f"{metric_name} ({model}): Scaled metric should produce DIFFERENT results "
+                f"when dropping cutoff vs keeping cutoff then averaging.\n"
+                f"Drop-then-eval: {no_cutoff_values}\n"
+                f"Eval-then-average: {averaged_values}"
+            )
