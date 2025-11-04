@@ -685,21 +685,33 @@ def mqloss(
     group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
 
     # Not the most efficient implementation
+    # Sort quantiles and reorder forecasts to match
+    # This ensures correct pairing regardless of input order
+    sorted_indices = np.argsort(quantiles)
+    sorted_quantiles = quantiles[sorted_indices]
+
+    # Reorder forecast columns according to sorted quantile indices
+    sorted_models = {
+        model: [forecasts[i] for i in sorted_indices]
+        for model, forecasts in models.items()
+    }
+
+    # Map each sorted quantile to its corresponding forecast column
     quantile_preds = {}
-    for q, idx in zip(quantiles, range(len(quantiles))):  # Assumes quantiles are ordered
+    for q, idx in zip(sorted_quantiles, range(len(sorted_quantiles))):
         quantile_preds[q] = {
             model: forecasts[idx]
-            for model, forecasts in models.items()
+            for model, forecasts in sorted_models.items()
         }
 
     res = (
         nw.concat(
             [
                 nw.from_native(quantile_loss(df, models=quantile_preds[q], q=q, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col))
-                for q in quantiles
+                for q in sorted_quantiles
             ]
         )
-    )    
+    )
     res = res.group_by(group_cols).agg([nw.col(col).mean().alias(col) for col in res.columns if col not in group_cols])
     res = res.to_native()
 

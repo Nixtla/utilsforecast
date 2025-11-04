@@ -549,32 +549,81 @@ def test_quantile_losses_with_cutoff(engine):
             assert result_nw.shape[0] == expected_rows, f"calibration: Expected {expected_rows} rows"
             assert "cutoff" in result_nw.columns, "calibration: cutoff column missing"
 
-    # Test mqloss
-    quantiles = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+    # Test mqloss with sorted quantiles first to establish baseline
+    quantiles_sorted = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
     # Create model dict for mqloss (maps model names to lists of quantile predictions)
-    model_dict = {}
+    # Generate predictions based on quantile VALUE (lower quantiles = lower predictions)
+    rng = np.random.RandomState(42)
+    cv_nw = nw.from_native(cv_df)
+    model_dict_sorted = {}
     for m in models:
-        # For simplicity, use the point forecast for all quantiles
-        model_dict[m] = [m] * len(quantiles)
+        quantile_cols = []
+        model_preds = cv_nw[m].to_numpy()
+        for i, q in enumerate(quantiles_sorted):
+            col_name = f"{m}_sorted_q{i}"
+            # Predictions increase with quantile value
+            quantile_factor = 0.7 + 0.6 * q + rng.rand(len(model_preds)) * 0.1
+            quantile_preds = model_preds * quantile_factor
+            cv_df = ufp.assign_columns(cv_df, col_name, quantile_preds)
+            quantile_cols.append(col_name)
+        model_dict_sorted[m] = quantile_cols
 
-    result = mqloss(
+    result_sorted = mqloss(
         df=cv_df,
-        models=model_dict,
-        quantiles=quantiles,
+        models=model_dict_sorted,
+        quantiles=quantiles_sorted,
         id_col="unique_id",
         target_col="y",
         cutoff_col="cutoff"
     )
 
-    result_nw = nw.from_native(result)
-    assert result_nw.shape[0] == expected_rows, f"mqloss: Expected {expected_rows} rows"
-    assert "cutoff" in result_nw.columns, "mqloss: cutoff column missing"
+    # Now test with UNSORTED quantiles but same predictions in shuffled order
+    # This tests that mqloss correctly sorts quantiles internally
+    quantiles_unsorted = np.array([0.9, 0.8, 0.7, 0.4, 0.5, 0.6, 0.3, 0.2, 0.1])
+    # Map unsorted quantiles to their corresponding sorted columns
+    model_dict_unsorted = {}
+    for m in models:
+        unsorted_cols = []
+        for q_unsorted in quantiles_unsorted:
+            # Find index of this quantile in sorted array
+            sorted_idx = np.where(quantiles_sorted == q_unsorted)[0][0]
+            unsorted_cols.append(f"{m}_sorted_q{sorted_idx}")
+        model_dict_unsorted[m] = unsorted_cols
 
-    # Test scaled_mqloss
+    result_unsorted = mqloss(
+        df=cv_df,
+        models=model_dict_unsorted,
+        quantiles=quantiles_unsorted,
+        id_col="unique_id",
+        target_col="y",
+        cutoff_col="cutoff"
+    )
+
+    # Results should be identical regardless of quantile order
+    result_sorted_nw = nw.from_native(result_sorted)
+    result_unsorted_nw = nw.from_native(result_unsorted)
+
+    assert result_sorted_nw.shape[0] == expected_rows, f"mqloss: Expected {expected_rows} rows"
+    assert "cutoff" in result_sorted_nw.columns, "mqloss: cutoff column missing"
+
+    # Sort both results by id and cutoff to ensure same row order for comparison
+    result_sorted_nw = result_sorted_nw.sort(["unique_id", "cutoff"])
+    result_unsorted_nw = result_unsorted_nw.sort(["unique_id", "cutoff"])
+
+    # Verify both results are identical (sorted internally)
+    for model in models:
+        sorted_vals = result_sorted_nw[model].to_numpy()
+        unsorted_vals = result_unsorted_nw[model].to_numpy()
+        np.testing.assert_allclose(
+            sorted_vals, unsorted_vals,
+            err_msg=f"mqloss results differ for {model} with sorted vs unsorted quantiles"
+        )
+
+    # Test scaled_mqloss (uses sorted quantiles)
     result = scaled_mqloss(
         df=cv_df,
-        models=model_dict,
-        quantiles=quantiles,
+        models=model_dict_sorted,
+        quantiles=quantiles_sorted,
         seasonality=7,
         train_df=train_df,
         id_col="unique_id",
@@ -586,11 +635,11 @@ def test_quantile_losses_with_cutoff(engine):
     assert result_nw.shape[0] == expected_rows, f"scaled_mqloss: Expected {expected_rows} rows"
     assert "cutoff" in result_nw.columns, "scaled_mqloss: cutoff column missing"
 
-    # Test scaled_crps
+    # Test scaled_crps (uses sorted quantiles)
     result = scaled_crps(
         df=cv_df,
-        models=model_dict,
-        quantiles=quantiles,
+        models=model_dict_sorted,
+        quantiles=quantiles_sorted,
         id_col="unique_id",
         target_col="y",
         cutoff_col="cutoff"

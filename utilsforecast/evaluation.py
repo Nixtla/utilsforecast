@@ -36,6 +36,7 @@ def _quantiles_from_levels(level: List[int]) -> np.ndarray:
 
 
 def _models_from_levels(model_name: str, level: List[int]) -> List[str]:
+    level = sorted(level)
     cols = [f"{model_name}-lo-{lv}" for lv in reversed(level)]
     cols.extend([f"{model_name}-hi-{lv}" for lv in level])
     return cols
