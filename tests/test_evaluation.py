@@ -340,6 +340,9 @@ def test_basic_losses_with_cutoff(engine):
     n_series = cv_nw["unique_id"].n_unique()
     expected_rows = n_cutoffs * n_series
 
+    # Store individual loss results for later comparison with evaluate()
+    loss_results = {}
+
     for loss_name, loss_fn in basic_losses:
         result = loss_fn(
             df=cv_df,
@@ -348,6 +351,9 @@ def test_basic_losses_with_cutoff(engine):
             target_col="y",
             cutoff_col="cutoff"
         )
+
+        # Store result for later comparison
+        loss_results[loss_name] = result
 
         result_nw = nw.from_native(result)
 
@@ -367,10 +373,11 @@ def test_basic_losses_with_cutoff(engine):
         for model in models:
             assert result_nw[model].null_count() == 0, f"{loss_name}: NaN values in {model}"
 
-    # Test via evaluate() function
+    # Test via evaluate() function with all basic losses
+    all_metrics = [loss_fn for _, loss_fn in basic_losses]
     evaluation = evaluate(
         df=cv_df,
-        metrics=[mae, mse, rmse, bias, smape],
+        metrics=all_metrics,
         models=models,
         cutoff_col="cutoff"
     )
@@ -382,11 +389,31 @@ def test_basic_losses_with_cutoff(engine):
     assert "metric" in eval_nw.columns, "evaluate(): metric column missing"
 
     # Should have one row per (cutoff, unique_id, metric) combination
-    n_metrics = 5
+    n_metrics = len(basic_losses)
     expected_rows_eval = n_cutoffs * n_series * n_metrics
     assert eval_nw.shape[0] == expected_rows_eval, (
         f"evaluate(): Expected {expected_rows_eval} rows, got {eval_nw.shape[0]}"
     )
+
+    # Verify that evaluate() produces the same results as calling loss functions directly
+    for loss_name, loss_fn in basic_losses:
+        # Get the direct result from loss_results
+        direct_result = loss_results[loss_name]
+        direct_nw = nw.from_native(direct_result).sort("unique_id", "cutoff")
+
+        # Get the corresponding rows from evaluation
+        eval_subset = nw.from_native(evaluation)
+        eval_subset = eval_subset.filter(nw.col("metric") == loss_name)
+        eval_subset = eval_subset.drop("metric").sort("unique_id", "cutoff")
+
+        # Compare each model's values
+        for model in models:
+            direct_values = direct_nw[model].to_numpy()
+            eval_values = eval_subset[model].to_numpy()
+
+            assert np.allclose(direct_values, eval_values, rtol=1e-10), (
+                f"evaluate() result for {loss_name} doesn't match direct {loss_name}() call for {model}"
+            )
 
 
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
