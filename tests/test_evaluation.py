@@ -741,13 +741,26 @@ def test_cutoff_aggregation_equivalence(engine):
     models = ["model0", "model1"]
 
     # ========== Test Non-Scaled Metrics ==========
-    # These should be equivalent when dropping cutoff vs keeping cutoff then averaging
+    # These should be equivalent when dropping cutoff vs keeping cutoff then aggregating
+    # Format: (metric_name, metric_function, aggregation_type)
+    # - "mean" aggregation: drop-then-eval == eval-then-mean
+    # - "sum" aggregation: drop-then-eval == eval-then-sum
 
-    non_scaled_metrics = [mae, mse]
+    equivalent_metrics = [
+        # Mean-aggregated metrics
+        ("mae", mae, "mean"),
+        ("mse", mse, "mean"),
+        ("bias", bias, "mean"),
+        ("mape", mape, "mean"),
+        ("smape", smape, "mean"),
+        ("tweedie_deviance", partial(tweedie_deviance, power=1.5), "mean"),
+        ("linex", partial(linex, a=1.0), "mean"),
+        # Sum-aggregated metrics
+        ("cfe", cfe, "sum"),
+        ("pis", pis, "sum"),
+    ]
 
-    for metric in non_scaled_metrics:
-        metric_name = metric.__name__
-
+    for metric_name, metric, agg_type in equivalent_metrics:
         # Scenario A: Drop cutoff column, then evaluate
         # This aggregates over all forecasts as if it's one big evaluation
         cv_df_no_cutoff = ufp.drop_columns(cv_df, "cutoff")
@@ -766,7 +779,7 @@ def test_cutoff_aggregation_equivalence(engine):
             f"got {eval_no_cutoff_nw.shape[0]}"
         )
 
-        # Scenario B: Keep cutoff, evaluate, then manually average across cutoffs
+        # Scenario B: Keep cutoff, evaluate, then manually aggregate across cutoffs
         eval_with_cutoff = metric(
             df=cv_df,
             models=models,
@@ -776,13 +789,21 @@ def test_cutoff_aggregation_equivalence(engine):
         )
         eval_with_cutoff_nw = nw.from_native(eval_with_cutoff)
 
-        # Manually compute mean across cutoffs for each series
-        eval_averaged = (
-            eval_with_cutoff_nw
-            .group_by("unique_id")
-            .agg([nw.col(m).mean().alias(m) for m in models])
-            .sort("unique_id")
-        )
+        # Manually compute aggregation across cutoffs for each series
+        if agg_type == "mean":
+            eval_aggregated = (
+                eval_with_cutoff_nw
+                .group_by("unique_id")
+                .agg([nw.col(m).mean().alias(m) for m in models])
+                .sort("unique_id")
+            )
+        else:  # agg_type == "sum"
+            eval_aggregated = (
+                eval_with_cutoff_nw
+                .group_by("unique_id")
+                .agg([nw.col(m).sum().alias(m) for m in models])
+                .sort("unique_id")
+            )
 
         # Sort both for comparison
         eval_no_cutoff_sorted = eval_no_cutoff_nw.sort("unique_id")
@@ -790,16 +811,16 @@ def test_cutoff_aggregation_equivalence(engine):
         # For non-scaled metrics, these should be approximately equal
         for model in models:
             no_cutoff_values = eval_no_cutoff_sorted[model].to_numpy()
-            averaged_values = eval_averaged[model].to_numpy()
+            aggregated_values = eval_aggregated[model].to_numpy()
 
-            assert np.allclose(no_cutoff_values, averaged_values, rtol=1e-10), (
-                f"{metric_name} ({model}): Non-scaled metric should be equivalent when "
-                f"dropping cutoff vs keeping cutoff then averaging.\n"
+            assert np.allclose(no_cutoff_values, aggregated_values, rtol=1e-10), (
+                f"{metric_name} ({model}): {agg_type.capitalize()}-aggregated metric should be equivalent when "
+                f"dropping cutoff vs keeping cutoff then {agg_type}ming.\n"
                 f"Drop-then-eval: {no_cutoff_values}\n"
-                f"Eval-then-average: {averaged_values}"
+                f"Eval-then-{agg_type}: {aggregated_values}"
             )
 
-    # ========== Test Scaled Metrics ==========
+    # ========== Test Scaled Metrics & Non-Linear Metrics ==========
     # These should be DIFFERENT when dropping cutoff vs keeping cutoff then averaging
 
     # Verify train_df has cutoff column for per-fold scale computation
@@ -808,36 +829,58 @@ def test_cutoff_aggregation_equivalence(engine):
         "train_df must have cutoff column for proper per-fold scale computation"
     )
 
-    scaled_metrics = [
+    non_equivalent_metrics = [
+        # Scaled metrics
         ("mase", partial(mase, seasonality=7)),
         ("msse", partial(msse, seasonality=7)),
         ("rmsse", partial(rmsse, seasonality=7)),
-        ("spis", spis),  # spis doesn't require seasonality
+        ("spis", spis),
+        # Other non equivalent metrics
+        ("nd", nd),  # nd uses ratio-of-sums: sum(|errors|) / sum(|y|), not mean aggregation
     ]
 
-    for metric_name, metric_fn in scaled_metrics:
+    for metric_name, metric_fn in non_equivalent_metrics:
         # Scenario A: Drop cutoff column, then evaluate
         # This pools all data together, computing one scale per series
         cv_df_no_cutoff = ufp.drop_columns(cv_df, "cutoff")
         train_df_no_cutoff = ufp.drop_columns(train_df, "cutoff")
-        eval_no_cutoff = metric_fn(
-            df=cv_df_no_cutoff,
-            models=models,
-            id_col="unique_id",
-            target_col="y",
-            train_df=train_df_no_cutoff
-        )
+
+        # nd doesn't require train_df, other metrics do
+        if metric_name == "nd":
+            eval_no_cutoff = metric_fn(
+                df=cv_df_no_cutoff,
+                models=models,
+                id_col="unique_id",
+                target_col="y"
+            )
+        else:
+            eval_no_cutoff = metric_fn(
+                df=cv_df_no_cutoff,
+                models=models,
+                id_col="unique_id",
+                target_col="y",
+                train_df=train_df_no_cutoff
+            )
         eval_no_cutoff_nw = nw.from_native(eval_no_cutoff)
 
         # Scenario B: Keep cutoff, evaluate, then manually average across cutoffs
-        eval_with_cutoff = metric_fn(
-            df=cv_df,
-            models=models,
-            id_col="unique_id",
-            target_col="y",
-            train_df=train_df,
-            cutoff_col="cutoff"
-        )
+        if metric_name == "nd":
+            eval_with_cutoff = metric_fn(
+                df=cv_df,
+                models=models,
+                id_col="unique_id",
+                target_col="y",
+                cutoff_col="cutoff"
+            )
+        else:
+            eval_with_cutoff = metric_fn(
+                df=cv_df,
+                models=models,
+                id_col="unique_id",
+                target_col="y",
+                train_df=train_df,
+                cutoff_col="cutoff"
+            )
         eval_with_cutoff_nw = nw.from_native(eval_with_cutoff)
 
         # Manually compute mean across cutoffs for each series
