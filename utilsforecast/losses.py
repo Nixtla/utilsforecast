@@ -27,7 +27,7 @@ __all__ = [
 ]
 
 from typing import Callable, Dict, List, Union
-import warnings
+
 import narwhals.stable.v2 as nw
 import numpy as np
 from narwhals.stable.v2.typing import IntoDataFrameT
@@ -405,8 +405,7 @@ def nd(
     df: IntoDataFrameT,
     models: List[str],
     id_col: str = "unique_id",
-    target_col: str = "y",
-    replace_inf: bool = False
+    target_col: str = "y"
 ) -> IntoDataFrameT:
     """Normalized Deviation (ND)
 
