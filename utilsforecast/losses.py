@@ -401,13 +401,15 @@ def mase(
     References:
         [1] https://robjhyndman.com/papers/mase.pdf
     """
+    group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
 
     def scale_expr(_m):
-        lagged = nw.col(target_col).shift(seasonality).over(id_col)
+        lagged = nw.col(target_col).shift(seasonality).over(group_cols)
         return (nw.col(target_col) - lagged).abs().alias("scale")
 
     mae_df = mae(df=df, models=models, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
     train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, cutoff_col=cutoff_col)
+
     scales = _nw_agg_expr(
         df=train_df,
         models=["unused"],
