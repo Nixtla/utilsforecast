@@ -493,7 +493,7 @@ def nd(
         )
         .group_by(*group_cols)
         .agg(nw.all().sum())
-        .select(*group_cols, *[nw.col(m) / nw.col("scale") for m in models])
+        .select(*group_cols, *[(nw.col(m) / _zero_to_nan(nw.col("scale"))) for m in models])
         .sort(*group_cols)
         .to_native()
     )
