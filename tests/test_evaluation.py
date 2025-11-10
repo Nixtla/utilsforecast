@@ -315,13 +315,13 @@ def test_distributed_evaluate(setup_series):
 
 
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
-def test_basic_losses_with_cutoff(engine):
+def test_losses_with_cutoff(engine):
     """Test basic losses (no train_df required) with cross-validation cutoff column."""
     cv_df, train_df = generate_cv_series(n_series=5, n_models=2, n_cutoffs=3, engine=engine, seed=42)
     models = ["model0", "model1"]
 
     # Test each basic loss function directly
-    basic_losses = [
+    losses = [
         ("mae", mae),
         ("mse", mse),
         ("rmse", rmse),
@@ -333,6 +333,28 @@ def test_basic_losses_with_cutoff(engine):
         ("nd", nd),
         ("tweedie_deviance", partial(tweedie_deviance, power=1.5)),
         ("linex", partial(linex, a=1.0)),
+        ("spis", partial(spis, train_df=train_df)),
+        ("mase", partial(mase, seasonality=7, train_df=train_df)),
+        ("msse", partial(msse, seasonality=7, train_df=train_df)),
+        ("rmsse", partial(rmsse, seasonality=7, train_df=train_df)),
+    ]
+
+    losses_eval = [
+        ("mae", mae),
+        ("mse", mse),
+        ("rmse", rmse),
+        ("bias", bias),
+        ("cfe", cfe),
+        ("pis", pis),
+        ("mape", mape),
+        ("smape", smape),
+        ("nd", nd),
+        ("tweedie_deviance", partial(tweedie_deviance, power=1.5)),
+        ("linex", partial(linex, a=1.0)),
+        ("spis", spis),
+        ("mase", partial(mase, seasonality=7)),
+        ("msse", partial(msse, seasonality=7)),
+        ("rmsse", partial(rmsse, seasonality=7)),
     ]
 
     cv_nw = nw.from_native(cv_df)
@@ -343,10 +365,12 @@ def test_basic_losses_with_cutoff(engine):
     # Store individual loss results for later comparison with evaluate()
     loss_results = {}
 
-    for loss_name, loss_fn in basic_losses:
+    for loss_name, loss_fn in losses:
+
+        test_models = ["model1"] if loss_name == "rmae" else models
         result = loss_fn(
             df=cv_df,
-            models=models,
+            models=test_models,
             id_col="unique_id",
             target_col="y",
             cutoff_col="cutoff"
@@ -366,20 +390,20 @@ def test_basic_losses_with_cutoff(engine):
         assert "cutoff" in result_nw.columns, f"{loss_name}: cutoff column missing from result"
 
         # Verify models columns are present
-        for model in models:
+        for model in test_models:
             assert model in result_nw.columns, f"{loss_name}: {model} column missing from result"
 
         # Verify no NaN values
-        for model in models:
+        for model in test_models:
             assert result_nw[model].null_count() == 0, f"{loss_name}: NaN values in {model}"
-
     # Test via evaluate() function with all basic losses
-    all_metrics = [loss_fn for _, loss_fn in basic_losses]
+    all_metrics = [loss_fn for _, loss_fn in losses_eval]
     evaluation = evaluate(
         df=cv_df,
         metrics=all_metrics,
         models=models,
-        cutoff_col="cutoff"
+        cutoff_col="cutoff",
+        train_df = train_df
     )
 
     eval_nw = nw.from_native(evaluation)
@@ -389,14 +413,14 @@ def test_basic_losses_with_cutoff(engine):
     assert "metric" in eval_nw.columns, "evaluate(): metric column missing"
 
     # Should have one row per (cutoff, unique_id, metric) combination
-    n_metrics = len(basic_losses)
+    n_metrics = len(losses)
     expected_rows_eval = n_cutoffs * n_series * n_metrics
     assert eval_nw.shape[0] == expected_rows_eval, (
         f"evaluate(): Expected {expected_rows_eval} rows, got {eval_nw.shape[0]}"
     )
 
     # Verify that evaluate() produces the same results as calling loss functions directly
-    for loss_name, loss_fn in basic_losses:
+    for loss_name, loss_fn in losses:
         # Get the direct result from loss_results
         direct_result = loss_results[loss_name]
         direct_nw = nw.from_native(direct_result).sort("unique_id", "cutoff")
@@ -413,103 +437,6 @@ def test_basic_losses_with_cutoff(engine):
 
             assert np.allclose(direct_values, eval_values, rtol=1e-10), (
                 f"evaluate() result for {loss_name} doesn't match direct {loss_name}() call for {model}"
-            )
-
-
-@pytest.mark.parametrize("engine", ["pandas", "polars"])
-def test_scaled_losses_with_cutoff(engine):
-    """Test scaled losses (require train_df) with cross-validation cutoff column."""
-    cv_df, train_df = generate_cv_series(n_series=5, n_models=2, n_cutoffs=3, engine=engine, seed=42)
-    models = ["model0", "model1"]
-
-    # Test scaled losses that require train_df
-    scaled_losses = [
-        ("spis", partial(spis, train_df=train_df)),
-        ("mase", partial(mase, seasonality=7, train_df=train_df)),
-        ("rmae", partial(rmae, baseline="model0")),
-        ("msse", partial(msse, seasonality=7, train_df=train_df)),
-        ("rmsse", partial(rmsse, seasonality=7, train_df=train_df)),
-    ]
-
-    cv_nw = nw.from_native(cv_df)
-    n_cutoffs = cv_nw["cutoff"].n_unique()
-    n_series = cv_nw["unique_id"].n_unique()
-    expected_rows = n_cutoffs * n_series
-
-    loss_results = {}
-
-    for loss_name, loss_fn in scaled_losses:
-        # For rmae, we only test model1 since model0 is the baseline
-        test_models = ["model1"] if loss_name == "rmae" else models
-
-        result = loss_fn(
-            df=cv_df,
-            models=test_models,
-            id_col="unique_id",
-            target_col="y",
-            cutoff_col="cutoff"
-        )
-
-        loss_results[loss_name] = result 
-
-        result_nw = nw.from_native(result)
-
-        # Verify result has correct shape
-        assert result_nw.shape[0] == expected_rows, (
-            f"{loss_name}: Expected {expected_rows} rows, got {result_nw.shape[0]}"
-        )
-
-        # Verify cutoff column is present
-        assert "cutoff" in result_nw.columns, f"{loss_name}: cutoff column missing"
-
-        # Verify model columns are present
-        for model in test_models:
-            assert model in result_nw.columns, f"{loss_name}: {model} column missing"
-
-        # Verify no NaN values
-        for model in test_models:
-            assert result_nw[model].null_count() == 0, f"{loss_name}: NaN values in {model}"
-
-    # Test via evaluate() function
-    all_metrics = [loss_fn for _, loss_fn in scaled_losses]
-    evaluation = evaluate(
-        df=cv_df,
-        metrics=all_metrics,
-        models=models,
-        train_df=train_df,
-        cutoff_col="cutoff"
-    )
-
-    eval_nw = nw.from_native(evaluation)
-
-    # Verify evaluation has correct structure
-    assert "cutoff" in eval_nw.columns, "evaluate(): cutoff column missing"
-    assert "metric" in eval_nw.columns, "evaluate(): metric column missing"
-
-    n_metrics = len(scaled_losses)
-    expected_rows_eval = n_cutoffs * n_series * n_metrics
-    assert eval_nw.shape[0] == expected_rows_eval, (
-        f"evaluate(): Expected {expected_rows_eval} rows, got {eval_nw.shape[0]}"
-    )
-
-    # Verify that evaluate() produces the same results as calling loss functions directly
-    for loss_name, loss_fn in scaled_losses:
-        # Get the direct result from loss_results
-        direct_result = loss_results[loss_name]
-        direct_nw = nw.from_native(direct_result).sort("unique_id", "cutoff")
-
-        # Get the corresponding rows from evaluation
-        eval_subset = nw.from_native(evaluation)
-        eval_subset = eval_subset.filter(nw.col("metric") == loss_name)
-        eval_subset = eval_subset.drop("metric").sort("unique_id", "cutoff")
-
-        # Compare each model's values
-        for model in models:
-            direct_values = direct_nw[model].to_numpy()
-            eval_values = eval_subset[model].to_numpy()
-
-            assert not np.allclose(direct_values, eval_values, rtol=1e-10), (
-                f"evaluate() result for {loss_name} match direct {loss_name}() call for {model}"
             )
 
 
