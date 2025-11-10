@@ -285,14 +285,17 @@ def spis(
     Returns:
         pandas or polars DataFrame: dataframe with one row per id and one column per model.    
     """
+    def gen_expr(_m):
+        return nw.col(target_col).alias("scale")
+
     df = nw.from_native(df)
     train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, cutoff_col=cutoff_col)
     scales = _nw_agg_expr(
         df=train_df,
-        models=models,
+        models=["unused"],
         id_col=id_col,
         cutoff_col=cutoff_col,
-        gen_expr=nw.col(target_col).alias("scale")
+        gen_expr=gen_expr
     )
     raw = pis(df=df, models=models, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
     return _scale_loss(df=raw, models=models, scales=scales, id_col=id_col, cutoff_col=cutoff_col)
