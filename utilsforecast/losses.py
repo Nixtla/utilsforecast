@@ -82,6 +82,29 @@ def _nw_agg_expr(
     )
 
 
+def _create_train_with_cutoffs(
+    train_df: IntoDataFrameT,
+    df: IntoDataFrameT,
+    id_col: str,
+    cutoff_col: str
+) -> IntoDataFrameT:
+    group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
+    train_df = nw.from_native(train_df)
+    
+    if cutoff_col in group_cols:
+        cutoffs_df = (
+            nw.from_native(df)
+            .select(*group_cols)
+            .unique()
+        )
+        train_df = (
+            train_df
+            .join(cutoffs_df, on="unique_id", how="inner")
+            .filter(nw.col("ds") <= nw.col(cutoff_col))
+        )
+
+    return train_df
+
 def _scale_loss(
     df: IntoDataFrameT,
     models: List[str],
@@ -91,16 +114,12 @@ def _scale_loss(
 ) -> IntoDataFrameT:
     exprs = [(nw.col(m) / nw.col("scale")).alias(m) for m in models]
     group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
-    # Determine join columns based on what's in scales dataframe
-    # (scales from train_df won't have cutoff, but scales from predictions will)
-    scales_group_cols = _get_group_cols(df=scales, id_col=id_col, cutoff_col=cutoff_col)
     return (
         nw.from_native(df)
-        .join(nw.from_native(scales), on=scales_group_cols)
+        .join(nw.from_native(scales), on=group_cols)
         .select([*group_cols, *exprs])
         .to_native()
     )
-
 
 @_base_docstring
 def mae(
@@ -267,8 +286,14 @@ def spis(
         pandas or polars DataFrame: dataframe with one row per id and one column per model.    
     """
     df = nw.from_native(df)
-    train_df = nw.from_native(train_df)
-    scales = train_df.group_by(id_col).agg(nw.col(target_col).mean().alias("scale"))
+    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, cutoff_col=cutoff_col)
+    scales = _nw_agg_expr(
+        df=train_df,
+        models=models,
+        id_col=id_col,
+        cutoff_col=cutoff_col,
+        gen_expr=nw.col(target_col).alias("scale")
+    )
     raw = pis(df=df, models=models, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
     return _scale_loss(df=raw, models=models, scales=scales, id_col=id_col, cutoff_col=cutoff_col)
 
@@ -379,6 +404,7 @@ def mase(
         return (nw.col(target_col) - lagged).abs().alias("scale")
 
     mae_df = mae(df=df, models=models, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
+    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, cutoff_col=cutoff_col)
     scales = _nw_agg_expr(
         df=train_df,
         models=["unused"],
@@ -506,8 +532,9 @@ def msse(
         [1] https://otexts.com/fpp3/accuracy.html
     """
     mse_df = mse(df=df, models=models, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
+    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, cutoff_col=cutoff_col)
     train_group_cols = _get_group_cols(df=train_df, id_col=id_col, cutoff_col=cutoff_col)
-    baseline = nw.from_native(train_df).with_columns(
+    baseline = train_df.with_columns(
         scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
     )
     scales = mse(df=baseline, models=["scale"], id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
@@ -632,8 +659,9 @@ def scaled_quantile_loss(
     qloss_df = quantile_loss(
         df=df, models=models, q=q, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col
     )
+    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, cutoff_col=cutoff_col)
     train_group_cols = _get_group_cols(df=train_df, id_col=id_col, cutoff_col=cutoff_col)
-    baseline = nw.from_native(train_df).with_columns(
+    baseline = train_df.with_columns(
         scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
     )
     scales = mae(df=baseline, models=["scale"], id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
@@ -763,8 +791,9 @@ def scaled_mqloss(
     mql_df = mqloss(
         df=df, models=models, quantiles=quantiles, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col
     )
+    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, cutoff_col=cutoff_col)
     train_group_cols = _get_group_cols(df=train_df, id_col=id_col, cutoff_col=cutoff_col)
-    baseline = nw.from_native(train_df).with_columns(
+    baseline = train_df.with_columns(
         scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
     )
     scales = mae(df=baseline, models=["scale"], id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
