@@ -5,10 +5,16 @@ on:
     branches: [main]
     paths-ignore:
       - 'docs/**'
+      - 'Makefile'
+      - '**.md'
+      - 'nbs/**'
   pull_request:
     branches: [main]
     paths-ignore:
       - 'docs/**'
+      - 'Makefile'
+      - '**.md'
+      - 'nbs/**'
   workflow_dispatch:
 
 concurrency:
