@@ -270,6 +270,8 @@ $$
 
 $$
 
+where $\bar{y}=\frac{1}{H}\sum^{t+H}_{\tau=t+1} y_{\tau}$.
+
 ::: utilsforecast.losses.spis
     handler: python
     options:
