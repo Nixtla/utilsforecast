@@ -1,4 +1,7 @@
-# Feature engineering
+---
+title: Feature Engineering
+description: Create exogenous regressors for your models
+---
 
 ::: utilsforecast.feature_engineering.fourier
     handler: python

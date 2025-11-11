@@ -1,4 +1,7 @@
-# Preprocessing
+---
+title: Preprocessing
+description: Utilities for processing data before training/analysis
+---
 
 ::: utilsforecast.preprocessing.id_time_grid
     handler: python

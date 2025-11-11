@@ -1,4 +1,7 @@
-# Evaluation
+---
+title: Evaluation
+description: Model performance evaluation
+---
 
 ::: utilsforecast.evaluation.evaluate
     handler: python

@@ -1,4 +1,7 @@
-# Data
+---
+title: Data
+description: Utilies for generating time series datasets
+---
 
 
 ::: utilsforecast.data.generate_series

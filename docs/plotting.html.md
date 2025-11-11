@@ -1,4 +1,8 @@
-# Plotting
+---
+title: Plotting
+description: Time series visualizations
+---
+
 
 ::: utilsforecast.plotting.plot_series
     handler: python

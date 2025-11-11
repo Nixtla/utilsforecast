@@ -38,7 +38,7 @@ title: "utilsforecast"
 """
     readme_text = Path("README.md").read_text()
     readme_text = header + readme_text
-    (output_path / "index.mdx").write_text(readme_text)
+    (output_path / "index.html.mdx").write_text(readme_text)
 
 
 if __name__ == "__main__":
