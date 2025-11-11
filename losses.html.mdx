@@ -1,6 +1,6 @@
 ---
-description: Loss functions for model evaluation.
 title: Losses
+description: Loss functions for model evaluation.
 ---
 
 
