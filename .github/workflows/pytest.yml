@@ -8,6 +8,8 @@ on:
       - 'Makefile'
       - '**.md'
       - 'nbs/**'
+      - '.github/workflows/build-docs.yaml'
+      - '.gitignore'
   pull_request:
     branches: [main]
     paths-ignore:
@@ -15,6 +17,8 @@ on:
       - 'Makefile'
       - '**.md'
       - 'nbs/**'
+      - '.github/workflows/build-docs.yaml'
+      - '.gitignore'
   workflow_dispatch:
 
 concurrency:
