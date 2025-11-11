@@ -1,48 +1,57 @@
-# Data
 
 
-### `generate_series`
+
+
+# <kbd>module</kbd> `utilsforecast.data`
+Utilies for generating time series datasets 
+
+
+---
+
+
+
+## <kbd>function</kbd> `generate_series`
 
 ```python
 generate_series(
-    n_series,
-    freq="D",
-    min_length=50,
-    max_length=500,
-    n_static_features=0,
-    equal_ends=False,
-    with_trend=False,
-    static_as_categorical=True,
-    n_models=0,
-    level=None,
-    engine="pandas",
-    seed=0,
-)
+    n_series: int,
+    freq: str = 'D',
+    min_length: int = 50,
+    max_length: int = 500,
+    n_static_features: int = 0,
+    equal_ends: bool = False,
+    with_trend: bool = False,
+    static_as_categorical: bool = True,
+    n_models: int = 0,
+    level: Optional[List[float]] = None,
+    engine: Literal['pandas', 'polars'] = 'pandas',
+    seed: int = 0
+) → Union[DataFrame, DataFrame]
 ```
 
-Generate Synthetic Panel Series.
+Generate Synthetic Panel Series. 
 
-**Parameters:**
 
-Name | Type | Description | Default
----- | ---- | ----------- | -------
-`n_series` | <code>[int](#int)</code> | Number of series for synthetic panel. | *required*
-`freq` | <code>[str](#str)</code> | Frequency of the data (pandas alias). Seasonalities are implemented for hourly, daily and monthly. Defaults to 'D'. | <code>'D'</code>
-`min_length` | <code>[int](#int)</code> | Minimum length of synthetic panel's series. Defaults to 50. | <code>50</code>
-`max_length` | <code>[int](#int)</code> | Maximum length of synthetic panel's series. Defaults to 500. | <code>500</code>
-`n_static_features` | <code>[int](#int)</code> | Number of static exogenous variables for synthetic panel's series. Defaults to 0. | <code>0</code>
-`equal_ends` | <code>[bool](#bool)</code> | Series should end in the same timestamp. Defaults to False. | <code>False</code>
-`with_trend` | <code>[bool](#bool)</code> | Series should have a (positive) trend. Defaults to False. | <code>False</code>
-`static_as_categorical` | <code>[bool](#bool)</code> | Static features should have a categorical data type. Defaults to True. | <code>True</code>
-`n_models` | <code>[int](#int)</code> | Number of models predictions to simulate. Defaults to 0. | <code>0</code>
-`level` | <code>list of float</code> | Confidence level for intervals to simulate for each model. Defaults to None. | <code>None</code>
-`engine` | <code>[str](#str)</code> | Output Dataframe type. Defaults to 'pandas'. | <code>'pandas'</code>
-`seed` | <code>[int](#int)</code> | Random seed used for generating the data. Defaults to 0. | <code>0</code>
+
+**Args:**
+ 
+ - <b>`n_series`</b> (int):  Number of series for synthetic panel. 
+ - <b>`freq`</b> (str, optional):  Frequency of the data (pandas alias).  Seasonalities are implemented for hourly, daily and monthly.  Defaults to 'D'. 
+ - <b>`min_length`</b> (int, optional):  Minimum length of synthetic panel's series.  Defaults to 50. 
+ - <b>`max_length`</b> (int, optional):  Maximum length of synthetic panel's series.  Defaults to 500. 
+ - <b>`n_static_features`</b> (int, optional):  Number of static exogenous variables  for synthetic panel's series. Defaults to 0. 
+ - <b>`equal_ends`</b> (bool, optional):  Series should end in the same timestamp.  Defaults to False. 
+ - <b>`with_trend`</b> (bool, optional):  Series should have a (positive) trend.  Defaults to False. 
+ - <b>`static_as_categorical`</b> (bool, optional):  Static features should have a  categorical data type. Defaults to True. 
+ - <b>`n_models`</b> (int, optional):  Number of models predictions to simulate.  Defaults to 0. 
+ - <b>`level`</b> (list of float, optional):  Confidence level for intervals to  simulate for each model. Defaults to None. 
+ - <b>`engine`</b> (str, optional):  Output Dataframe type. Defaults to 'pandas'. 
+ - <b>`seed`</b> (int, optional):  Random seed used for generating the data.  Defaults to 0. 
+
+
 
 **Returns:**
-
-Type | Description
----- | -----------
-<code>[DataFrame](#utilsforecast.compat.DataFrame)</code> | pandas or polars DataFrame: Synthetic panel with columns \[`unique_id`, `ds`, `y`\] and exogenous features.
+ 
+ - <b>`pandas or polars DataFrame`</b>:  Synthetic panel with columns [`unique_id`,  `ds`, `y`] and exogenous features. 
 
 
