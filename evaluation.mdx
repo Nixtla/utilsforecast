@@ -1,0 +1,53 @@
+
+
+
+
+# <kbd>module</kbd> `utilsforecast.evaluation`
+Model performance evaluation 
+
+
+---
+
+
+
+## <kbd>function</kbd> `evaluate`
+
+```python
+evaluate(
+    df: ~AnyDFType,
+    metrics: List[Callable],
+    models: Optional[List[str]] = None,
+    train_df: Optional[~AnyDFType] = None,
+    level: Optional[List[int]] = None,
+    id_col: str = 'unique_id',
+    time_col: str = 'ds',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff',
+    agg_fn: Optional[str] = None
+) → ~AnyDFType
+```
+
+Evaluate forecast using different metrics. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas, polars, dask or spark DataFrame):  Forecasts to evaluate.  Must have `id_col`, `time_col`, `target_col` and models' predictions. 
+ - <b>`metrics`</b> (list of callable):  Functions with arguments `df`, `models`,  `id_col`, `target_col` and optionally `train_df`. 
+ - <b>`models`</b> (list of str, optional):  Names of the models to evaluate.  If `None` will use every column in the dataframe after removing  id, time and target. Defaults to None. 
+ - <b>`train_df`</b> (pandas, polars, dask or spark DataFrame, optional):  Training set.  Used to evaluate metrics such as `mase`. Defaults to None. 
+ - <b>`level`</b> (list of int, optional):  Prediction interval levels. Used to compute  losses that rely on quantiles. Defaults to None. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie.  Defaults to 'unique_id'. 
+ - <b>`time_col`</b> (str, optional):  Column that identifies each timestep, its values  can be timestamps or integers. Defaults to 'ds'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target.  Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for  each forecast cross-validation fold. Defaults to 'cutoff'. 
+ - <b>`agg_fn`</b> (str, optional):  Statistic to compute on the scores by id to reduce  them to a single number. Defaults to None. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas, polars, dask or spark DataFrame`</b>:  Metrics with one row per  (id, metric) combination and one column per model. If `agg_fn` is  not `None`, there is only one row per metric. 
+
+

@@ -1,0 +1,57 @@
+
+
+
+
+# <kbd>module</kbd> `utilsforecast.data`
+Utilies for generating time series datasets 
+
+
+---
+
+
+
+## <kbd>function</kbd> `generate_series`
+
+```python
+generate_series(
+    n_series: int,
+    freq: str = 'D',
+    min_length: int = 50,
+    max_length: int = 500,
+    n_static_features: int = 0,
+    equal_ends: bool = False,
+    with_trend: bool = False,
+    static_as_categorical: bool = True,
+    n_models: int = 0,
+    level: Optional[List[float]] = None,
+    engine: Literal['pandas', 'polars'] = 'pandas',
+    seed: int = 0
+) → Union[DataFrame, DataFrame]
+```
+
+Generate Synthetic Panel Series. 
+
+
+
+**Args:**
+ 
+ - <b>`n_series`</b> (int):  Number of series for synthetic panel. 
+ - <b>`freq`</b> (str, optional):  Frequency of the data (pandas alias).  Seasonalities are implemented for hourly, daily and monthly.  Defaults to 'D'. 
+ - <b>`min_length`</b> (int, optional):  Minimum length of synthetic panel's series.  Defaults to 50. 
+ - <b>`max_length`</b> (int, optional):  Maximum length of synthetic panel's series.  Defaults to 500. 
+ - <b>`n_static_features`</b> (int, optional):  Number of static exogenous variables  for synthetic panel's series. Defaults to 0. 
+ - <b>`equal_ends`</b> (bool, optional):  Series should end in the same timestamp.  Defaults to False. 
+ - <b>`with_trend`</b> (bool, optional):  Series should have a (positive) trend.  Defaults to False. 
+ - <b>`static_as_categorical`</b> (bool, optional):  Static features should have a  categorical data type. Defaults to True. 
+ - <b>`n_models`</b> (int, optional):  Number of models predictions to simulate.  Defaults to 0. 
+ - <b>`level`</b> (list of float, optional):  Confidence level for intervals to  simulate for each model. Defaults to None. 
+ - <b>`engine`</b> (str, optional):  Output Dataframe type. Defaults to 'pandas'. 
+ - <b>`seed`</b> (int, optional):  Random seed used for generating the data.  Defaults to 0. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  Synthetic panel with columns [`unique_id`,  `ds`, `y`] and exogenous features. 
+
+

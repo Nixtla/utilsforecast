@@ -1,0 +1,954 @@
+
+
+
+
+# <kbd>module</kbd> `utilsforecast.losses`
+Loss functions for model evaluation. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `mae`
+
+```python
+mae(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Mean Absolute Error (MAE) 
+
+MAE measures the relative prediction accuracy of a forecasting method by calculating the deviation of the prediction and the true value at a given time and averages these devations over the length of the series. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actual values and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `mse`
+
+```python
+mse(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Mean Squared Error (MSE) 
+
+MSE measures the relative prediction accuracy of a forecasting method by calculating the squared deviation of the prediction and the true value at a given time, and averages these devations over the length of the series. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actual values and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `rmse`
+
+```python
+rmse(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Root Mean Squared Error (RMSE) 
+
+RMSE measures the relative prediction accuracy of a forecasting method by calculating the squared deviation of the prediction and the observed value at a given time and averages these devations over the length of the series. Finally the RMSE will be in the same scale as the original time series so its comparison with other series is possible only if they share a common scale. RMSE has a direct connection to the L2 norm. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actual values and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `bias`
+
+```python
+bias(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Forecast estimator bias. 
+
+Defined as prediction - actual 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actual values and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `cfe`
+
+```python
+cfe(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Cumulative Forecast Error (CFE) 
+
+Total signed forecast error per series. Positive values mean under forecast; negative mean over forecast. 
+
+
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actual values and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `pis`
+
+```python
+pis(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Compute the raw Absolute Periods In Stock (PIS) for one or multiple models. 
+
+The PIS metric sums the absolute forecast errors per series without any scaling, yielding a scale-dependent measure of bias. 
+
+
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actual values and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `spis`
+
+```python
+spis(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    train_df: ~IntoDataFrameT,
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff',
+    time_col: str = 'ds'
+) → ~IntoDataFrameT
+```
+
+Compute the scaled Absolute Periods In Stock (sAPIS) for one or multiple models. 
+
+The sPIS metric scales the sum of absolute forecast errors by the mean in-sample demand, yielding a scale-independent bias measure that can be aggregated across series. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actuals and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`train_df`</b> (pandas or polars DataFrame):  Training dataframe with id and actual values. Must be sorted by time. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model.     
+
+
+---
+
+
+
+## <kbd>function</kbd> `mape`
+
+```python
+mape(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Mean Absolute Percentage Error (MAPE) 
+
+MAPE measures the relative prediction accuracy of a forecasting method by calculating the percentual deviation of the prediction and the observed value at a given time and averages these devations over the length of the series. The closer to zero an observed value is, the higher penalty MAPE loss assigns to the corresponding error. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actual values and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `smape`
+
+```python
+smape(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Symmetric Mean Absolute Percentage Error (SMAPE) 
+
+SMAPE measures the relative prediction accuracy of a forecasting method by calculating the relative deviation of the prediction and the observed value scaled by the sum of the absolute values for the prediction and observed value at a given time, then averages these devations over the length of the series. This allows the SMAPE to have bounds between 0% and 100% which is desirable compared to normal MAPE that may be undetermined when the target is zero. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actual values and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `mase`
+
+```python
+mase(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    seasonality: int,
+    train_df: ~IntoDataFrameT,
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff',
+    time_col: str = 'ds'
+) → ~IntoDataFrameT
+```
+
+Mean Absolute Scaled Error (MASE) 
+
+MASE measures the relative prediction accuracy of a forecasting method by comparinng the mean absolute errors of the prediction and the observed value against the mean absolute errors of the seasonal naive model. The MASE partially composed the Overall Weighted Average (OWA), used in the M4 Competition. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actuals and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`seasonality`</b> (int):  Main frequency of the time series;  Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1. 
+ - <b>`train_df`</b> (pandas or polars DataFrame):  Training dataframe with id and actual values. Must be sorted by time. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+References: 
+ - <b>`[1] https`</b>: //robjhyndman.com/papers/mase.pdf 
+
+
+---
+
+
+
+## <kbd>function</kbd> `rmae`
+
+```python
+rmae(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    baseline: str,
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Relative Mean Absolute Error (RMAE) 
+
+Calculates the RAME between two sets of forecasts (from two different forecasting methods). A number smaller than one implies that the forecast in the numerator is better than the forecast in the denominator. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, times, actuals and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`baseline`</b> (str):  Column that identifies the baseline model predictions. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `nd`
+
+```python
+nd(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Normalized Deviation (ND) 
+
+ND measures the relative prediction accuracy of a forecasting method by calculating the sum of the absolute deviation of the prediction and the true value at a given time and dividing it by the sum of the absolute value of the ground truth. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actual values and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `msse`
+
+```python
+msse(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    seasonality: int,
+    train_df: ~IntoDataFrameT,
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff',
+    time_col: str = 'ds'
+) → ~IntoDataFrameT
+```
+
+Mean Squared Scaled Error (MSSE) 
+
+MSSE measures the relative prediction accuracy of a forecasting method by comparinng the mean squared errors of the prediction and the observed value against the mean squared errors of the seasonal naive model. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actuals and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`seasonality`</b> (int):  Main frequency of the time series;  Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1. 
+ - <b>`train_df`</b> (pandas or polars DataFrame):  Training dataframe with id and actual values. Must be sorted by time. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+References: 
+ - <b>`[1] https`</b>: //otexts.com/fpp3/accuracy.html 
+
+
+---
+
+
+
+## <kbd>function</kbd> `rmsse`
+
+```python
+rmsse(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    seasonality: int,
+    train_df: ~IntoDataFrameT,
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Root Mean Squared Scaled Error (RMSSE) 
+
+MSSE measures the relative prediction accuracy of a forecasting method by comparinng the mean squared errors of the prediction and the observed value against the mean squared errors of the seasonal naive model. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actuals and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`seasonality`</b> (int):  Main frequency of the time series;  Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1. 
+ - <b>`train_df`</b> (pandas or polars DataFrame):  Training dataframe with id and actual values. Must be sorted by time. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+References: 
+ - <b>`[1] https`</b>: //otexts.com/fpp3/accuracy.html 
+
+
+---
+
+
+
+## <kbd>function</kbd> `quantile_loss`
+
+```python
+quantile_loss(
+    df: ~IntoDataFrameT,
+    models: Dict[str, str],
+    q: float = 0.5,
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Quantile Loss (QL) 
+
+QL measures the deviation of a quantile forecast. By weighting the absolute deviation in a non symmetric way, the loss pays more attention to under or over estimation. A common value for q is 0.5 for the deviation from the median. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, times, actuals and predictions. 
+ - <b>`models`</b> (dict from str to str):  Mapping from model name to the model predictions for the specified quantile. 
+ - <b>`q`</b> (float, optional):  Quantile for the predictions' comparison. Defaults to 0.5. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+
+---
+
+
+
+## <kbd>function</kbd> `scaled_quantile_loss`
+
+```python
+scaled_quantile_loss(
+    df: ~IntoDataFrameT,
+    models: Dict[str, str],
+    seasonality: int,
+    train_df: ~IntoDataFrameT,
+    q: float = 0.5,
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff',
+    time_col: str = 'ds'
+) → ~IntoDataFrameT
+```
+
+Scaled Quantile Loss (SQL) 
+
+SQL measures the deviation of a quantile forecast scaled by the mean absolute errors of the seasonal naive model. By weighting the absolute deviation in a non symmetric way, the loss pays more attention to under or over estimation. A common value for q is 0.5 for the deviation from the median. This was the official measure used in the M5 Uncertainty competition with seasonality = 1. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, times, actuals and predictions. 
+ - <b>`models`</b> (dict from str to str):  Mapping from model name to the model predictions for the specified quantile. 
+ - <b>`seasonality`</b> (int):  Main frequency of the time series;  Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1. 
+ - <b>`train_df`</b> (pandas or polars DataFrame):  Training dataframe with id and actual values. Must be sorted by time. 
+ - <b>`q`</b> (float, optional):  Quantile for the predictions' comparison. Defaults to 0.5. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+References: 
+ - <b>`[1] https`</b>: //www.sciencedirect.com/science/article/pii/S0169207021001722 
+
+
+---
+
+
+
+## <kbd>function</kbd> `mqloss`
+
+```python
+mqloss(
+    df: ~IntoDataFrameT,
+    models: Dict[str, List[str]],
+    quantiles: ndarray,
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Multi-Quantile loss (MQL) 
+
+MQL calculates the average multi-quantile Loss for a given set of quantiles, based on the absolute difference between predicted quantiles and observed values. 
+
+The limit behavior of MQL allows to measure the accuracy of a full predictive distribution with the continuous ranked probability score (CRPS). This can be achieved through a numerical integration technique, that discretizes the quantiles and treats the CRPS integral with a left Riemann approximation, averaging over uniformly distanced quantiles. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, times, actuals and predictions. 
+ - <b>`models`</b> (dict from str to list of str):  Mapping from model name to the model predictions for each quantile. 
+ - <b>`quantiles`</b> (numpy array):  Quantiles to compare against. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+References: 
+ - <b>`[1] https`</b>: //www.jstor.org/stable/2629907 
+
+
+---
+
+
+
+## <kbd>function</kbd> `scaled_mqloss`
+
+```python
+scaled_mqloss(
+    df: ~IntoDataFrameT,
+    models: Dict[str, List[str]],
+    quantiles: ndarray,
+    seasonality: int,
+    train_df: ~IntoDataFrameT,
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff',
+    time_col: str = 'ds'
+) → ~IntoDataFrameT
+```
+
+Scaled Multi-Quantile loss (SMQL) 
+
+SMQL calculates the average multi-quantile Loss for a given set of quantiles, based on the absolute difference between predicted quantiles and observed values scaled by the mean absolute errors of the seasonal naive model. The limit behavior of MQL allows to measure the accuracy of a full predictive distribution with the continuous ranked probability score (CRPS). This can be achieved through a numerical integration technique, that discretizes the quantiles and treats the CRPS integral with a left Riemann approximation, averaging over uniformly distanced quantiles. This was the official measure used in the M5 Uncertainty competition with seasonality = 1. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, times, actuals and predictions. 
+ - <b>`models`</b> (dict from str to list of str):  Mapping from model name to the model predictions for each quantile. 
+ - <b>`quantiles`</b> (numpy array):  Quantiles to compare against. 
+ - <b>`seasonality`</b> (int):  Main frequency of the time series;  Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1. 
+ - <b>`train_df`</b> (pandas or polars DataFrame):  Training dataframe with id and actual values. Must be sorted by time. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+References: 
+ - <b>`[1] https`</b>: //www.sciencedirect.com/science/article/pii/S0169207021001722 
+
+
+---
+
+
+
+## <kbd>function</kbd> `coverage`
+
+```python
+coverage(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    level: int,
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Coverage of y with y_hat_lo and y_hat_hi. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, times, actuals and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`level`</b> (int):  Confidence level used for intervals. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+References: 
+ - <b>`[1] https`</b>: //www.jstor.org/stable/2629907 
+
+
+---
+
+
+
+## <kbd>function</kbd> `calibration`
+
+```python
+calibration(
+    df: ~IntoDataFrameT,
+    models: Dict[str, str],
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Fraction of y that is lower than the model's predictions. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, times, actuals and predictions. 
+ - <b>`models`</b> (dict from str to str):  Mapping from model name to the model predictions. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+References: 
+ - <b>`[1] https`</b>: //www.jstor.org/stable/2629907 
+
+
+---
+
+
+
+## <kbd>function</kbd> `scaled_crps`
+
+```python
+scaled_crps(
+    df: ~IntoDataFrameT,
+    models: Dict[str, List[str]],
+    quantiles: ndarray,
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Scaled Continues Ranked Probability Score 
+
+Calculates a scaled variation of the CRPS, as proposed by Rangapuram (2021), to measure the accuracy of predicted quantiles `y_hat` compared to the observation `y`. This metric averages percentual weighted absolute deviations as defined by the quantile losses. 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, times, actuals and predictions. 
+ - <b>`models`</b> (dict from str to list of str):  Mapping from model name to the model predictions for each quantile. 
+ - <b>`quantiles`</b> (numpy array):  Quantiles to compare against. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+References: 
+ - <b>`[1] https`</b>: //proceedings.mlr.press/v139/rangapuram21a.html 
+
+
+---
+
+
+
+## <kbd>function</kbd> `tweedie_deviance`
+
+```python
+tweedie_deviance(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    power: float = 1.5,
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff'
+) → ~IntoDataFrameT
+```
+
+Compute the Tweedie deviance loss for one or multiple models, grouped by an identifier. 
+
+Each group's deviance is calculated using the mean_tweedie_deviance function, which measures the deviation between actual and predicted values under the Tweedie distribution. 
+
+The `power` parameter defines the specific compound distribution: 
+  - 1: Poisson 
+  - (1, 2): Compound Poisson-Gamma 
+  - 2: Gamma 
+  - >2: Inverse Gaussian 
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actuals and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`power`</b> (float, optional):  Tweedie power parameter. Determines the compound distribution. Defaults to 1.5. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  DataFrame with one row per id and one column per model, containing the mean Tweedie deviance. 
+
+References: 
+ - <b>`[1] https`</b>: //en.wikipedia.org/wiki/Tweedie_distribution 
+
+
+---
+
+
+
+## <kbd>function</kbd> `linex`
+
+```python
+linex(
+    df: ~IntoDataFrameT,
+    models: List[str],
+    id_col: str = 'unique_id',
+    target_col: str = 'y',
+    cutoff_col: str = 'cutoff',
+    a: float = 1.0
+) → ~IntoDataFrameT
+```
+
+Linex Loss (Linear Exponential) 
+
+The Linex loss penalizes over- and under-forecasting asymmetrically depending on the parameter a. 
+
+
+- If a > 0, under-forecasting (y > y_hat) is penalized more. 
+- If a < 0, over-forecasting (y_hat > y) is penalized more. 
+- a must not be 0. 
+
+
+
+**Args:**
+ 
+ - <b>`a`</b> (float, optional):  Asymmetry parameter. Must be non-zero. Defaults to 1.0. 
+
+
+
+
+
+**Args:**
+ 
+ - <b>`df`</b> (pandas or polars DataFrame):  Input dataframe with id, actual values and predictions. 
+ - <b>`models`</b> (list of str):  Columns that identify the models predictions. 
+ - <b>`id_col`</b> (str, optional):  Column that identifies each serie. Defaults to 'unique_id'. 
+ - <b>`target_col`</b> (str, optional):  Column that contains the target. Defaults to 'y'. 
+ - <b>`cutoff_col`</b> (str, optional):  Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. 
+
+
+
+**Returns:**
+ 
+ - <b>`pandas or polars DataFrame`</b>:  dataframe with one row per id and one column per model. 
+
+
