@@ -9,9 +9,13 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Deploy environment"
+        description: "The environment to deploy to"
         required: True
+        type: choice
         default: "staging"
+        options:
+          - staging
+          - production
 
 jobs:
   build-docs:
