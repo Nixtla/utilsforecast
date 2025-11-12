@@ -86,6 +86,7 @@ def _create_train_with_cutoffs(
     train_df: IntoDataFrameT,
     df: IntoDataFrameT,
     id_col: str,
+    time_col: str,
     cutoff_col: str
 ) -> IntoDataFrameT:
     group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
@@ -100,7 +101,7 @@ def _create_train_with_cutoffs(
         train_df = (
             train_df
             .join(cutoffs_df, on="unique_id", how="inner")
-            .filter(nw.col("ds") <= nw.col(cutoff_col))
+            .filter(nw.col(time_col) <= nw.col(cutoff_col))
         )
 
     return train_df
@@ -266,7 +267,8 @@ def spis(
     train_df: IntoDataFrameT,
     id_col: str = "unique_id",
     target_col: str = "y",
-    cutoff_col: str = "cutoff"
+    cutoff_col: str = "cutoff",
+    time_col: str = "ds",
 ) -> IntoDataFrameT:
     """
     Compute the scaled Absolute Periods In Stock (sAPIS) for one or multiple models.
@@ -289,7 +291,7 @@ def spis(
         return nw.col(target_col).alias("scale")
 
     df = nw.from_native(df)
-    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, cutoff_col=cutoff_col)
+    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, time_col=time_col, cutoff_col=cutoff_col)
     scales = _nw_agg_expr(
         df=train_df,
         models=["unused"],
@@ -375,6 +377,7 @@ def mase(
     id_col: str = "unique_id",
     target_col: str = "y",
     cutoff_col: str = "cutoff",
+    time_col: str = "ds",
 ) -> IntoDataFrameT:
     """Mean Absolute Scaled Error (MASE)
 
@@ -408,7 +411,7 @@ def mase(
         return (nw.col(target_col) - lagged).abs().alias("scale")
 
     mae_df = mae(df=df, models=models, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
-    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, cutoff_col=cutoff_col)
+    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, time_col=time_col, cutoff_col=cutoff_col)
 
     scales = _nw_agg_expr(
         df=train_df,
@@ -512,6 +515,7 @@ def msse(
     id_col: str = "unique_id",
     target_col: str = "y",
     cutoff_col: str = "cutoff",
+    time_col: str = "ds",
 ) -> IntoDataFrameT:
     """Mean Squared Scaled Error (MSSE)
 
@@ -537,7 +541,7 @@ def msse(
         [1] https://otexts.com/fpp3/accuracy.html
     """
     mse_df = mse(df=df, models=models, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
-    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, cutoff_col=cutoff_col)
+    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, time_col=time_col,cutoff_col=cutoff_col)
     train_group_cols = _get_group_cols(df=train_df, id_col=id_col, cutoff_col=cutoff_col)
     baseline = train_df.with_columns(
         scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
@@ -633,6 +637,7 @@ def scaled_quantile_loss(
     id_col: str = "unique_id",
     target_col: str = "y",
     cutoff_col: str = "cutoff",
+    time_col: str = "ds",
 ) -> IntoDataFrameT:
     """Scaled Quantile Loss (SQL)
 
@@ -664,7 +669,7 @@ def scaled_quantile_loss(
     qloss_df = quantile_loss(
         df=df, models=models, q=q, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col
     )
-    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, cutoff_col=cutoff_col)
+    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, time_col=time_col, cutoff_col=cutoff_col)
     train_group_cols = _get_group_cols(df=train_df, id_col=id_col, cutoff_col=cutoff_col)
     baseline = train_df.with_columns(
         scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
@@ -760,6 +765,7 @@ def scaled_mqloss(
     id_col: str = "unique_id",
     target_col: str = "y",
     cutoff_col: str = "cutoff",
+    time_col: str = "ds",
 ) -> IntoDataFrameT:
     """Scaled Multi-Quantile loss (SMQL)
 
@@ -796,7 +802,7 @@ def scaled_mqloss(
     mql_df = mqloss(
         df=df, models=models, quantiles=quantiles, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col
     )
-    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, cutoff_col=cutoff_col)
+    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, time_col=time_col,cutoff_col=cutoff_col)
     train_group_cols = _get_group_cols(df=train_df, id_col=id_col, cutoff_col=cutoff_col)
     baseline = train_df.with_columns(
         scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
@@ -1064,8 +1070,6 @@ def linex(
     - If a > 0, under-forecasting (y > y_hat) is penalized more.
     - If a < 0, over-forecasting (y_hat > y) is penalized more.
     - a must not be 0.
-
-    Formula: exp(a·error) - a·error - 1, where error = prediction - actual.
 
     Args:
         a (float, optional): Asymmetry parameter. Must be non-zero. Defaults to 1.0.
