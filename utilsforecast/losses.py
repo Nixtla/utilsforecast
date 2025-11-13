@@ -1071,6 +1071,8 @@ def linex(
     - If a < 0, over-forecasting (y_hat > y) is penalized more.
     - a must not be 0.
 
+    Formula: exp(a * error) - a * error - 1, where error = prediction - actual.    
+
     Args:
         a (float, optional): Asymmetry parameter. Must be non-zero. Defaults to 1.0.
     """
