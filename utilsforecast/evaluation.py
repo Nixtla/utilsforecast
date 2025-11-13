@@ -317,13 +317,19 @@ def evaluate(
         df = pd.concat(results_per_metric).reset_index(drop=True)
     else:
         df = pl.concat(results_per_metric, how="diagonal")
-    id_cols = [id_col, "metric"]
+    
+    if cutoff_col in df.columns:
+        id_cols = [id_col, cutoff_col, "metric"]
+    else:
+        id_cols = [id_col, "metric"]
+
     model_cols = [c for c in df.columns if c not in id_cols]
     df = df[id_cols + model_cols]
     if agg_fn is not None:
+        group_cols = id_cols[1:] # exclude id_col
         df = ufp.group_by_agg(
             df,
-            by="metric",
+            by=group_cols,
             aggs={m: agg_fn for m in model_cols},
             maintain_order=True,
         )
