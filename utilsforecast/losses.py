@@ -564,6 +564,7 @@ def rmsse(
     id_col: str = "unique_id",
     target_col: str = "y",
     cutoff_col: str = "cutoff",
+    time_col: str = "ds",
 ) -> IntoDataFrameT:
     res = msse(
         df,
@@ -573,6 +574,7 @@ def rmsse(
         id_col=id_col,
         target_col=target_col,
         cutoff_col=cutoff_col,
+        time_col=time_col,
     )
     return (
         nw.from_native(res)
