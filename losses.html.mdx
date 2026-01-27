@@ -159,9 +159,7 @@ where must be $a\neq0$.
 #### `linex`
 
 ```python
-linex(
-    df, models, id_col="unique_id", target_col="y", cutoff_col="cutoff", a=1.0
-)
+linex(df, models, id_col='unique_id', target_col='y', cutoff_col='cutoff', a=1.0)
 ```
 
 Linex Loss (Linear Exponential)
@@ -247,16 +245,7 @@ $$
 #### `mase`
 
 ```python
-mase(
-    df,
-    models,
-    seasonality,
-    train_df,
-    id_col="unique_id",
-    target_col="y",
-    cutoff_col="cutoff",
-    time_col="ds",
-)
+mase(df, models, seasonality, train_df, id_col='unique_id', target_col='y', cutoff_col='cutoff', time_col='ds')
 ```
 
 Mean Absolute Scaled Error (MASE)
@@ -306,14 +295,7 @@ $$
 #### `rmae`
 
 ```python
-rmae(
-    df,
-    models,
-    baseline,
-    id_col="unique_id",
-    target_col="y",
-    cutoff_col="cutoff",
-)
+rmae(df, models, baseline, id_col='unique_id', target_col='y', cutoff_col='cutoff')
 ```
 
 Relative Mean Absolute Error (RMAE)
@@ -373,16 +355,7 @@ $$
 ### `msse`
 
 ```python
-msse(
-    df,
-    models,
-    seasonality,
-    train_df,
-    id_col="unique_id",
-    target_col="y",
-    cutoff_col="cutoff",
-    time_col="ds",
-)
+msse(df, models, seasonality, train_df, id_col='unique_id', target_col='y', cutoff_col='cutoff', time_col='ds')
 ```
 
 Mean Squared Scaled Error (MSSE)
@@ -430,16 +403,7 @@ $$
 ### `rmsse`
 
 ```python
-rmsse(
-    df,
-    models,
-    seasonality,
-    train_df,
-    id_col="unique_id",
-    target_col="y",
-    cutoff_col="cutoff",
-    time_col="ds",
-)
+rmsse(df, models, seasonality, train_df, id_col='unique_id', target_col='y', cutoff_col='cutoff', time_col='ds')
 ```
 
 Root Mean Squared Scaled Error (RMSSE)
@@ -487,15 +451,7 @@ where $\bar{y}=\frac{1}{H}\sum^{t+H}_{\tau=t+1} y_{\tau}$.
 #### `spis`
 
 ```python
-spis(
-    df,
-    models,
-    train_df,
-    id_col="unique_id",
-    target_col="y",
-    cutoff_col="cutoff",
-    time_col="ds",
-)
+spis(df, models, train_df, id_col='unique_id', target_col='y', cutoff_col='cutoff', time_col='ds')
 ```
 
 Compute the scaled Absolute Periods In Stock (sAPIS) for one or multiple models.
@@ -539,9 +495,7 @@ $$
 #### `quantile_loss`
 
 ```python
-quantile_loss(
-    df, models, q=0.5, id_col="unique_id", target_col="y", cutoff_col="cutoff"
-)
+quantile_loss(df, models, q=0.5, id_col='unique_id', target_col='y', cutoff_col='cutoff')
 ```
 
 Quantile Loss (QL)
@@ -582,17 +536,7 @@ $$
 #### `scaled_quantile_loss`
 
 ```python
-scaled_quantile_loss(
-    df,
-    models,
-    seasonality,
-    train_df,
-    q=0.5,
-    id_col="unique_id",
-    target_col="y",
-    cutoff_col="cutoff",
-    time_col="ds",
-)
+scaled_quantile_loss(df, models, seasonality, train_df, q=0.5, id_col='unique_id', target_col='y', cutoff_col='cutoff', time_col='ds')
 ```
 
 Scaled Quantile Loss (SQL)
@@ -645,14 +589,7 @@ $$
 #### `mqloss`
 
 ```python
-mqloss(
-    df,
-    models,
-    quantiles,
-    id_col="unique_id",
-    target_col="y",
-    cutoff_col="cutoff",
-)
+mqloss(df, models, quantiles, id_col='unique_id', target_col='y', cutoff_col='cutoff')
 ```
 
 Multi-Quantile loss (MQL)
@@ -705,17 +642,7 @@ $$
 #### `scaled_mqloss`
 
 ```python
-scaled_mqloss(
-    df,
-    models,
-    quantiles,
-    seasonality,
-    train_df,
-    id_col="unique_id",
-    target_col="y",
-    cutoff_col="cutoff",
-    time_col="ds",
-)
+scaled_mqloss(df, models, quantiles, seasonality, train_df, id_col='unique_id', target_col='y', cutoff_col='cutoff', time_col='ds')
 ```
 
 Scaled Multi-Quantile loss (SMQL)
@@ -764,9 +691,7 @@ Type | Description
 #### `coverage`
 
 ```python
-coverage(
-    df, models, level, id_col="unique_id", target_col="y", cutoff_col="cutoff"
-)
+coverage(df, models, level, id_col='unique_id', target_col='y', cutoff_col='cutoff')
 ```
 
 Coverage of y with y_hat_lo and y_hat_hi.
@@ -800,9 +725,7 @@ Type | Description
 #### `calibration`
 
 ```python
-calibration(
-    df, models, id_col="unique_id", target_col="y", cutoff_col="cutoff"
-)
+calibration(df, models, id_col='unique_id', target_col='y', cutoff_col='cutoff')
 ```
 
 Fraction of y that is lower than the model's predictions.
@@ -845,14 +768,7 @@ and $y_{i,\tau}$ are its realizations.
 #### `scaled_crps`
 
 ```python
-scaled_crps(
-    df,
-    models,
-    quantiles,
-    id_col="unique_id",
-    target_col="y",
-    cutoff_col="cutoff",
-)
+scaled_crps(df, models, quantiles, id_col='unique_id', target_col='y', cutoff_col='cutoff')
 ```
 
 Scaled Continues Ranked Probability Score
@@ -932,14 +848,7 @@ $$
 #### `tweedie_deviance`
 
 ```python
-tweedie_deviance(
-    df,
-    models,
-    power=1.5,
-    id_col="unique_id",
-    target_col="y",
-    cutoff_col="cutoff",
-)
+tweedie_deviance(df, models, power=1.5, id_col='unique_id', target_col='y', cutoff_col='cutoff')
 ```
 
 Compute the Tweedie deviance loss for one or multiple models, grouped by an identifier.
