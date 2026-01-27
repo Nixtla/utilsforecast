@@ -36,7 +36,7 @@ version = {attr = "utilsforecast.__version__"}
 plotting = [
     "pandas[plot]<3.0.0",
     "plotly",
-    "plotly-resampler",
+    "plotly-resampler; python_version < '3.14'",
 ]
 polars = [
     "polars[numpy]<=1.31",
@@ -50,7 +50,7 @@ dev = [
     "scipy",
     "pandas[plot]<3.0.0",
     "plotly",
-    "plotly-resampler",
+    "plotly-resampler; python_version < '3.14'",
     "polars[numpy]",
     "pytest",
     "pytest-cov",
