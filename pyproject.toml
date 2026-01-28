@@ -9,13 +9,12 @@ description = "Forecasting utilities"
 authors = [{name = "Nixtla", email = "business@nixtla.io"}]
 license = {text = "Apache Software License 2.0"}
 readme = "README.md"
-requires-python=">=3.9"
+requires-python=">=3.10"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Natural Language :: English",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -57,7 +56,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "fugue[dask,spark]>=0.8.1",
-    "dask<=2024.12.1",
+    "dask",
     "pip-licenses",
     "mkdocstrings-parser@git+https://github.com/Nixtla/mkdocstrings-parser.git",
 ]
