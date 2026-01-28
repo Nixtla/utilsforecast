@@ -3027,9 +3027,9 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "dask", specifier = "==2026.1.1" },
+    { name = "dask" },
     { name = "datasetsforecast", specifier = "==0.0.8" },
-    { name = "fugue", extras = ["dask", "spark"], specifier = ">=0.8.1" },
+    { name = "fugue", extras = ["dask", "spark"], specifier = ">=0.9.4" },
     { name = "mkdocstrings-parser", git = "https://github.com/Nixtla/mkdocstrings-parser.git" },
     { name = "numba", specifier = ">=0.58.0" },
     { name = "pandas", extras = ["plot"], specifier = "<3.0.0" },
