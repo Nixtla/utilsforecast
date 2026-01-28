@@ -55,7 +55,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "fugue[dask,spark]>=0.8.1",
-    "dask<=2024.12.1",
+    "dask",
     "pip-licenses",
     "mkdocstrings-parser@git+https://github.com/Nixtla/mkdocstrings-parser.git",
 ]
