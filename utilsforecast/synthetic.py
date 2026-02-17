@@ -16,6 +16,7 @@ __all__ = ["TimeSeriesSimulator"]
 
 from typing import Callable, Dict, List, Literal, Optional, Union, overload
 
+import warnings
 import numpy as np
 import pandas as pd
 
@@ -223,7 +224,10 @@ class TimeSeriesSimulator:
         length (int): Number of time steps per series.  Defaults to 100.
             When *seasonality* is provided and *length* is less than
             ``3 * max(seasonality)``, it is automatically raised so that
-            at least three full seasonal cycles are present.
+            at least three full seasonal cycles are present.  A
+            :class:`UserWarning` is emitted when this auto-adjustment
+            occurs so that users are aware that the effective length
+            differs from the requested value.
         distribution (str or callable): Distribution for the base values.
 
             Built-in options:
@@ -329,6 +333,8 @@ class TimeSeriesSimulator:
         if length < 1:
             raise ValueError(f"length must be >= 1, got {length}")
 
+        original_length = length
+
         if isinstance(distribution, str) and distribution not in _BUILTIN_DISTRIBUTIONS:
             raise ValueError(
                 f"Unknown distribution '{distribution}'. "
@@ -336,7 +342,11 @@ class TimeSeriesSimulator:
             )
 
         # Ensure enough room for at least three full seasonal cycles so that
-        # downstream models can learn the pattern.
+        # downstream models can learn the pattern.  This is a heuristic
+        # grounded in common seasonal-model practice (ARIMA, ETS, etc.),
+        # which typically recommend multiple observed cycles for stable
+        # estimation.  We emit a warning when we override the requested
+        # length so that users can make an explicit choice.
         if seasonality is not None:
             max_period = (
                 max(seasonality)
@@ -345,6 +355,18 @@ class TimeSeriesSimulator:
             )
             min_length = 3 * max_period
             if length < min_length:
+                warnings.warn(
+                    (
+                        "TimeSeriesSimulator length was auto-adjusted from "
+                        f"{original_length} to {min_length} to include at "
+                        "least three full seasonal cycles for the requested "
+                        f"seasonality={seasonality!r}. If you prefer to keep "
+                        "the shorter length, either increase `length` "
+                        "explicitly or omit `seasonality`."
+                    ),
+                    UserWarning,
+                    stacklevel=2,
+                )
                 length = min_length
 
         self.length = length

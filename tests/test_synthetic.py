@@ -287,6 +287,14 @@ def test_seasonality_auto_length_adjustment():
     assert len(df) == 90  # 3 * 30
 
 
+def test_seasonality_auto_length_adjustment_warns():
+    """Auto length adjustment emits a warning explaining the change."""
+    with pytest.warns(UserWarning, match="auto-adjusted from 10 to 90"):
+        sim = TimeSeriesSimulator(length=10, seasonality=30, seed=42)
+        df = sim.simulate()
+        assert len(df) == 90
+
+
 def test_single_strength_broadcast():
     """A single seasonality_strength is broadcast to all periods."""
     sim = TimeSeriesSimulator(
