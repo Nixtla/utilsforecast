@@ -7,25 +7,7 @@ description: Time series visualizations
 ### `plot_series`
 
 ```python
-plot_series(
-    df=None,
-    forecasts_df=None,
-    ids=None,
-    plot_random=True,
-    max_ids=8,
-    models=None,
-    level=None,
-    max_insample_length=None,
-    plot_anomalies=False,
-    engine="matplotlib",
-    palette=None,
-    id_col="unique_id",
-    time_col="ds",
-    target_col="y",
-    seed=0,
-    resampler_kwargs=None,
-    ax=None,
-)
+plot_series(df=None, forecasts_df=None, ids=None, plot_random=True, max_ids=8, models=None, level=None, max_insample_length=None, plot_anomalies=False, engine='matplotlib', palette=None, id_col='unique_id', time_col='ds', target_col='y', seed=0, resampler_kwargs=None, ax=None)
 ```
 
 Plot forecasts and insample values.

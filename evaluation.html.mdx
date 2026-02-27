@@ -6,18 +6,7 @@ description: Model performance evaluation
 ### `evaluate`
 
 ```python
-evaluate(
-    df,
-    metrics,
-    models=None,
-    train_df=None,
-    level=None,
-    id_col="unique_id",
-    time_col="ds",
-    target_col="y",
-    cutoff_col="cutoff",
-    agg_fn=None,
-)
+evaluate(df, metrics, models=None, train_df=None, level=None, id_col='unique_id', time_col='ds', target_col='y', cutoff_col='cutoff', agg_fn=None)
 ```
 
 Evaluate forecast using different metrics.

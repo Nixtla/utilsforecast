@@ -1,5 +1,5 @@
 ---
-title: Feature Engineering
+title: Feature Engineering | UtilsForecast
 description: Create exogenous regressors for your models
 ---
 
@@ -81,9 +81,7 @@ Type | Description
 ### `future_exog_to_historic`
 
 ```python
-future_exog_to_historic(
-    df, freq, features, h=0, id_col="unique_id", time_col="ds"
-)
+future_exog_to_historic(df, freq, features, h=0, id_col='unique_id', time_col='ds')
 ```
 
 Turn future exogenous features into historic by shifting them `h` steps.
