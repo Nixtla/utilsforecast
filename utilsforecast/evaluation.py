@@ -335,3 +335,150 @@ def evaluate(
             maintain_order=True,
         )
     return df
+
+class ParetoFrontier:
+    """Utilities for Pareto frontier analysis."""
+    
+    @staticmethod
+    def is_dominated(candidate: np.ndarray, others: np.ndarray, directions: np.ndarray) -> bool:
+        """Checks if a candidate solution is dominated by any of the others.
+        
+        Args:
+            candidate (np.ndarray): Metric values for the candidate.
+            others (np.ndarray): Metric values for other models.
+            directions (np.ndarray): 1 for minimization, -1 for maximization.
+        """
+        # A solution B dominates A if B is at least as good as A in all objectives
+        # AND strictly better in at least one objective.
+        
+        # Adjust for direction (multiply by 1 for min, -1 for max so it's always 'less is better')
+        c = candidate * directions
+        o = others * directions
+        
+        # d is True if others[i] <= candidate in all metrics
+        better_or_equal = np.all(o <= c, axis=1)
+        # s is True if others[i] < candidate in at least one metric
+        strictly_better = np.any(o < c, axis=1)
+        
+        return np.any(better_or_equal & strictly_better)
+
+    @classmethod
+    def find_non_dominated(
+        cls, 
+        performance_df: AnyDFType, 
+        metrics: Optional[List[str]] = None,
+        maximization: Optional[List[str]] = None
+    ) -> AnyDFType:
+        """Returns the non-dominated models (Pareto frontier).
+        
+        Args:
+            performance_df (AnyDFType): Output from evaluate.
+            metrics (List[str], optional): Metrics to consider. Defaults to all model columns if None.
+            maximization (List[str], optional): Metrics where 'more is better'.
+        """
+        is_pandas = isinstance(performance_df, pd.DataFrame)
+        
+        if is_pandas:
+            df = performance_df
+            columns = df.columns.tolist()
+        else:
+            # Polars
+            df = performance_df.to_pandas()
+            columns = df.columns.tolist()
+            
+        # Determine metric columns: usually the columns excluding 'unique_id', 'cutoff', 'metric'
+        # In `evaluate` output with agg_fn, ID/cutoff are usually gone, leaving 'metric' and model names.
+        # But if `performance_df` is transposed or formatted differently, user passes specific `metrics`.
+        if metrics is None:
+            # We assume it's metric-centric cols 
+            metrics = [c for c in columns if c not in ["unique_id", "metric", "cutoff", "ds", "y"]]
+        
+        if len(metrics) == 0:
+            return performance_df
+            
+        data = df[metrics].values
+        directions = np.ones(len(metrics))
+        if maximization:
+            for i, m in enumerate(metrics):
+                if m in maximization:
+                    directions[i] = -1
+        
+        is_pareto = []
+        for i in range(len(data)):
+            others = np.delete(data, i, axis=0)
+            if len(others) == 0:
+                is_pareto.append(True)
+                continue
+            dominated = cls.is_dominated(data[i], others, directions)
+            is_pareto.append(not dominated)
+            
+        if is_pandas:
+            return performance_df.iloc[is_pareto].copy()
+        else:
+            # Polars
+            import polars as pl
+            
+            # Using row indices to filter Polars dataframe
+            indices = [i for i, val in enumerate(is_pareto) if val]
+            return performance_df[indices]
+
+    @staticmethod
+    def plot_pareto_2d(
+        performance_df: AnyDFType,
+        metric_x: str,
+        metric_y: str,
+        maximize_x: bool = False,
+        maximize_y: bool = False,
+        show_dominated: bool = True,
+        title: str = "Pareto Frontier"
+    ):
+        """Plots the 2D Pareto frontier."""
+        import warnings
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            warnings.warn("matplotlib is required for plotting.")
+            return None
+
+        pareto_df = ParetoFrontier.find_non_dominated(
+            performance_df, 
+            metrics=[metric_x, metric_y],
+            maximization=([metric_x] if maximize_x else []) + ([metric_y] if maximize_y else [])
+        )
+        
+        is_pandas = isinstance(performance_df, pd.DataFrame)
+        if not is_pandas:
+            perf_pd = performance_df.to_pandas()
+            pareto_pd = pareto_df.to_pandas()
+        else:
+            perf_pd = performance_df
+            pareto_pd = pareto_df
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        if show_dominated:
+            ax.scatter(
+                perf_pd[metric_x], 
+                perf_pd[metric_y], 
+                color='grey', alpha=0.5, label='Dominated'
+            )
+            for idx, row in perf_pd.iterrows():
+                label = row.get("model", idx) if "model" in perf_pd.columns else idx
+                ax.annotate(label, (row[metric_x], row[metric_y]), alpha=0.7)
+                
+        ax.scatter(
+            pareto_pd[metric_x], 
+            pareto_pd[metric_y], 
+            color='red', s=100, label='Pareto Optimal'
+        )
+        
+        # Sort pareto points for a nice line
+        pareto_sorted = pareto_pd.sort_values(metric_x)
+        ax.plot(pareto_sorted[metric_x], pareto_sorted[metric_y], 'r--', alpha=0.5)
+        
+        ax.set_xlabel(metric_x)
+        ax.set_ylabel(metric_y)
+        ax.set_title(title)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        return ax
