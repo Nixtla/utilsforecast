@@ -49,12 +49,13 @@ def compute_rectify_residuals(
     residual_exprs = [
         (nw.col(target_col) - nw.col(model)).alias(model) for model in models
     ]
+    sorted_merged = merged.sort(id_col, time_col)
     horizon_expr = (
-        nw.col(time_col).rank().over(id_col).cast(nw.Int32).alias("horizon")
+        nw.col(time_col).cum_count().over(id_col).cast(nw.Int32).alias("horizon")
     )
-    result = merged.select(
+    result = sorted_merged.select(
         [id_col, time_col, horizon_expr, *residual_exprs]
-    ).sort(id_col, time_col)
+    )
     return nw.to_native(result)
 
 
