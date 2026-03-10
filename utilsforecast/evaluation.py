@@ -348,16 +348,13 @@ class ParetoFrontier:
             others (np.ndarray): Metric values for other models.
             directions (np.ndarray): 1 for minimization, -1 for maximization.
         """
-        # A solution B dominates A if B is at least as good as A in all objectives
-        # AND strictly better in at least one objective.
-        
-        # Adjust for direction (multiply by 1 for min, -1 for max so it's always 'less is better')
+        if len(others) == 0:
+            return False
+            
         c = candidate * directions
         o = others * directions
         
-        # d is True if others[i] <= candidate in all metrics
         better_or_equal = np.all(o <= c, axis=1)
-        # s is True if others[i] < candidate in at least one metric
         strictly_better = np.any(o < c, axis=1)
         
         return np.any(better_or_equal & strictly_better)
@@ -376,48 +373,69 @@ class ParetoFrontier:
             metrics (List[str], optional): Metrics to consider. Defaults to all model columns if None.
             maximization (List[str], optional): Metrics where 'more is better'.
         """
-        is_pandas = isinstance(performance_df, pd.DataFrame)
+        import narwhals.stable.v2 as nw
+        df = nw.from_native(performance_df)
+        columns = df.columns
         
-        if is_pandas:
-            df = performance_df
-            columns = df.columns.tolist()
+        if "metric" in columns:
+            # evaluate() output format: models are columns, metrics are rows
+            if metrics is None:
+                # these are the models to evaluate
+                models = [c for c in columns if c not in ["unique_id", "metric", "cutoff", "ds", "y"]]
+            else:
+                models = metrics
+                
+            if not models:
+                return performance_df
+                
+            actual_metrics = df["metric"].to_numpy()
+            
+            data = []
+            for m in models:
+                data.append(df[m].to_numpy())
+            data = np.array(data)
+            
+            directions = np.ones(len(actual_metrics))
+            if maximization:
+                for i, m in enumerate(actual_metrics):
+                    if m in maximization:
+                        directions[i] = -1
+                        
+            is_pareto = []
+            for i in range(len(data)):
+                others = np.delete(data, i, axis=0)
+                dominated = cls.is_dominated(data[i], others, directions)
+                is_pareto.append(not dominated)
+                
+            pareto_models = [m for m, p in zip(models, is_pareto) if p]
+            keep_cols = [c for c in columns if c not in models or c in pareto_models]
+            return df.select(*keep_cols).to_native()
         else:
-            # Polars
-            df = performance_df.to_pandas()
-            columns = df.columns.tolist()
+            # Fallback: rows are candidates, columns are metrics
+            if metrics is None:
+                metrics = [c for c in columns if c not in ["unique_id", "cutoff", "ds", "y", "model"]]
             
-        # Determine metric columns: usually the columns excluding 'unique_id', 'cutoff', 'metric'
-        # In `evaluate` output with agg_fn, ID/cutoff are usually gone, leaving 'metric' and model names.
-        # But if `performance_df` is transposed or formatted differently, user passes specific `metrics`.
-        if metrics is None:
-            # We assume it's metric-centric cols 
-            metrics = [c for c in columns if c not in ["unique_id", "metric", "cutoff", "ds", "y"]]
-        
-        if len(metrics) == 0:
-            return performance_df
+            if not metrics:
+                return performance_df
+                
+            data = []
+            for m in metrics:
+                data.append(df[m].to_numpy())
+            data = np.column_stack(data)
             
-        data = df[metrics].values
-        directions = np.ones(len(metrics))
-        if maximization:
-            for i, m in enumerate(metrics):
-                if m in maximization:
-                    directions[i] = -1
-        
-        is_pareto = []
-        for i in range(len(data)):
-            others = np.delete(data, i, axis=0)
-            if len(others) == 0:
-                is_pareto.append(True)
-                continue
-            dominated = cls.is_dominated(data[i], others, directions)
-            is_pareto.append(not dominated)
-            
-        if is_pandas:
-            return performance_df.iloc[is_pareto].copy()
-        else:
-            # Polars: use row indices to filter
-            indices = [i for i, val in enumerate(is_pareto) if val]
-            return performance_df[indices]
+            directions = np.ones(len(metrics))
+            if maximization:
+                for i, m in enumerate(metrics):
+                    if m in maximization:
+                        directions[i] = -1
+                        
+            is_pareto = []
+            for i in range(len(data)):
+                others = np.delete(data, i, axis=0)
+                dominated = cls.is_dominated(data[i], others, directions)
+                is_pareto.append(not dominated)
+                
+            return df.filter(is_pareto).to_native()
 
     @staticmethod
     def plot_pareto_2d(
@@ -437,40 +455,63 @@ class ParetoFrontier:
             warnings.warn("matplotlib is required for plotting.")
             return None
 
+        import narwhals.stable.v2 as nw
+        df = nw.from_native(performance_df)
+        
+        # Determine if we are working with evaluate() format or standard DataFrame
+        if "metric" in df.columns:
+            row_x = df.filter(nw.col("metric") == metric_x)
+            row_y = df.filter(nw.col("metric") == metric_y)
+            
+            if len(row_x) == 0 or len(row_y) == 0:
+                raise ValueError(f"Metrics {metric_x} or {metric_y} not found in the 'metric' column.")
+                
+            models = [c for c in df.columns if c not in ["unique_id", "metric", "cutoff", "ds", "y"]]
+            
+            x_vals = []
+            y_vals = []
+            for m in models:
+                vx = row_x[m].to_numpy()[0]
+                vy = row_y[m].to_numpy()[0]
+                x_vals.append(vx)
+                y_vals.append(vy)
+                
+            plot_df = pd.DataFrame({
+                "model": models,
+                metric_x: x_vals,
+                metric_y: y_vals
+            })
+        else:
+            is_pandas = isinstance(performance_df, pd.DataFrame)
+            plot_df = performance_df if is_pandas else performance_df.to_pandas()
+            if "model" not in plot_df.columns:
+                plot_df["model"] = plot_df.index.astype(str)
+                
         pareto_df = ParetoFrontier.find_non_dominated(
-            performance_df, 
+            plot_df, 
             metrics=[metric_x, metric_y],
             maximization=([metric_x] if maximize_x else []) + ([metric_y] if maximize_y else [])
         )
-        
-        is_pandas = isinstance(performance_df, pd.DataFrame)
-        if not is_pandas:
-            perf_pd = performance_df.to_pandas()
-            pareto_pd = pareto_df.to_pandas()
-        else:
-            perf_pd = performance_df
-            pareto_pd = pareto_df
         
         fig, ax = plt.subplots(figsize=(10, 6))
         
         if show_dominated:
             ax.scatter(
-                perf_pd[metric_x], 
-                perf_pd[metric_y], 
+                plot_df[metric_x], 
+                plot_df[metric_y], 
                 color='grey', alpha=0.5, label='Dominated'
             )
-            for idx, row in perf_pd.iterrows():
-                label = row.get("model", idx) if "model" in perf_pd.columns else idx
-                ax.annotate(label, (row[metric_x], row[metric_y]), alpha=0.7)
+            for _, row in plot_df.iterrows():
+                ax.annotate(row["model"], (row[metric_x], row[metric_y]), alpha=0.7)
                 
         ax.scatter(
-            pareto_pd[metric_x], 
-            pareto_pd[metric_y], 
+            pareto_df[metric_x], 
+            pareto_df[metric_y], 
             color='red', s=100, label='Pareto Optimal'
         )
         
-        # Sort pareto points for a nice line
-        pareto_sorted = pareto_pd.sort_values(metric_x)
+        # Sort pareto points for a line
+        pareto_sorted = pareto_df.sort_values(metric_x)
         ax.plot(pareto_sorted[metric_x], pareto_sorted[metric_y], 'r--', alpha=0.5)
         
         ax.set_xlabel(metric_x)
