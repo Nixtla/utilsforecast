@@ -120,6 +120,39 @@ def _prepare_metric_kwargs(
     return kwargs
 
 
+def _validate_greedy_schema(
+    id_col: str,
+    time_col: str,
+    target_col: str,
+    cutoff_col: str,
+) -> None:
+    expected = {
+        "id_col": "unique_id",
+        "time_col": "ds",
+        "target_col": "y",
+        "cutoff_col": "cutoff",
+    }
+    received = {
+        "id_col": id_col,
+        "time_col": time_col,
+        "target_col": target_col,
+        "cutoff_col": cutoff_col,
+    }
+    mismatches = [
+        f"{name}='{value}'"
+        for name, value in received.items()
+        if value != expected[name]
+    ]
+    if mismatches:
+        mismatch_str = ", ".join(mismatches)
+        raise ValueError(
+            "Greedy ensemble fitting currently requires the standard Nixtla schema "
+            "column names: id_col='unique_id', time_col='ds', target_col='y', "
+            "cutoff_col='cutoff'. "
+            f"Received {mismatch_str}."
+        )
+
+
 def _score_candidate(
     df: pd.DataFrame,
     preds: np.ndarray,
@@ -234,6 +267,12 @@ def fit_ensemble(
         )
     if metric is None:
         raise ValueError("Greedy ensemble fitting requires providing `metric`.")
+    _validate_greedy_schema(
+        id_col=id_col,
+        time_col=time_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
+    )
     return fit_greedy_ensemble(
         df=df,
         metric=metric,
@@ -290,6 +329,12 @@ def fit_greedy_ensemble(
         raise ValueError("`max_iters` must be greater than or equal to one.")
     if kind not in {"global", "local"}:
         raise ValueError("`kind` must be either 'global' or 'local'.")
+    _validate_greedy_schema(
+        id_col=id_col,
+        time_col=time_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
+    )
     original = df
     pdf = _to_pandas(df)
     validate_format(pdf, id_col=id_col, time_col=time_col, target_col=target_col)

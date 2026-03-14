@@ -228,6 +228,28 @@ def test_fit_greedy_ensemble_with_train_df():
     np.testing.assert_allclose(weights.loc[0, ["model_a", "model_b"]], [1.0, 0.0])
 
 
+def test_fit_greedy_ensemble_rejects_nonstandard_schema_names():
+    cv_df = pd.DataFrame(
+        {
+            "series_id": ["a", "a"],
+            "timestamp": [1, 2],
+            "cv_cutoff": [0, 0],
+            "target": [0.0, 1.0],
+            "model_a": [0.0, 1.0],
+            "model_b": [1.0, 1.0],
+        }
+    )
+    with pytest.raises(ValueError, match="standard Nixtla schema"):
+        fit_greedy_ensemble(
+            cv_df,
+            metric=rmse,
+            id_col="series_id",
+            time_col="timestamp",
+            target_col="target",
+            cutoff_col="cv_cutoff",
+        )
+
+
 def test_conformal_intervals_are_fit_from_ensemble_residuals():
     cv_df = pd.DataFrame(
         {
