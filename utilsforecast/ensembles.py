@@ -150,6 +150,14 @@ def _score_candidate(
         raise ValueError(
             "The metric must return a dataframe with the id column and the scored model column."
         )
+    if cutoff_col in result.columns:
+        # CV metrics return one row per (cutoff, id); greedy selection needs
+        # one score per series, so average the per-window scores first.
+        result = (
+            result[[id_col, "__ensemble__"]]
+            if result.shape[0] <= 1
+            else result.groupby(id_col, as_index=False)["__ensemble__"].mean()
+        )
     if result[id_col].duplicated().any():
         raise ValueError(
             "The metric must return a single score per id when fitting greedy ensembles."

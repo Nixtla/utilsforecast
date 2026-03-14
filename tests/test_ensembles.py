@@ -71,6 +71,21 @@ def test_fit_greedy_ensemble_global_allows_repeated_models():
     )
 
 
+def test_fit_greedy_ensemble_global_averages_scores_across_cutoffs():
+    cv_df = pd.DataFrame(
+        {
+            "unique_id": ["a", "a", "a", "a"],
+            "ds": [1, 2, 3, 4],
+            "cutoff": [0, 0, 2, 2],
+            "y": [0.0, 1.0, 2.0, 3.0],
+            "model_a": [0.0, 1.0, 0.0, 0.0],
+            "model_b": [1.0, 1.0, 2.0, 3.0],
+        }
+    )
+    weights = fit_greedy_ensemble(cv_df, metric=rmse, max_iters=1)
+    np.testing.assert_allclose(weights.loc[0, ["model_a", "model_b"]], [0.0, 1.0])
+
+
 def test_fit_ensemble_mean():
     df = pd.DataFrame(
         {
@@ -115,6 +130,28 @@ def test_fit_greedy_ensemble_local():
         result["local_greedy"].to_numpy(),
         np.array([0.0, 0.0, 1.0, 9.0]),
     )
+
+
+def test_fit_greedy_ensemble_local_averages_scores_across_cutoffs():
+    cv_df = pd.DataFrame(
+        {
+            "unique_id": ["a", "a", "b", "b"],
+            "ds": [1, 2, 1, 2],
+            "cutoff": [0, 1, 0, 1],
+            "y": [0.0, 0.0, 1.0, 1.0],
+            "model_a": [0.0, 0.0, 0.0, 0.0],
+            "model_b": [1.0, 1.0, 1.0, 1.0],
+        }
+    )
+    weights = fit_greedy_ensemble(cv_df, metric=rmse, kind="local", max_iters=1)
+    expected = pd.DataFrame(
+        {
+            "unique_id": ["a", "b"],
+            "model_a": [1.0, 0.0],
+            "model_b": [0.0, 1.0],
+        }
+    )
+    pd.testing.assert_frame_equal(weights, expected)
 
 
 def test_fit_ensemble_greedy_aliases():
