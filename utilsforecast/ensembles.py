@@ -1,40 +1,20 @@
 """Forecast ensemble utilities."""
 
 __all__ = [
-    "ConformalErrorIntervals",
-    "add_conformal_error_intervals",
     "add_mean_ensemble",
     "apply_ensemble",
     "fit_ensemble",
-    "fit_conformal_error_intervals",
     "fit_greedy_ensemble",
 ]
 
 import inspect
-import re
-from dataclasses import dataclass
 from typing import Callable, Dict, List, Literal, Optional
 
 import numpy as np
 import pandas as pd
 
-import utilsforecast.processing as ufp
-
 from .compat import DataFrame, pl_DataFrame
 from .validation import validate_format
-
-_INTERVAL_PATTERN = re.compile(r"-(?:lo|hi)-\d+$|_ql(?:\d*\.?\d+)$|-median$")
-
-
-@dataclass
-class ConformalErrorIntervals:
-    scores: DataFrame
-    model_names: List[str]
-    n_windows: int
-    h: int
-    id_col: str = "unique_id"
-    time_col: str = "ds"
-    cutoff_col: str = "cutoff"
 
 
 def _to_pandas(df: DataFrame) -> pd.DataFrame:
@@ -48,18 +28,6 @@ def _to_original_type(df: pd.DataFrame, original: DataFrame) -> DataFrame:
         return df
     return pl_DataFrame(df)
 
-
-def _infer_model_cols(
-    cols: List[str],
-    id_col: str,
-    time_col: str,
-    target_col: str,
-    cutoff_col: str,
-) -> List[str]:
-    reserved = {id_col, time_col, target_col, cutoff_col}
-    return [c for c in cols if c not in reserved and not _INTERVAL_PATTERN.search(c)]
-
-
 def _get_model_cols(
     df: pd.DataFrame,
     models: Optional[List[str]],
@@ -69,13 +37,8 @@ def _get_model_cols(
     cutoff_col: str,
 ) -> List[str]:
     if models is None:
-        models = _infer_model_cols(
-            list(df.columns),
-            id_col=id_col,
-            time_col=time_col,
-            target_col=target_col,
-            cutoff_col=cutoff_col,
-        )
+        reserved = {id_col, time_col, target_col, cutoff_col}
+        models = [c for c in df.columns if c not in reserved]
     missing = [m for m in models if m not in df.columns]
     if missing:
         raise ValueError(f"The following model columns are missing: {missing}")
@@ -503,134 +466,3 @@ def add_mean_ensemble(
         target_col=target_col,
         cutoff_col=cutoff_col,
     )
-
-
-def fit_conformal_error_intervals(
-    df: DataFrame,
-    models: Optional[List[str]] = None,
-    id_col: str = "unique_id",
-    time_col: str = "ds",
-    target_col: str = "y",
-    cutoff_col: str = "cutoff",
-) -> ConformalErrorIntervals:
-    """Fit absolute-error conformal intervals for forecast columns."""
-    original = df
-    pdf = _to_pandas(df)
-    validate_format(pdf, id_col=id_col, time_col=time_col, target_col=target_col)
-    if cutoff_col not in pdf.columns:
-        raise ValueError(
-            f"`df` must contain the cutoff column `{cutoff_col}` to fit conformal intervals."
-        )
-    model_cols = _get_model_cols(
-        pdf,
-        models=models,
-        id_col=id_col,
-        time_col=time_col,
-        target_col=target_col,
-        cutoff_col=cutoff_col,
-    )
-    pdf = ufp.sort(pdf, by=[id_col, cutoff_col, time_col])
-    counts = pdf.groupby([id_col, cutoff_col], observed=True).size()
-    if counts.nunique() != 1:
-        raise ValueError(
-            "Each `(id, cutoff)` pair must contain the same number of forecast horizons."
-        )
-    h = int(counts.iloc[0])
-    n_windows = pdf.groupby(id_col, observed=True)[cutoff_col].nunique()
-    if n_windows.nunique() != 1:
-        raise ValueError("Each id must have the same number of cross-validation windows.")
-    out = pdf[[id_col, cutoff_col, time_col]].copy()
-    target = pdf[target_col].to_numpy()
-    for model in model_cols:
-        out[model] = np.abs(target - pdf[model].to_numpy())
-    scores = _to_original_type(out, original)
-    return ConformalErrorIntervals(
-        scores=scores,
-        model_names=model_cols,
-        n_windows=int(n_windows.iloc[0]),
-        h=h,
-        id_col=id_col,
-        time_col=time_col,
-        cutoff_col=cutoff_col,
-    )
-
-
-def add_conformal_error_intervals(
-    df: DataFrame,
-    conformal: ConformalErrorIntervals,
-    level: List[float],
-    models: Optional[List[str]] = None,
-) -> DataFrame:
-    """Add conformal prediction intervals to forecast columns."""
-    if not level:
-        raise ValueError("`level` must contain at least one confidence level.")
-    original = df
-    pdf = _to_pandas(df)
-    validate_format(
-        pdf,
-        id_col=conformal.id_col,
-        time_col=conformal.time_col,
-        target_col=None,
-    )
-    if models is None:
-        models = conformal.model_names
-    missing_models = [m for m in models if m not in pdf.columns]
-    if missing_models:
-        raise ValueError(
-            f"The following models are missing from the forecast dataframe: {missing_models}"
-        )
-    sort_idx = ufp.maybe_compute_sort_indices(
-        pdf, id_col=conformal.id_col, time_col=conformal.time_col
-    )
-    if sort_idx is None:
-        sorted_pdf = pdf.reset_index(drop=True)
-        inv_sort = None
-    else:
-        sorted_pdf = pdf.iloc[sort_idx].reset_index(drop=True)
-        inv_sort = np.empty_like(sort_idx)
-        inv_sort[sort_idx] = np.arange(sort_idx.size)
-    counts = sorted_pdf.groupby(conformal.id_col, observed=True).size()
-    if counts.nunique() != 1:
-        raise ValueError("Each id must have the same number of forecast horizons.")
-    horizon = int(counts.iloc[0])
-    if horizon > conformal.h:
-        raise ValueError(
-            "The forecast horizon "
-            f"({horizon}) can't be larger than the fitted conformal horizon "
-            f"({conformal.h})."
-        )
-
-    scores = _to_pandas(conformal.scores)
-    score_sort_cols = [conformal.id_col, conformal.cutoff_col, conformal.time_col]
-    scores = ufp.sort(scores, by=score_sort_cols)
-    ids = sorted_pdf[conformal.id_col].drop_duplicates().tolist()
-    order = {uid: i for i, uid in enumerate(ids)}
-    if set(scores[conformal.id_col].unique()) != set(ids):
-        raise ValueError(
-            "Conformal scores and forecast dataframe must contain the same ids."
-        )
-    scores = scores.assign(
-        __id_order=scores[conformal.id_col].map(order)
-    ).sort_values(["__id_order", conformal.cutoff_col, conformal.time_col])
-    scores = scores.drop(columns="__id_order")
-    n_series = len(ids)
-    out = sorted_pdf.copy()
-    levels = sorted(set(level))
-    cuts = np.array(levels, dtype=np.float64) / 100.0
-
-    for model in models:
-        model_scores = scores[model].to_numpy().reshape(
-            n_series, conformal.n_windows, conformal.h
-        )[:, :, :horizon]
-        quantiles = np.quantile(model_scores, cuts, axis=1)
-        means = sorted_pdf[model].to_numpy().reshape(n_series, horizon)
-        lowers = means[None, :, :] - quantiles[::-1]
-        uppers = means[None, :, :] + quantiles
-        bounds = np.concatenate([lowers, uppers], axis=0).transpose(1, 2, 0)
-        columns = [f"{model}-lo-{lv}" for lv in reversed(levels)]
-        columns.extend(f"{model}-hi-{lv}" for lv in levels)
-        out[columns] = bounds.reshape(n_series * horizon, len(columns))
-
-    if inv_sort is not None:
-        out = out.iloc[inv_sort].reset_index(drop=True)
-    return _to_original_type(out, original)

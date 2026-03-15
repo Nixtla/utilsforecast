@@ -5,11 +5,9 @@ import pandas as pd
 import pytest
 
 from utilsforecast.ensembles import (
-    add_conformal_error_intervals,
     add_mean_ensemble,
     apply_ensemble,
     fit_ensemble,
-    fit_conformal_error_intervals,
     fit_greedy_ensemble,
 )
 from utilsforecast.losses import mase, rmse
@@ -248,26 +246,3 @@ def test_fit_greedy_ensemble_rejects_nonstandard_schema_names():
             target_col="target",
             cutoff_col="cv_cutoff",
         )
-
-
-def test_conformal_intervals_are_fit_from_ensemble_residuals():
-    cv_df = pd.DataFrame(
-        {
-            "unique_id": ["a", "a", "a", "a"],
-            "cutoff": [1, 1, 2, 2],
-            "ds": [1, 2, 3, 4],
-            "y": [10.0, 20.0, 10.0, 20.0],
-            "Ensemble": [11.0, 18.0, 12.0, 19.0],
-        }
-    )
-    future_df = pd.DataFrame(
-        {
-            "unique_id": ["a", "a"],
-            "ds": [5, 6],
-            "Ensemble": [30.0, 40.0],
-        }
-    )
-    conformal = fit_conformal_error_intervals(cv_df, models=["Ensemble"])
-    result = add_conformal_error_intervals(future_df, conformal, level=[80])
-    np.testing.assert_allclose(result["Ensemble-lo-80"].to_numpy(), [28.2, 38.2])
-    np.testing.assert_allclose(result["Ensemble-hi-80"].to_numpy(), [31.8, 41.8])
