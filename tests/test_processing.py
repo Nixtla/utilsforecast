@@ -8,6 +8,7 @@ import pytest
 from conftest import assert_raises_with_message
 from polars import Series as pl_Series
 
+import utilsforecast.processing as ufp
 from utilsforecast.compat import POLARS_INSTALLED
 from utilsforecast.data import generate_series
 from utilsforecast.processing import (
@@ -849,6 +850,73 @@ def test_backtest_splits_polars_alignment():
 
         pl.testing.assert_series_equal(valid_starts["ds"], expected_valid_starts)
         pl.testing.assert_series_equal(valid_ends["ds"], expected_valid_ends)
+
+
+def test_backtest_splits_sorted_uses_fast_path(monkeypatch):
+    """Sorted inputs should use the lower-memory boundary-based splitter."""
+    series = generate_series(20, freq="D", min_length=100, max_length=300)
+    n_windows = 3
+    fast_calls = 0
+    orig_fast = ufp._single_split_sorted
+
+    def counting_fast(*args, **kwargs):
+        nonlocal fast_calls
+        fast_calls += 1
+        return orig_fast(*args, **kwargs)
+
+    def fail_mask_path(*args, **kwargs):
+        raise AssertionError("sorted inputs should not use the mask-based splitter")
+
+    monkeypatch.setattr(ufp, "_single_split_sorted", counting_fast)
+    monkeypatch.setattr(ufp, "_single_split", fail_mask_path)
+
+    splits = list(
+        backtest_splits(
+            series,
+            n_windows=n_windows,
+            h=14,
+            id_col="unique_id",
+            time_col="ds",
+            freq=pd.offsets.Day(),
+        )
+    )
+
+    assert len(splits) == n_windows
+    assert fast_calls == n_windows
+
+
+def test_backtest_splits_unsorted_falls_back_to_mask_path(monkeypatch):
+    """Unsorted inputs should preserve the original mask-based behavior."""
+    series = generate_series(20, freq="D", min_length=100, max_length=300)
+    permuted = series.sample(frac=1.0, random_state=0)
+    n_windows = 3
+    mask_calls = 0
+    orig_mask = ufp._single_split
+
+    def counting_mask(*args, **kwargs):
+        nonlocal mask_calls
+        mask_calls += 1
+        return orig_mask(*args, **kwargs)
+
+    def fail_fast_path(*args, **kwargs):
+        raise AssertionError("unsorted inputs should not use the fast splitter")
+
+    monkeypatch.setattr(ufp, "_single_split", counting_mask)
+    monkeypatch.setattr(ufp, "_single_split_sorted", fail_fast_path)
+
+    splits = list(
+        backtest_splits(
+            permuted,
+            n_windows=n_windows,
+            h=14,
+            id_col="unique_id",
+            time_col="ds",
+            freq=pd.offsets.Day(),
+        )
+    )
+
+    assert len(splits) == n_windows
+    assert mask_calls == n_windows
 
 
 def test_add_insample_levels_agreement():
