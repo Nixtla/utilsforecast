@@ -17,6 +17,7 @@ def compute_rectify_residuals(
     id_col: str = "unique_id",
     time_col: str = "ds",
     target_col: str = "y",
+    cutoff_col: str | None = None,
 ) -> IntoDataFrameT:
     """Compute per-horizon residuals between actuals and base forecasts.
 
@@ -33,6 +34,11 @@ def compute_rectify_residuals(
             Defaults to 'ds'.
         target_col (str, optional): Column that contains the target.
             Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the CV fold
+            cutoff. When provided, join and horizon computation are
+            grouped by (id_col, cutoff_col). Required for cross-validation
+            output where (id_col, time_col) pairs repeat across folds.
+            Defaults to None.
 
     Returns:
         pandas or polars DataFrame: DataFrame with columns
@@ -41,21 +47,35 @@ def compute_rectify_residuals(
     """
     actuals = nw.from_native(df)
     forecasts = nw.from_native(forecasts_df)
-    merged = actuals.select([id_col, time_col, target_col]).join(
-        forecasts.select([id_col, time_col, *models]),
-        on=[id_col, time_col],
+    join_on = [id_col, time_col]
+    actuals_cols = [id_col, time_col, target_col]
+    forecasts_cols = [id_col, time_col, *models]
+    if cutoff_col is not None:
+        join_on = [id_col, time_col, cutoff_col]
+        actuals_cols.append(cutoff_col)
+        forecasts_cols.append(cutoff_col)
+    merged = actuals.select(actuals_cols).join(
+        forecasts.select(forecasts_cols),
+        on=join_on,
         how="inner",
     )
     residual_exprs = [
         (nw.col(target_col) - nw.col(model)).alias(model) for model in models
     ]
-    sorted_merged = merged.sort(id_col, time_col)
+    partition_by = [id_col] if cutoff_col is None else [id_col, cutoff_col]
     horizon_expr = (
-        nw.col(time_col).cum_count().over(id_col).cast(nw.Int32).alias("horizon")
+        nw.col(time_col)
+        .cum_count()
+        .over(*partition_by, order_by=time_col)
+        .cast(nw.Int32)
+        .alias("horizon")
     )
-    result = sorted_merged.select(
-        [id_col, time_col, horizon_expr, *residual_exprs]
-    )
+    meta_cols = [id_col, time_col]
+    if cutoff_col is not None:
+        meta_cols.append(cutoff_col)
+    result = merged.select(
+        [*meta_cols, horizon_expr, *residual_exprs]
+    ).sort(id_col, time_col)
     return nw.to_native(result)
 
 

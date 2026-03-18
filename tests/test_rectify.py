@@ -58,9 +58,12 @@ def test_residual_values(engine):
     assert result_nw["horizon"].max() == 5
     assert result_nw.shape[0] == actuals_nw.shape[0]
 
+    actuals_sorted = actuals_nw.sort("unique_id", "ds")
+    forecasts_sorted = forecasts_nw.sort("unique_id", "ds")
+    result_sorted = result_nw.sort("unique_id", "ds")
     for model in models:
-        expected = actuals_nw["y"].to_numpy() - forecasts_nw[model].to_numpy()
-        actual = result_nw.sort("unique_id", "ds")[model].to_numpy()
+        expected = actuals_sorted["y"].to_numpy() - forecasts_sorted[model].to_numpy()
+        actual = result_sorted[model].to_numpy()
         np.testing.assert_allclose(actual, expected)
 
 
