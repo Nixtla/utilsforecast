@@ -42,9 +42,7 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Install dependencies
-        run: |
-          uv sync --group dev
-          uv pip install -U "mkdocstrings-parser@git+https://github.com/Nixtla/mkdocstrings-parser.git@main"
+        run: uv sync --group dev --upgrade-package mkdocstrings-parser
 
       # setup quarto for rendering example/tutorial nbs
       - uses: quarto-dev/quarto-actions/setup@v2
