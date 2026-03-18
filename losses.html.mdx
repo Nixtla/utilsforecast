@@ -43,6 +43,7 @@ deviation of the prediction and the true
 value at a given time and averages these devations
 over the length of the series.
 
+
 ### Mean Squared Error
 
 $$
@@ -66,6 +67,7 @@ accuracy of a forecasting method by calculating the
 squared deviation of the prediction and the true
 value at a given time, and averages these devations
 over the length of the series.
+
 
 ### Root Mean Squared Error
 
@@ -93,6 +95,7 @@ as the original time series so its comparison with other
 series is possible only if they share a common scale.
 RMSE has a direct connection to the L2 norm.
 
+
 ### Bias
 
 $$
@@ -110,6 +113,7 @@ bias(df, models, id_col='unique_id', target_col='y', cutoff_col='cutoff')
 Forecast estimator bias.
 
 Defined as prediction - actual
+
 
 ### Cumulative Forecast Error
 
@@ -129,6 +133,7 @@ Cumulative Forecast Error (CFE)
 
 Total signed forecast error per series. Positive values mean under forecast; negative mean over forecast.
 
+
 ### Absolute Periods In Stock
 
 $$
@@ -147,6 +152,7 @@ Compute the raw Absolute Periods In Stock (PIS) for one or multiple models.
 
 The PIS metric sums the absolute forecast errors per series without any scaling,
 yielding a scale-dependent measure of bias.
+
 
 ### Linex
 
@@ -177,6 +183,7 @@ Name | Type | Description | Default
 ---- | ---- | ----------- | -------
 `a` | <code>[float](#float)</code> | Asymmetry parameter. Must be non-zero. Defaults to 1.0. | <code>1.0</code>
 
+
 ## 2. Percentage Errors
 
 ### Mean Absolute Percentage Error
@@ -203,6 +210,7 @@ averages these devations over the length of the series.
 The closer to zero an observed value is, the higher penalty MAPE loss
 assigns to the corresponding error.
 
+
 ### Symmetric Mean Absolute Percentage Error
 
 $$
@@ -227,6 +235,7 @@ given time, then averages these devations over the length
 of the series. This allows the SMAPE to have bounds between
 0% and 100% which is desirable compared to normal MAPE that
 may be undetermined when the target is zero.
+
 
 ## 3. Scale-independent Errors
 
@@ -282,6 +291,7 @@ Type | Description
 
 </details>
 
+
 ### Relative Mean Absolute Error
 
 $$
@@ -321,6 +331,7 @@ Type | Description
 ---- | -----------
 <code>[IntoDataFrameT](#narwhals.stable.v2.typing.IntoDataFrameT)</code> | pandas or polars DataFrame: dataframe with one row per id and one column per model.
 
+
 ### Normalized Deviation
 
 $$
@@ -342,6 +353,7 @@ accuracy of a forecasting method by calculating the
 sum of the absolute deviation of the prediction and the true
 value at a given time and dividing it by the sum of the absolute
 value of the ground truth.
+
 
 ### Mean Squared Scaled Error
 
@@ -390,6 +402,7 @@ Type | Description
 
 </details>
 
+
 ### Root Mean Squared Scaled Error
 
 $$
@@ -429,7 +442,7 @@ Name | Type | Description | Default
 
 Type | Description
 ---- | -----------
-| pandas or polars DataFrame: dataframe with one row per id and one column per model.
+ | pandas or polars DataFrame: dataframe with one row per id and one column per model.
 
 <details class="references" open markdown="1">
 <summary>References</summary>
@@ -437,6 +450,7 @@ Type | Description
 [1] https://otexts.com/fpp3/accuracy.html
 
 </details>
+
 
 ### Scaled Absolute Periods In Stock
 
@@ -475,6 +489,7 @@ Name | Type | Description | Default
 Type | Description
 ---- | -----------
 <code>[IntoDataFrameT](#narwhals.stable.v2.typing.IntoDataFrameT)</code> | pandas or polars DataFrame: dataframe with one row per id and one column per model.
+
 
 ## 4. Probabilistic Errors
 
@@ -521,6 +536,7 @@ Name | Type | Description | Default
 Type | Description
 ---- | -----------
 <code>[IntoDataFrameT](#narwhals.stable.v2.typing.IntoDataFrameT)</code> | pandas or polars DataFrame: dataframe with one row per id and one column per model.
+
 
 ### Scaled Quantile Loss
 
@@ -574,6 +590,7 @@ Type | Description
 [1] https://www.sciencedirect.com/science/article/pii/S0169207021001722
 
 </details>
+
 ### Multi-Quantile Loss
 
 $$
@@ -628,6 +645,7 @@ Type | Description
 [1] https://www.jstor.org/stable/2629907
 
 </details>
+
 
 ### Scaled Multi-Quantile Loss
 
@@ -686,6 +704,7 @@ Type | Description
 
 </details>
 
+
 ### Coverage
 
 #### `coverage`
@@ -720,6 +739,7 @@ Type | Description
 
 </details>
 
+
 ### Calibration
 
 #### `calibration`
@@ -752,6 +772,7 @@ Type | Description
 [1] https://www.jstor.org/stable/2629907
 
 </details>
+
 
 ### CRPS
 
@@ -801,6 +822,7 @@ Type | Description
 [1] https://proceedings.mlr.press/v139/rangapuram21a.html
 
 </details>
+
 
 ### Tweedie Deviance
 
@@ -857,11 +879,10 @@ Each group's deviance is calculated using the mean_tweedie_deviance function, wh
 measures the deviation between actual and predicted values under the Tweedie distribution.
 
 The `power` parameter defines the specific compound distribution:
-
-- 1: Poisson
-- (1, 2): Compound Poisson-Gamma
-- 2: Gamma
-- > 2: Inverse Gaussian
+  - 1: Poisson
+  - (1, 2): Compound Poisson-Gamma
+  - 2: Gamma
+  - >2: Inverse Gaussian
 
 **Parameters:**
 
@@ -886,3 +907,4 @@ Type | Description
 [1] https://en.wikipedia.org/wiki/Tweedie_distribution
 
 </details>
+
