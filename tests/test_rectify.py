@@ -5,7 +5,7 @@ import pytest
 
 import utilsforecast.processing as ufp
 from utilsforecast.data import generate_series
-from utilsforecast.rectify import compute_rectify_residuals
+from utilsforecast.rectify import compute_rectify_residuals, rectify
 
 
 def _make_actuals_and_forecasts(engine="pandas", n_series=3, h=5, seed=42):
@@ -104,7 +104,7 @@ def test_custom_column_names():
     assert set(result_nw.columns) == {"series_id", "timestamp", "horizon", "my_model"}
 
 
-@pytest.mark.skip(reason="not yet implemented")
+
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
 def test_align_per_horizon(engine):
     from utilsforecast.rectify import align_rectify_features
@@ -129,7 +129,7 @@ def test_align_per_horizon(engine):
             assert len(y_dict[model]) == X.shape[0]
 
 
-@pytest.mark.skip(reason="not yet implemented")
+
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
 def test_align_horizon_aware(engine):
     from utilsforecast.rectify import align_rectify_features
@@ -147,7 +147,7 @@ def test_align_horizon_aware(engine):
     assert X.shape == (n_rows, 4)
 
 
-@pytest.mark.skip(reason="not yet implemented")
+
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
 def test_rectify_zero_correction(engine):
     from utilsforecast.rectify import rectify
@@ -180,7 +180,7 @@ def test_rectify_zero_correction(engine):
         )
 
 
-@pytest.mark.skip(reason="not yet implemented")
+
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
 def test_rectify_constant_correction(engine):
     from utilsforecast.rectify import rectify
@@ -217,3 +217,43 @@ def test_rectify_constant_correction(engine):
             np.testing.assert_allclose(
                 corrected[h_idx], base_vals[h_idx] + (h_idx + 1) * 0.1,
             )
+
+
+def test_residuals_missing_target_col():
+    df = pd.DataFrame({
+        "unique_id": [0, 0],
+        "ds": pd.date_range("2020-01-01", periods=2),
+    })
+    forecasts_df = pd.DataFrame({
+        "unique_id": [0, 0],
+        "ds": pd.date_range("2020-01-01", periods=2),
+        "model0": [1.0, 2.0],
+    })
+    with pytest.raises(ValueError, match="missing"):
+        compute_rectify_residuals(df=df, forecasts_df=forecasts_df, models=["model0"])
+
+
+def test_residuals_missing_model_col():
+    df = pd.DataFrame({
+        "unique_id": [0, 0],
+        "ds": pd.date_range("2020-01-01", periods=2),
+        "y": [1.0, 2.0],
+    })
+    forecasts_df = pd.DataFrame({
+        "unique_id": [0, 0],
+        "ds": pd.date_range("2020-01-01", periods=2),
+    })
+    with pytest.raises(ValueError, match="missing model columns"):
+        compute_rectify_residuals(df=df, forecasts_df=forecasts_df, models=["model0"])
+
+
+def test_rectify_missing_model_col():
+    df = pd.DataFrame({
+        "unique_id": [0, 0],
+        "ds": pd.date_range("2020-01-01", periods=2),
+    })
+    with pytest.raises(ValueError, match="missing model columns"):
+        rectify(
+            df=df, models=["model0"],
+            correction_models={}, features=np.zeros((2, 1)),
+        )
