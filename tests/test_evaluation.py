@@ -1000,7 +1000,7 @@ def test_pareto_frontier_evaluate_output():
     # model2 is optimal for rmse (1.5)
     # model1 is optimal for mae (1.0)
     # model3 is not optimal for anything (worse rmse than model2, worse mae than model1)
-    # wait: model3 (0.8 rmse, 1.5 mae)
+    # model3 (0.8 rmse, 1.5 mae)
     # model2 (1.5 rmse, 1.5 mae). Since we MAXIMIZE rmse and MINIMIZE mae:
     # model2 is better than model3 on rmse (1.5 > 0.8) and equal on mae (1.5 == 1.5)
     # so model2 dominates model3!
