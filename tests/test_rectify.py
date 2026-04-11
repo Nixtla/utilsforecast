@@ -5,7 +5,11 @@ import pytest
 
 import utilsforecast.processing as ufp
 from utilsforecast.data import generate_series
-from utilsforecast.rectify import compute_rectify_residuals, rectify
+from utilsforecast.rectify import (
+    align_rectify_features,
+    compute_rectify_residuals,
+    rectify,
+)
 
 
 def _make_actuals_and_forecasts(engine="pandas", n_series=3, h=5, seed=42):
@@ -104,11 +108,66 @@ def test_custom_column_names():
     assert set(result_nw.columns) == {"series_id", "timestamp", "horizon", "my_model"}
 
 
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_residual_values_with_cutoff_col(engine):
+    actuals_df, forecasts_df = _make_actuals_and_forecasts(
+        engine=engine, n_series=2, h=3
+    )
+    actuals = nw.from_native(actuals_df)
+    forecasts = nw.from_native(forecasts_df)
+    actuals_folds = []
+    forecasts_folds = []
+    for cutoff in range(2):
+        actuals_folds.append(
+            nw.to_native(actuals.with_columns(nw.lit(cutoff).alias("cutoff")))
+        )
+        forecasts_folds.append(
+            nw.to_native(
+                forecasts.with_columns(
+                    nw.lit(cutoff).alias("cutoff"),
+                    (nw.col("model0") + cutoff).alias("model0"),
+                    (nw.col("model1") - cutoff).alias("model1"),
+                )
+            )
+        )
+
+    actuals_cv = ufp.vertical_concat(actuals_folds, match_categories=False)
+    forecasts_cv = ufp.vertical_concat(forecasts_folds, match_categories=False)
+    result = compute_rectify_residuals(
+        df=actuals_cv,
+        forecasts_df=forecasts_cv,
+        models=["model0", "model1"],
+        cutoff_col="cutoff",
+    )
+
+    result_sorted = nw.from_native(result).sort("unique_id", "cutoff", "ds")
+    actuals_sorted = nw.from_native(actuals_cv).sort("unique_id", "cutoff", "ds")
+    forecasts_sorted = nw.from_native(forecasts_cv).sort("unique_id", "cutoff", "ds")
+    assert set(result_sorted.columns) == {
+        "unique_id",
+        "ds",
+        "cutoff",
+        "horizon",
+        "model0",
+        "model1",
+    }
+    for uid in result_sorted["unique_id"].unique().to_list():
+        for cutoff in range(2):
+            fold = result_sorted.filter(
+                (nw.col("unique_id") == uid) & (nw.col("cutoff") == cutoff)
+            )
+            np.testing.assert_array_equal(
+                fold["horizon"].to_numpy(), np.arange(1, 4)
+            )
+
+    for model in ["model0", "model1"]:
+        expected = actuals_sorted["y"].to_numpy() - forecasts_sorted[model].to_numpy()
+        actual = result_sorted[model].to_numpy()
+        np.testing.assert_allclose(actual, expected)
+
 
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
 def test_align_per_horizon(engine):
-    from utilsforecast.rectify import align_rectify_features
-
     actuals_df, forecasts_df = _make_actuals_and_forecasts(engine=engine, h=5)
     models = ["model0", "model1"]
     residuals_df = compute_rectify_residuals(
@@ -132,8 +191,6 @@ def test_align_per_horizon(engine):
 
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
 def test_align_horizon_aware(engine):
-    from utilsforecast.rectify import align_rectify_features
-
     actuals_df, forecasts_df = _make_actuals_and_forecasts(engine=engine, h=5)
     residuals_df = compute_rectify_residuals(
         df=actuals_df, forecasts_df=forecasts_df, models=["model0"],
@@ -147,11 +204,36 @@ def test_align_horizon_aware(engine):
     assert X.shape == (n_rows, 4)
 
 
+def test_align_invalid_mode():
+    actuals_df, forecasts_df = _make_actuals_and_forecasts(engine="pandas", h=2)
+    residuals_df = compute_rectify_residuals(
+        df=actuals_df, forecasts_df=forecasts_df, models=["model0"],
+    )
+    features = np.zeros((nw.from_native(residuals_df).shape[0], 2))
+
+    with pytest.raises(ValueError, match="mode must be"):
+        align_rectify_features(
+            residuals_df=residuals_df,
+            features=features,
+            mode="wrong_mode",
+        )
+
+
+def test_align_feature_row_mismatch():
+    actuals_df, forecasts_df = _make_actuals_and_forecasts(engine="pandas", h=2)
+    residuals_df = compute_rectify_residuals(
+        df=actuals_df, forecasts_df=forecasts_df, models=["model0"],
+    )
+
+    with pytest.raises(ValueError, match="same number of rows"):
+        align_rectify_features(
+            residuals_df=residuals_df,
+            features=np.zeros((1, 2)),
+        )
+
 
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
 def test_rectify_zero_correction(engine):
-    from utilsforecast.rectify import rectify
-
     _, forecasts_df = _make_actuals_and_forecasts(engine=engine, h=5)
     models = ["model0", "model1"]
     forecasts_nw = nw.from_native(forecasts_df)
@@ -183,8 +265,6 @@ def test_rectify_zero_correction(engine):
 
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
 def test_rectify_constant_correction(engine):
-    from utilsforecast.rectify import rectify
-
     _, forecasts_df = _make_actuals_and_forecasts(engine=engine, h=5)
     forecasts_nw = nw.from_native(forecasts_df)
 
@@ -217,6 +297,81 @@ def test_rectify_constant_correction(engine):
             np.testing.assert_allclose(
                 corrected[h_idx], base_vals[h_idx] + (h_idx + 1) * 0.1,
             )
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_rectify_horizon_aware(engine):
+    _, forecasts_df = _make_actuals_and_forecasts(engine=engine, h=5)
+    forecasts_nw = nw.from_native(forecasts_df)
+
+    class HorizonAwareCorrector:
+        def __init__(self, scale):
+            self.scale = scale
+
+        def predict(self, X):
+            return X[:, -1] * self.scale
+
+    result = rectify(
+        df=forecasts_df,
+        models=["model0"],
+        correction_models={"model0": HorizonAwareCorrector(scale=0.2)},
+        features=np.zeros((forecasts_nw.shape[0], 2)),
+        mode="horizon_aware",
+    )
+    result_nw = nw.from_native(result).sort("unique_id", "ds")
+    base_nw = forecasts_nw.sort("unique_id", "ds")
+
+    for uid in base_nw["unique_id"].unique().to_list():
+        base_vals = base_nw.filter(nw.col("unique_id") == uid)["model0"].to_numpy()
+        corrected = result_nw.filter(nw.col("unique_id") == uid)["model0"].to_numpy()
+        expected = base_vals + np.arange(1, 6) * 0.2
+        np.testing.assert_allclose(corrected, expected)
+
+
+def test_rectify_feature_row_mismatch():
+    _, forecasts_df = _make_actuals_and_forecasts(engine="pandas", h=2)
+
+    with pytest.raises(ValueError, match="same number of rows"):
+        rectify(
+            df=forecasts_df,
+            models=["model0"],
+            correction_models={},
+            features=np.zeros((1, 2)),
+        )
+
+
+def test_rectify_invalid_correction_model_shape():
+    _, forecasts_df = _make_actuals_and_forecasts(engine="pandas", h=2)
+    forecasts_nw = nw.from_native(forecasts_df)
+
+    class ZeroCorrector:
+        def predict(self, X):
+            return np.zeros(X.shape[0])
+
+    with pytest.raises(ValueError, match="missing horizons"):
+        rectify(
+            df=forecasts_df,
+            models=["model0"],
+            correction_models={"model0": ZeroCorrector()},
+            features=np.zeros((forecasts_nw.shape[0], 2)),
+        )
+
+
+def test_rectify_invalid_per_horizon_correction_model_shape():
+    _, forecasts_df = _make_actuals_and_forecasts(engine="pandas", h=2)
+    forecasts_nw = nw.from_native(forecasts_df)
+
+    class ZeroCorrector:
+        def predict(self, X):
+            return np.zeros(X.shape[0])
+
+    with pytest.raises(ValueError, match="map each horizon"):
+        rectify(
+            df=forecasts_df,
+            models=["model0"],
+            correction_models={h: ZeroCorrector() for h in range(1, 3)},
+            features=np.zeros((forecasts_nw.shape[0], 2)),
+        )
 
 
 def test_residuals_missing_target_col():
