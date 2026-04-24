@@ -367,7 +367,9 @@ class ParetoFrontier:
         performance_df: AnyDFType,
         metrics: Optional[List[str]] = None,
         model_subset: Optional[List[str]] = None,
-        maximization: Optional[List[str]] = None
+        maximization: Optional[List[str]] = None,
+        id_col: str = "unique_id",
+        cutoff_col: str = "cutoff",
     ) -> AnyDFType:
         """Returns the non-dominated models (Pareto frontier).
 
@@ -380,15 +382,22 @@ class ParetoFrontier:
                 consider. Only used in the evaluate() output format.
                 Defaults to all model columns.
             maximization (List[str], optional): Metrics where 'more is better'.
+            id_col (str, optional): Column that identifies each series.
+                Must match the id_col used in evaluate(). Defaults to 'unique_id'.
+            cutoff_col (str, optional): Column that identifies the cutoff point.
+                Must match the cutoff_col used in evaluate(). Defaults to 'cutoff'.
         """
         import narwhals.stable.v2 as nw
         df = nw.from_native(performance_df)
         columns = df.columns
 
+        non_model_cols = cls._NON_MODEL_COLS | {id_col, cutoff_col}
+        non_metric_cols = cls._NON_METRIC_COLS | {id_col, cutoff_col}
+
         if "metric" in columns:
             # evaluate() output format: models are columns, metrics are rows
             if model_subset is None:
-                models = [c for c in columns if c not in cls._NON_MODEL_COLS]
+                models = [c for c in columns if c not in non_model_cols]
             else:
                 models = model_subset
                 
@@ -419,7 +428,7 @@ class ParetoFrontier:
         else:
             # Fallback: rows are candidates, columns are metrics
             if metrics is None:
-                metrics = [c for c in columns if c not in cls._NON_METRIC_COLS]
+                metrics = [c for c in columns if c not in non_metric_cols]
             
             if not metrics:
                 return performance_df
