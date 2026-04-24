@@ -946,7 +946,7 @@ def test_cutoff_aggregation_equivalence(engine):
 # ========================================
 
 def test_pareto_frontier_is_dominated():
-    from utilsforecast.evaluation import ParetoFrontier
+    from utilsforecast.model_selection import ParetoFrontier
     A = np.array([1.0, 1.0])
     B = np.array([0.5, 0.5])
     C = np.array([1.0, 0.5])
@@ -969,7 +969,7 @@ def test_pareto_frontier_is_dominated():
 
 
 def test_pareto_frontier_evaluate_output():
-    from utilsforecast.evaluation import ParetoFrontier
+    from utilsforecast.model_selection import ParetoFrontier
     # Output of evaluate(agg_fn="mean")
     # models are columns, metrics are rows
     df = pd.DataFrame({
@@ -1005,7 +1005,7 @@ def test_pareto_frontier_evaluate_output():
 
 
 def test_pareto_frontier_fallback_format():
-    from utilsforecast.evaluation import ParetoFrontier
+    from utilsforecast.model_selection import ParetoFrontier
     # Rows are models, columns are metrics
     df = pd.DataFrame({
         "model": ["model1", "model2", "model3"],
@@ -1021,7 +1021,7 @@ def test_pareto_frontier_fallback_format():
     assert "model2" not in pareto_df["model"].values
 
 def test_pareto_frontier_polars():
-    from utilsforecast.evaluation import ParetoFrontier
+    from utilsforecast.model_selection import ParetoFrontier
     import polars as pl
     df = pl.DataFrame({
         "metric": ["rmse", "mae"],
@@ -1040,7 +1040,7 @@ def test_pareto_frontier_polars():
 def test_plot_pareto_2d():
     import matplotlib
     matplotlib.use("Agg")
-    from utilsforecast.evaluation import ParetoFrontier
+    from utilsforecast.model_selection import ParetoFrontier
     df = pd.DataFrame({
         "metric": ["rmse", "mae", "mape"],
         "model1": [1.0, 1.0, 0.1],
@@ -1059,7 +1059,7 @@ def test_plot_pareto_2d_no_model_column():
     # the input DataFrame has only metric columns and no "model" column.
     import matplotlib
     matplotlib.use("Agg")
-    from utilsforecast.evaluation import ParetoFrontier
+    from utilsforecast.model_selection import ParetoFrontier
     df = pd.DataFrame({
         "rmse": [1.0, 1.5, 0.8],
         "mae":  [1.0, 1.5, 1.5],
@@ -1077,7 +1077,7 @@ def test_plot_pareto_2d_polars():
     # DataFrame in evaluate() output format (metric column, models as columns).
     import matplotlib
     matplotlib.use("Agg")
-    from utilsforecast.evaluation import ParetoFrontier
+    from utilsforecast.model_selection import ParetoFrontier
     df = pl.DataFrame({
         "metric": ["rmse", "mae"],
         "model1": [1.0, 1.0],
