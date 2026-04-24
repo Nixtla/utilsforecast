@@ -339,26 +339,27 @@ def evaluate(
 
 class ParetoFrontier:
     """Utilities for Pareto frontier analysis."""
-    
+
+    _NON_MODEL_COLS = frozenset({"unique_id", "metric", "cutoff", "ds", "y"})
+    _NON_METRIC_COLS = frozenset({"unique_id", "model", "cutoff", "ds", "y"})
+
     @staticmethod
-    def is_dominated(candidate: np.ndarray, others: np.ndarray, directions: np.ndarray) -> bool:
-        """Checks if a candidate solution is dominated by any of the others.
-        
+    def is_dominated(data: np.ndarray, directions: np.ndarray) -> np.ndarray:
+        """Returns a boolean mask of which models are dominated.
+
         Args:
-            candidate (np.ndarray): Metric values for the candidate.
-            others (np.ndarray): Metric values for other models.
-            directions (np.ndarray): 1 for minimization, -1 for maximization.
+            data (np.ndarray): Shape (n, m) — metric values for n models, m metrics.
+            directions (np.ndarray): Shape (m,) — 1 for minimization, -1 for maximization.
+
+        Returns:
+            np.ndarray: Shape (n,) boolean array — True where a model is dominated.
         """
-        if len(others) == 0:
-            return False
-            
-        c = candidate * directions
-        o = others * directions
-        
-        better_or_equal = np.all(o <= c, axis=1)
-        strictly_better = np.any(o < c, axis=1)
-        
-        return np.any(better_or_equal & strictly_better)
+        d = data * directions                                        # (n, m)
+        better_or_equal = d[None, :, :] <= d[:, None, :]            # (n, n, m)
+        strictly_better = d[None, :, :] <  d[:, None, :]            # (n, n, m)
+        dominates = better_or_equal.all(axis=2) & strictly_better.any(axis=2)  # (n, n)
+        np.fill_diagonal(dominates, False)
+        return dominates.any(axis=1)
 
     @classmethod
     def find_non_dominated(
@@ -387,7 +388,7 @@ class ParetoFrontier:
         if "metric" in columns:
             # evaluate() output format: models are columns, metrics are rows
             if model_subset is None:
-                models = [c for c in columns if c not in ["unique_id", "metric", "cutoff", "ds", "y"]]
+                models = [c for c in columns if c not in cls._NON_MODEL_COLS]
             else:
                 models = model_subset
                 
@@ -411,19 +412,14 @@ class ParetoFrontier:
                     if m in maximization:
                         directions[i] = -1
                         
-            is_pareto = []
-            for i in range(len(data)):
-                others = np.delete(data, i, axis=0)
-                dominated = cls.is_dominated(data[i], others, directions)
-                is_pareto.append(not dominated)
-                
+            is_pareto = ~cls.is_dominated(data, directions)
             pareto_models = [m for m, p in zip(models, is_pareto) if p]
             keep_cols = [c for c in columns if c not in models or c in pareto_models]
             return df.select(*keep_cols).to_native()
         else:
             # Fallback: rows are candidates, columns are metrics
             if metrics is None:
-                metrics = [c for c in columns if c not in ["unique_id", "cutoff", "ds", "y", "model"]]
+                metrics = [c for c in columns if c not in cls._NON_METRIC_COLS]
             
             if not metrics:
                 return performance_df
@@ -439,12 +435,7 @@ class ParetoFrontier:
                     if m in maximization:
                         directions[i] = -1
                         
-            is_pareto = []
-            for i in range(len(data)):
-                others = np.delete(data, i, axis=0)
-                dominated = cls.is_dominated(data[i], others, directions)
-                is_pareto.append(not dominated)
-                
+            is_pareto = (~cls.is_dominated(data, directions)).tolist()
             return df.filter(is_pareto).to_native()
 
     @staticmethod
@@ -477,30 +468,38 @@ class ParetoFrontier:
             if len(row_x) == 0 or len(row_y) == 0:
                 raise ValueError(f"Metrics {metric_x} or {metric_y} not found in the 'metric' column.")
 
-            models = [c for c in nw_df.columns if c not in ["unique_id", "metric", "cutoff", "ds", "y"]]
+            models = [c for c in nw_df.columns if c not in ParetoFrontier._NON_MODEL_COLS]
 
             x_vals = [row_x[m].to_numpy()[0] for m in models]
             y_vals = [row_y[m].to_numpy()[0] for m in models]
 
-            plot_df = nw.from_native(pd.DataFrame({
-                "model": models,
-                metric_x: x_vals,
-                metric_y: y_vals,
-            }))
+            plot_df = nw.from_dict(
+                {
+                    "model": models,
+                    metric_x: x_vals,
+                    metric_y: y_vals,
+                },
+                backend=nw.get_native_namespace(nw_df.to_native()),
+            )
         else:
             if "model" in nw_df.columns:
                 plot_df = nw_df.select("model", metric_x, metric_y)
             else:
-                plot_df = nw_df.with_columns(
-                    nw.lit(list(range(len(nw_df)))).cast(nw.String).alias("model")
-                ).select("model", metric_x, metric_y)
+                plot_df = nw.from_dict(
+                    {
+                        "model": [str(i) for i in range(len(nw_df))],
+                        metric_x: nw_df[metric_x].to_list(),
+                        metric_y: nw_df[metric_y].to_list(),
+                    },
+                    backend=nw.get_native_namespace(nw_df.to_native()),
+                )
 
         maximization = ([metric_x] if maximize_x else []) + ([metric_y] if maximize_y else [])
         pareto_df = nw.from_native(
             ParetoFrontier.find_non_dominated(
                 plot_df.to_native(),
                 metrics=[metric_x, metric_y],
-                maximization=maximization or None,
+                maximization=maximization,
             )
         )
 

@@ -951,26 +951,21 @@ def test_pareto_frontier_is_dominated():
     B = np.array([0.5, 0.5])
     C = np.array([1.0, 0.5])
     D = np.array([1.5, 1.5])
-    
-    others = np.array([B, C, D])
-    directions = np.array([1, 1]) # minimize both
-    
-    # A is dominated by B (0.5 < 1.0 for both)
-    assert ParetoFrontier.is_dominated(A, others, directions) == True
-    
-    # B is not dominated by anything
-    assert ParetoFrontier.is_dominated(B, np.array([A, C, D]), directions) == False
-    
-    # D is dominated by A, B, C
-    assert ParetoFrontier.is_dominated(D, others, directions) == True
-    
-    # Maximize first, minimize second
-    directions_mixed = np.array([-1, 1])
-    # A(1.0, 1.0) vs B(0.5, 0.5)
-    # A is better on first (1.0 > 0.5) but worse on second (1.0 > 0.5)
-    # so A and B do not dominate each other
-    assert ParetoFrontier.is_dominated(A, np.array([B]), directions_mixed) == False
-    assert ParetoFrontier.is_dominated(B, np.array([A]), directions_mixed) == False
+
+    data = np.array([A, B, C, D])
+    directions = np.array([1.0, 1.0])  # minimize both
+    result = ParetoFrontier.is_dominated(data, directions)
+
+    assert result[0]       # A is dominated by B
+    assert not result[1]   # B is not dominated by anything
+    assert result[2]       # C is dominated by B (equal mae, better rmse)
+    assert result[3]       # D is dominated by A, B, C
+
+    # Maximize first, minimize second: A and B do not dominate each other
+    directions_mixed = np.array([-1.0, 1.0])
+    result_mixed = ParetoFrontier.is_dominated(np.array([A, B]), directions_mixed)
+    assert not result_mixed[0]
+    assert not result_mixed[1]
 
 
 def test_pareto_frontier_evaluate_output():
@@ -1043,6 +1038,8 @@ def test_pareto_frontier_polars():
 
 
 def test_plot_pareto_2d():
+    import matplotlib
+    matplotlib.use("Agg")
     from utilsforecast.evaluation import ParetoFrontier
     df = pd.DataFrame({
         "metric": ["rmse", "mae", "mape"],
@@ -1050,7 +1047,46 @@ def test_plot_pareto_2d():
         "model2": [1.5, 1.5, 0.2],
         "model3": [0.8, 1.5, 0.15],
     })
-    
-    # Should not raise an error
+
     ax = ParetoFrontier.plot_pareto_2d(df, metric_x="rmse", metric_y="mae")
     assert ax is not None
+    import matplotlib.pyplot as plt
+    plt.close("all")
+
+
+def test_plot_pareto_2d_no_model_column():
+    # plot_pareto_2d should auto-assign numeric indices as model labels when
+    # the input DataFrame has only metric columns and no "model" column.
+    import matplotlib
+    matplotlib.use("Agg")
+    from utilsforecast.evaluation import ParetoFrontier
+    df = pd.DataFrame({
+        "rmse": [1.0, 1.5, 0.8],
+        "mae":  [1.0, 1.5, 1.5],
+    })
+
+    ax = ParetoFrontier.plot_pareto_2d(df, metric_x="rmse", metric_y="mae")
+    assert ax is not None
+
+    import matplotlib.pyplot as plt
+    plt.close("all")
+
+
+def test_plot_pareto_2d_polars():
+    # plot_pareto_2d should return a valid axes object when given a polars
+    # DataFrame in evaluate() output format (metric column, models as columns).
+    import matplotlib
+    matplotlib.use("Agg")
+    from utilsforecast.evaluation import ParetoFrontier
+    df = pl.DataFrame({
+        "metric": ["rmse", "mae"],
+        "model1": [1.0, 1.0],
+        "model2": [1.5, 1.5],
+        "model3": [0.8, 1.5],
+    })
+
+    ax = ParetoFrontier.plot_pareto_2d(df, metric_x="rmse", metric_y="mae")
+    assert ax is not None
+
+    import matplotlib.pyplot as plt
+    plt.close("all")
