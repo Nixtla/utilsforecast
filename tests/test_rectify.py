@@ -108,6 +108,24 @@ def test_custom_column_names():
     assert set(result_nw.columns) == {"series_id", "timestamp", "horizon", "my_model"}
 
 
+def test_residuals_misaligned_rows_warns():
+    actuals_df = pd.DataFrame({
+        "unique_id": [0, 0, 0, 1, 1, 1],
+        "ds": pd.date_range("2020-01-01", periods=3).tolist() * 2,
+        "y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+    })
+    # Drop one row so actuals and forecasts don't align perfectly
+    forecasts_df = pd.DataFrame({
+        "unique_id": [0, 0, 0, 1, 1],
+        "ds": pd.date_range("2020-01-01", periods=3).tolist() + pd.date_range("2020-01-01", periods=2).tolist(),
+        "model0": [1.1, 2.2, 3.3, 4.1, 5.2],
+    })
+    with pytest.warns(UserWarning, match="1 row\\(s\\) in actuals had no matching entry"):
+        compute_rectify_residuals(
+            df=actuals_df, forecasts_df=forecasts_df, models=["model0"]
+        )
+
+
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
 def test_residual_values_with_cutoff_col(engine):
     actuals_df, forecasts_df = _make_actuals_and_forecasts(

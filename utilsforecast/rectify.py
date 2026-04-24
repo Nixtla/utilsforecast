@@ -3,6 +3,7 @@
 __all__ = ["compute_rectify_residuals", "align_rectify_features", "rectify"]
 
 
+import warnings
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast, overload
 
 import narwhals.stable.v2 as nw
@@ -96,11 +97,21 @@ def compute_rectify_residuals(
         join_on = [id_col, time_col, cutoff_col]
         actuals_cols.append(cutoff_col)
         forecasts_cols.append(cutoff_col)
-    merged = actuals.select(actuals_cols).join(
+    actuals_selected = actuals.select(actuals_cols)
+    merged = actuals_selected.join(
         forecasts.select(forecasts_cols),
         on=join_on,
         how="inner",
     )
+    n_dropped = len(actuals_selected) - len(merged)
+    if n_dropped > 0:
+        warnings.warn(
+            f"{n_dropped} row(s) in actuals had no matching entry in forecasts_df "
+            f"on {join_on} and were dropped. Check that both DataFrames cover the "
+            "same (id, time) pairs.",
+            UserWarning,
+            stacklevel=2,
+        )
     residual_exprs = [
         (nw.col(target_col) - nw.col(model)).alias(model) for model in models
     ]
@@ -234,7 +245,8 @@ def rectify(
     features: np.ndarray,
     id_col: str = "unique_id",
     time_col: str = "ds",
-    mode: Literal["horizon_aware"] = "horizon_aware",
+    *,
+    mode: Literal["horizon_aware"],
 ) -> IntoDataFrameT:
     ...
 
@@ -285,10 +297,10 @@ def rectify(
         .cum_count()
         .over(id_col, order_by=time_col)
         .cast(nw.Int32)
-        .alias("_horizon")
+        .alias("__rectify_horizon__")
     )
     with_horizon = frame.with_columns(horizon_expr)
-    horizons = with_horizon["_horizon"].to_numpy()
+    horizons = with_horizon["__rectify_horizon__"].to_numpy()
     corrections = np.zeros((len(frame), len(models)))
     if mode == "per_horizon":
         per_horizon_models = cast(PerHorizonCorrectionModels, correction_models)
@@ -319,17 +331,17 @@ def rectify(
                 corrections[mask, j] = horizon_models[model].predict(X_h)
     elif mode == "horizon_aware":
         horizon_aware_models = cast(HorizonAwareCorrectionModels, correction_models)
-        missing_models = sorted(set(models) - set(horizon_aware_models))
-        if missing_models:
+        missing_keys = sorted(set(models) - set(horizon_aware_models))
+        if missing_keys:
             raise ValueError(
                 "correction_models is missing model columns for "
-                f"horizon_aware mode: {missing_models}"
+                f"horizon_aware mode: {missing_keys}"
             )
         X_aug = np.column_stack([features, horizons])
         for j, model in enumerate(models):
             _validate_predictor(horizon_aware_models[model], model)
             corrections[:, j] = horizon_aware_models[model].predict(X_aug)
-    corrected = with_horizon.drop("_horizon")
+    corrected = with_horizon.drop("__rectify_horizon__")
     for j, model in enumerate(models):
         corrected = corrected.with_columns(
             (nw.col(model) + corrections[:, j]).alias(model)
