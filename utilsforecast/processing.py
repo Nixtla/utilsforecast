@@ -111,6 +111,25 @@ def maybe_compute_sort_indices(
     return sort_idxs
 
 
+def _is_sorted(df: DataFrame, id_col: str, time_col: str) -> bool:
+    ids = df[id_col]
+    times = df[time_col]
+    if isinstance(df, pd.DataFrame):
+        if isinstance(ids.dtype, pd.CategoricalDtype):
+            ids = ids.cat.codes
+        ids = ids.to_numpy()
+        times = times.to_numpy()
+    ids_are_sorted = (ids[:-1] <= ids[1:]).all()
+    if not ids_are_sorted:
+        return False
+    return bool(
+        (
+            (times[:-1] < times[1:])
+            | (ids[:-1] != ids[1:])
+        ).all()
+    )
+
+
 def assign_columns(
     df: DataFrame,
     names: Union[str, List[str]],
@@ -873,8 +892,7 @@ def backtest_splits(
     input_size: Optional[int] = None,
     allow_partial_horizons: bool = False,
 ) -> Generator[Tuple[DataFrame, DataFrame, DataFrame], None, None]:
-    sort_idxs = maybe_compute_sort_indices(df=df, id_col=id_col, time_col=time_col)
-    if sort_idxs is None:
+    if _is_sorted(df=df, id_col=id_col, time_col=time_col):
         id_counts = counts_by_id(df, id_col)
         uids = id_counts[id_col]
         sizes = id_counts["counts"].to_numpy()
