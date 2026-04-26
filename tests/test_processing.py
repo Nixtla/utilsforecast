@@ -840,6 +840,52 @@ def test_backtest_splits_empty_dataframe(engine):
     )
 
 
+def test_backtest_splits_incomparable_ids_fall_back_to_mask_path(monkeypatch):
+    series = pd.DataFrame(
+        {
+            "unique_id": ["a", 1, "a", 1, "a", 1],
+            "ds": pd.to_datetime(
+                [
+                    "2020-01-01",
+                    "2020-01-01",
+                    "2020-01-02",
+                    "2020-01-02",
+                    "2020-01-03",
+                    "2020-01-03",
+                ]
+            ),
+            "y": np.arange(6),
+        }
+    )
+    mask_calls = 0
+    orig_mask = ufp._single_split
+
+    def counting_mask(*args, **kwargs):
+        nonlocal mask_calls
+        mask_calls += 1
+        return orig_mask(*args, **kwargs)
+
+    def fail_fast_path(*args, **kwargs):
+        raise AssertionError("incomparable ids should use the mask-based splitter")
+
+    monkeypatch.setattr(ufp, "_single_split", counting_mask)
+    monkeypatch.setattr(ufp, "_single_split_sorted", fail_fast_path)
+
+    splits = list(
+        backtest_splits(
+            series,
+            n_windows=1,
+            h=1,
+            id_col="unique_id",
+            time_col="ds",
+            freq=pd.offsets.Day(),
+        )
+    )
+
+    assert len(splits) == 1
+    assert mask_calls == 1
+
+
 def _test_backtest_splits(df, n_windows, h, step_size, input_size):
     max_dates = df.groupby("unique_id", observed=True)["ds"].max()
     day_offset = pd.offsets.Day()
