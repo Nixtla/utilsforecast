@@ -119,15 +119,20 @@ def _is_sorted(df: DataFrame, id_col: str, time_col: str) -> bool:
             ids = ids.cat.codes
         ids = ids.to_numpy()
         times = times.to_numpy()
-    ids_are_sorted = (ids[:-1] <= ids[1:]).all()
+    try:
+        ids_are_sorted = (ids[:-1] <= ids[1:]).all()
+    except TypeError:
+        return False
     if not ids_are_sorted:
         return False
-    return bool(
-        (
+    try:
+        times_are_sorted = (
             (times[:-1] < times[1:])
             | (ids[:-1] != ids[1:])
         ).all()
-    )
+    except TypeError:
+        return False
+    return bool(times_are_sorted)
 
 
 def assign_columns(
