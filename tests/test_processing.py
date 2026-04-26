@@ -886,6 +886,71 @@ def test_backtest_splits_incomparable_ids_fall_back_to_mask_path(monkeypatch):
     assert mask_calls == 1
 
 
+def test_backtest_splits_missing_ids_fall_back_to_mask_path(monkeypatch, engine):
+    if engine == "pandas":
+        series = pd.DataFrame(
+            {
+                "unique_id": pd.Categorical([None, None, "a", "a", "b", "b"]),
+                "ds": pd.to_datetime(
+                    [
+                        "2020-01-01",
+                        "2020-01-02",
+                        "2020-01-01",
+                        "2020-01-02",
+                        "2020-01-01",
+                        "2020-01-02",
+                    ]
+                ),
+                "y": np.arange(6),
+            }
+        )
+        freq = pd.offsets.Day()
+    else:
+        series = pl.DataFrame(
+            {
+                "unique_id": [None, None, "a", "a", "b", "b"],
+                "ds": [
+                    dt(2020, 1, 1),
+                    dt(2020, 1, 2),
+                    dt(2020, 1, 1),
+                    dt(2020, 1, 2),
+                    dt(2020, 1, 1),
+                    dt(2020, 1, 2),
+                ],
+                "y": np.arange(6),
+            },
+            schema_overrides={"unique_id": pl.Utf8},
+        )
+        freq = "1d"
+    mask_calls = 0
+    orig_mask = ufp._single_split
+
+    def counting_mask(*args, **kwargs):
+        nonlocal mask_calls
+        mask_calls += 1
+        return orig_mask(*args, **kwargs)
+
+    def fail_fast_path(*args, **kwargs):
+        raise AssertionError("missing ids should use the mask-based splitter")
+
+    monkeypatch.setattr(ufp, "_single_split", counting_mask)
+    monkeypatch.setattr(ufp, "_single_split_sorted", fail_fast_path)
+
+    splits = list(
+        backtest_splits(
+            series,
+            n_windows=1,
+            h=1,
+            id_col="unique_id",
+            time_col="ds",
+            freq=freq,
+        )
+    )
+
+    assert len(splits) == 1
+    assert mask_calls == 1
+
+
 def _test_backtest_splits(df, n_windows, h, step_size, input_size):
     max_dates = df.groupby("unique_id", observed=True)["ds"].max()
     day_offset = pd.offsets.Day()

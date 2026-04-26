@@ -115,10 +115,14 @@ def _is_sorted(df: DataFrame, id_col: str, time_col: str) -> bool:
     ids = df[id_col]
     times = df[time_col]
     if isinstance(df, pd.DataFrame):
+        if ids.hasnans:
+            return False
         if isinstance(ids.dtype, pd.CategoricalDtype):
             ids = ids.cat.codes
         ids = ids.to_numpy()
         times = times.to_numpy()
+    elif ids.has_nulls():
+        return False
     try:
         ids_are_sorted = (ids[:-1] <= ids[1:]).all()
     except TypeError:
