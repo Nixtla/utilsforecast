@@ -903,6 +903,10 @@ def test_backtest_splits_sorted_uses_fast_path(monkeypatch, engine):
     def fail_mask_path(*args, **kwargs):
         raise AssertionError("sorted inputs should not use the mask-based splitter")
 
+    def fail_sort_indices(*args, **kwargs):
+        raise AssertionError("backtest_splits should only check sortedness")
+
+    monkeypatch.setattr(ufp, "maybe_compute_sort_indices", fail_sort_indices)
     monkeypatch.setattr(ufp, "_single_split_sorted", counting_fast)
     monkeypatch.setattr(ufp, "_single_split", fail_mask_path)
 
@@ -943,6 +947,10 @@ def test_backtest_splits_unsorted_falls_back_to_mask_path(monkeypatch, engine):
     def fail_fast_path(*args, **kwargs):
         raise AssertionError("unsorted inputs should not use the fast splitter")
 
+    def fail_sort_indices(*args, **kwargs):
+        raise AssertionError("backtest_splits should not materialize sort indices")
+
+    monkeypatch.setattr(ufp, "maybe_compute_sort_indices", fail_sort_indices)
     monkeypatch.setattr(ufp, "_single_split", counting_mask)
     monkeypatch.setattr(ufp, "_single_split_sorted", fail_fast_path)
 
