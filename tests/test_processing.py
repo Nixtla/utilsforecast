@@ -805,6 +805,41 @@ def test_short_stories():
         assert any("will be dropped" in str(w.message) for w in issued_warnings)
 
 
+def test_backtest_splits_empty_dataframe(engine):
+    if engine == "pandas":
+        series = pd.DataFrame(
+            {
+                "unique_id": pd.Series([], dtype=object),
+                "ds": pd.Series([], dtype="datetime64[ns]"),
+                "y": pd.Series([], dtype=np.float64),
+            }
+        )
+        freq = pd.offsets.Day()
+    else:
+        series = pl.DataFrame(
+            schema={
+                "unique_id": pl.Utf8,
+                "ds": pl.Datetime,
+                "y": pl.Float64,
+            }
+        )
+        freq = "1d"
+
+    assert_raises_with_message(
+        lambda: list(
+            backtest_splits(
+                series,
+                n_windows=1,
+                h=1,
+                id_col="unique_id",
+                time_col="ds",
+                freq=freq,
+            )
+        ),
+        "at least 2 samples are required",
+    )
+
+
 def _test_backtest_splits(df, n_windows, h, step_size, input_size):
     max_dates = df.groupby("unique_id", observed=True)["ds"].max()
     day_offset = pd.offsets.Day()

@@ -734,6 +734,8 @@ def _find_boundaries(
     indptr: np.ndarray,
     bounds: np.ndarray,
 ) -> np.ndarray:
+    if indptr.size <= 1:
+        return np.empty(0, dtype=np.int64)
     sizes = np.diff(indptr)
     counts = np.add.reduceat(times <= np.repeat(bounds, sizes), indptr[:-1])
     return indptr[:-1] + counts.astype(np.int64, copy=False)
