@@ -715,24 +715,21 @@ def _find_boundaries(
     indptr: np.ndarray,
     bounds: np.ndarray,
 ) -> np.ndarray:
-    out = np.empty(indptr.size - 1, dtype=np.int64)
-    for i, (start, stop, bound) in enumerate(zip(indptr[:-1], indptr[1:], bounds)):
-        out[i] = start + np.searchsorted(times[start:stop], bound, side="right")
-    return out
+    sizes = np.diff(indptr)
+    counts = np.add.reduceat(times <= np.repeat(bounds, sizes), indptr[:-1])
+    return indptr[:-1] + counts.astype(np.int64, copy=False)
 
 
 def _ranges_to_indexer(starts: np.ndarray, stops: np.ndarray) -> np.ndarray:
-    total = np.sum(stops - starts, dtype=np.int64)
-    out = np.empty(total, dtype=np.int64)
-    pos = 0
-    for start, stop in zip(starts, stops):
-        span = stop - start
-        if span <= 0:
-            continue
-        next_pos = pos + span
-        out[pos:next_pos] = np.arange(start, stop)
-        pos = next_pos
-    return out
+    lens = np.maximum(stops - starts, 0)
+    total = int(lens.sum())
+    offsets = np.zeros(lens.size + 1, dtype=np.int64)
+    np.cumsum(lens, out=offsets[1:])
+    return (
+        np.repeat(starts, lens)
+        + np.arange(total, dtype=np.int64)
+        - np.repeat(offsets[:-1], lens)
+    )
 
 
 def _single_split_sorted(

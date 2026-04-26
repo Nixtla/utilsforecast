@@ -13,6 +13,8 @@ from utilsforecast.compat import POLARS_INSTALLED
 from utilsforecast.data import generate_series
 from utilsforecast.processing import (
     DataFrameProcessor,
+    _find_boundaries,
+    _ranges_to_indexer,
     _multiply_pl_freq,
     add_insample_levels,
     anti_join,
@@ -549,6 +551,38 @@ def test_cv_times(step_size, expected_ds, expected_cutoff):
     pd.testing.assert_frame_equal(actual, expected)
 
 
+def test_backtest_vectorized_helpers_match_expected_indices():
+    times = np.array(
+        [
+            "2020-01-01",
+            "2020-01-02",
+            "2020-01-04",
+            "2020-01-01",
+            "2020-01-03",
+            "2020-01-05",
+            "2020-01-07",
+            "2020-01-02",
+            "2020-01-06",
+        ],
+        dtype="datetime64[ns]",
+    )
+    indptr = np.array([0, 3, 7, 9])
+    bounds = np.array(
+        ["2020-01-02", "2020-01-05", "2019-12-31"], dtype="datetime64[ns]"
+    )
+
+    np.testing.assert_array_equal(
+        _find_boundaries(times, indptr, bounds), np.array([2, 6, 7])
+    )
+    np.testing.assert_array_equal(
+        _ranges_to_indexer(
+            starts=np.array([0, 3, 6, 8]),
+            stops=np.array([2, 3, 5, 10]),
+        ),
+        np.array([0, 1, 8, 9]),
+    )
+
+
 @pytest.mark.parametrize(
     "values, lookup, expected", [([1, 2, 3], [1], [True, False, False])]
 )
@@ -852,10 +886,12 @@ def test_backtest_splits_polars_alignment():
         pl.testing.assert_series_equal(valid_ends["ds"], expected_valid_ends)
 
 
-def test_backtest_splits_sorted_uses_fast_path(monkeypatch):
+@pytest.mark.parametrize("engine", ["pandas"] + (["polars"] if POLARS_INSTALLED else []))
+def test_backtest_splits_sorted_uses_fast_path(monkeypatch, engine):
     """Sorted inputs should use the lower-memory boundary-based splitter."""
-    series = generate_series(20, freq="D", min_length=100, max_length=300)
+    series = generate_series(20, freq="D", min_length=100, max_length=300, engine=engine)
     n_windows = 3
+    freq = pd.offsets.Day() if engine == "pandas" else "1d"
     fast_calls = 0
     orig_fast = ufp._single_split_sorted
 
@@ -877,7 +913,7 @@ def test_backtest_splits_sorted_uses_fast_path(monkeypatch):
             h=14,
             id_col="unique_id",
             time_col="ds",
-            freq=pd.offsets.Day(),
+            freq=freq,
         )
     )
 
@@ -885,10 +921,16 @@ def test_backtest_splits_sorted_uses_fast_path(monkeypatch):
     assert fast_calls == n_windows
 
 
-def test_backtest_splits_unsorted_falls_back_to_mask_path(monkeypatch):
+@pytest.mark.parametrize("engine", ["pandas"] + (["polars"] if POLARS_INSTALLED else []))
+def test_backtest_splits_unsorted_falls_back_to_mask_path(monkeypatch, engine):
     """Unsorted inputs should preserve the original mask-based behavior."""
-    series = generate_series(20, freq="D", min_length=100, max_length=300)
-    permuted = series.sample(frac=1.0, random_state=0)
+    series = generate_series(20, freq="D", min_length=100, max_length=300, engine=engine)
+    if engine == "pandas":
+        permuted = series.sample(frac=1.0, random_state=0)
+        freq = pd.offsets.Day()
+    else:
+        permuted = series.sample(fraction=1.0, shuffle=True, seed=0)
+        freq = "1d"
     n_windows = 3
     mask_calls = 0
     orig_mask = ufp._single_split
@@ -911,12 +953,64 @@ def test_backtest_splits_unsorted_falls_back_to_mask_path(monkeypatch):
             h=14,
             id_col="unique_id",
             time_col="ds",
-            freq=pd.offsets.Day(),
+            freq=freq,
         )
     )
 
     assert len(splits) == n_windows
     assert mask_calls == n_windows
+
+
+@pytest.mark.parametrize("engine", ["pandas"] + (["polars"] if POLARS_INSTALLED else []))
+def test_backtest_splits_sorted_matches_original(engine):
+    series = generate_series(
+        20, freq="D", min_length=100, max_length=300, engine=engine
+    )
+    freq = pd.offsets.Day() if engine == "pandas" else "1d"
+    kwargs = dict(
+        n_windows=3,
+        h=14,
+        id_col="unique_id",
+        time_col="ds",
+        freq=freq,
+    )
+    if engine == "pandas":
+        fast = [
+            (train.reset_index(drop=True), valid.reset_index(drop=True))
+            for _, train, valid in backtest_splits(series, **kwargs)
+        ]
+        shuffled = series.sample(frac=1.0, random_state=0)
+        slow = [
+            (
+                train.sort_values(["unique_id", "ds"]).reset_index(drop=True),
+                valid.sort_values(["unique_id", "ds"]).reset_index(drop=True),
+            )
+            for _, train, valid in backtest_splits(shuffled, **kwargs)
+        ]
+
+        for (fast_train, fast_valid), (slow_train, slow_valid) in zip(fast, slow):
+            pd.testing.assert_frame_equal(fast_train, slow_train)
+            pd.testing.assert_frame_equal(fast_valid, slow_valid)
+    else:
+        fast = [
+            (
+                train.sort(["unique_id", "ds"]),
+                valid.sort(["unique_id", "ds"]),
+            )
+            for _, train, valid in backtest_splits(series, **kwargs)
+        ]
+        shuffled = series.sample(fraction=1.0, shuffle=True, seed=0)
+        slow = [
+            (
+                train.sort(["unique_id", "ds"]),
+                valid.sort(["unique_id", "ds"]),
+            )
+            for _, train, valid in backtest_splits(shuffled, **kwargs)
+        ]
+
+        for (fast_train, fast_valid), (slow_train, slow_valid) in zip(fast, slow):
+            pl.testing.assert_frame_equal(fast_train, slow_train)
+            pl.testing.assert_frame_equal(fast_valid, slow_valid)
 
 
 def test_add_insample_levels_agreement():
