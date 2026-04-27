@@ -8,11 +8,10 @@ The most important train signal is the forecast error, which is the
 difference between the observed value $y_{\tau}$ and the prediction
 $\hat{y}_{\tau}$, at time $y_{\tau}$:
 
-$$
-
+```math
 e_{\tau} = y_{\tau}-\hat{y}_{\tau} \qquad \qquad \tau \in \{t+1,\dots,t+H \}
 
-$$
+```
 
 The train loss summarizes the forecast errors in different evaluation
 metrics.
@@ -22,11 +21,10 @@ metrics.
 
 ### Mean Absolute Error
 
-$$
-
+```math
 \mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} |y_{\tau} - \hat{y}_{\tau}|
+```
 
-$$
 ![](./imgs/losses/mae_loss.png)
 
 #### `mae`
@@ -43,13 +41,12 @@ deviation of the prediction and the true
 value at a given time and averages these devations
 over the length of the series.
 
+
 ### Mean Squared Error
 
-$$
-
+```math
 \mathrm{MSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} (y_{\tau} - \hat{y}_{\tau})^{2}
-
-$$
+```
 
 ![](./imgs/losses/mse_loss.png)
 
@@ -67,13 +64,12 @@ squared deviation of the prediction and the true
 value at a given time, and averages these devations
 over the length of the series.
 
+
 ### Root Mean Squared Error
 
-$$
-
+```math
 \mathrm{RMSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \sqrt{\frac{1}{H} \sum^{t+H}_{\tau=t+1} (y_{\tau} - \hat{y}_{\tau})^{2}}
-
-$$
+```
 
 ![](./imgs/losses/rmse_loss.png)
 #### `rmse`
@@ -93,13 +89,12 @@ as the original time series so its comparison with other
 series is possible only if they share a common scale.
 RMSE has a direct connection to the L2 norm.
 
+
 ### Bias
 
-$$
-
+```math
 \mathrm{Bias}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} (\hat{y}_{\tau} - \mathbf{y}_{\tau})
-
-$$
+```
 
 #### `bias`
 
@@ -111,13 +106,12 @@ Forecast estimator bias.
 
 Defined as prediction - actual
 
+
 ### Cumulative Forecast Error
 
-$$
-
+```math
 \mathrm{CFE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \sum^{t+H}_{\tau=t+1} (\hat{y}_{\tau} - \mathbf{y}_{\tau})
-
-$$
+```
 
 #### `cfe`
 
@@ -129,13 +123,12 @@ Cumulative Forecast Error (CFE)
 
 Total signed forecast error per series. Positive values mean under forecast; negative mean over forecast.
 
+
 ### Absolute Periods In Stock
 
-$$
-
+```math
 \mathrm{PIS}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \sum^{t+H}_{\tau=t+1} |y_{\tau} - \hat{y}_{\tau}|
-
-$$
+```
 
 #### `pis`
 
@@ -148,11 +141,12 @@ Compute the raw Absolute Periods In Stock (PIS) for one or multiple models.
 The PIS metric sums the absolute forecast errors per series without any scaling,
 yielding a scale-dependent measure of bias.
 
+
 ### Linex
 
-$$
+```math
 \mathrm{Linex}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} (e^{a(y_{\tau} - \hat{y}_{\tau})} - a(y_{\tau} - \hat{y}_{\tau}) - 1)
-$$
+```
 
 where must be $a\neq0$.
 
@@ -167,8 +161,8 @@ Linex Loss (Linear Exponential)
 The Linex loss penalizes over- and under-forecasting
 asymmetrically depending on the parameter a.
 
-- If a > 0, under-forecasting (y > y_hat) is penalized more.
-- If a < 0, over-forecasting (y_hat > y) is penalized more.
+- If a > 0, under-forecasting ($y > \hat{y}$) is penalized more.
+- If a < 0, over-forecasting ($\hat{y} > y$) is penalized more.
 - a must not be 0.
 
 **Parameters:**
@@ -177,15 +171,15 @@ Name | Type | Description | Default
 ---- | ---- | ----------- | -------
 `a` | <code>[float](#float)</code> | Asymmetry parameter. Must be non-zero. Defaults to 1.0. | <code>1.0</code>
 
+
 ## 2. Percentage Errors
 
 ### Mean Absolute Percentage Error
 
-$$
-
+```math
 \mathrm{MAPE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{|y_{\tau}|}
+```
 
-$$
 
 ![](./imgs/losses/mape_loss.png)
 #### `mape`
@@ -203,13 +197,12 @@ averages these devations over the length of the series.
 The closer to zero an observed value is, the higher penalty MAPE loss
 assigns to the corresponding error.
 
+
 ### Symmetric Mean Absolute Percentage Error
 
-$$
-
+```math
 \mathrm{SMAPE}_{2}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{|y_{\tau}|+|\hat{y}_{\tau}|}
-
-$$
+```
 
 #### `smape`
 
@@ -228,16 +221,15 @@ of the series. This allows the SMAPE to have bounds between
 0% and 100% which is desirable compared to normal MAPE that
 may be undetermined when the target is zero.
 
+
 ## 3. Scale-independent Errors
 
 ### Mean Absolute Scaled Error
 
-$$
-
+```math
 \mathrm{MASE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau}) = 
 \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}
-
-$$
+```
 
 ![](./imgs/losses/mase_loss.png)
 
@@ -282,13 +274,12 @@ Type | Description
 
 </details>
 
+
 ### Relative Mean Absolute Error
 
-$$
-
+```math
 \mathrm{RMAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{base}_{\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau}-\hat{y}_{\tau}|}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{base}_{\tau})}
-
-$$
+```
 
 ![](./imgs/losses/rmae_loss.png)
 
@@ -321,13 +312,12 @@ Type | Description
 ---- | -----------
 <code>[IntoDataFrameT](#narwhals.stable.v2.typing.IntoDataFrameT)</code> | pandas or polars DataFrame: dataframe with one row per id and one column per model.
 
+
 ### Normalized Deviation
 
-$$
-
+```math
 \mathrm{ND}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{\sum^{t+H}_{\tau=t+1} |y_{\tau} - \hat{y}_{\tau}|}{\sum^{t+H}_{\tau=t+1} | y_{\tau} |}
-
-$$
+```
 
 #### `nd`
 
@@ -343,14 +333,13 @@ sum of the absolute deviation of the prediction and the true
 value at a given time and dividing it by the sum of the absolute
 value of the ground truth.
 
+
 ### Mean Squared Scaled Error
 
-$$
-
+```math
 \mathrm{MSSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau}) = 
 \frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{(y_{\tau}-\hat{y}_{\tau})^2}{\mathrm{MSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}
-
-$$
+```
 
 ### `msse`
 
@@ -390,14 +379,13 @@ Type | Description
 
 </details>
 
+
 ### Root Mean Squared Scaled Error
 
-$$
-
+```math
 \mathrm{RMSSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau}) = 
 \sqrt{\frac{1}{H} \sum^{t+H}_{\tau=t+1} \frac{(y_{\tau}-\hat{y}_{\tau})^2}{\mathrm{MSE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}}
-
-$$
+```
 
 
 ### `rmsse`
@@ -429,7 +417,7 @@ Name | Type | Description | Default
 
 Type | Description
 ---- | -----------
-| pandas or polars DataFrame: dataframe with one row per id and one column per model.
+ | pandas or polars DataFrame: dataframe with one row per id and one column per model.
 
 <details class="references" open markdown="1">
 <summary>References</summary>
@@ -438,13 +426,12 @@ Type | Description
 
 </details>
 
+
 ### Scaled Absolute Periods In Stock
 
-$$
-
+```math
 \mathrm{PIS}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \sum^{t+H}_{\tau=t+1} \frac{|y_{\tau} - \hat{y}_{\tau}|}{\bar{y}}
-
-$$
+```
 
 where $\bar{y}=\frac{1}{H}\sum^{t+H}_{\tau=t+1} y_{\tau}$.
 
@@ -476,19 +463,18 @@ Type | Description
 ---- | -----------
 <code>[IntoDataFrameT](#narwhals.stable.v2.typing.IntoDataFrameT)</code> | pandas or polars DataFrame: dataframe with one row per id and one column per model.
 
+
 ## 4. Probabilistic Errors
 
 
 ### Quantile Loss
 
-$$
-
+```math
 \mathrm{QL}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{(q)}_{\tau}) = 
 \frac{1}{H} \sum^{t+H}_{\tau=t+1} 
 \Big( (1-q)\,( \hat{y}^{(q)}_{\tau} - y_{\tau} )_{+} 
 + q\,( y_{\tau} - \hat{y}^{(q)}_{\tau} )_{+} \Big)
-
-$$
+```
 
 ![](./imgs/losses/q_loss.png)
 
@@ -522,16 +508,15 @@ Type | Description
 ---- | -----------
 <code>[IntoDataFrameT](#narwhals.stable.v2.typing.IntoDataFrameT)</code> | pandas or polars DataFrame: dataframe with one row per id and one column per model.
 
+
 ### Scaled Quantile Loss
 
-$$
-
+```math
 \mathrm{SQL}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{(q)}_{\tau}) = 
 \frac{1}{H} \sum^{t+H}_{\tau=t+1} 
 \frac{(1-q)\,( \hat{y}^{(q)}_{\tau} - y_{\tau} )_{+} 
 + q\,( y_{\tau} - \hat{y}^{(q)}_{\tau} )_{+}}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}
-
-$$
+```
 
 #### `scaled_quantile_loss`
 
@@ -574,15 +559,14 @@ Type | Description
 [1] https://www.sciencedirect.com/science/article/pii/S0169207021001722
 
 </details>
+
 ### Multi-Quantile Loss
 
-$$
-
+```math
 \mathrm{MQL}(\mathbf{y}_{\tau},
 [\mathbf{\hat{y}}^{(q_{1})}_{\tau}, ... ,\hat{y}^{(q_{n})}_{\tau}]) = 
 \frac{1}{n} \sum_{q_{i}} \mathrm{QL}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{(q_{i})}_{\tau})
-
-$$
+```
 
 ![](./imgs/losses/mq_loss.png)
 
@@ -629,15 +613,14 @@ Type | Description
 
 </details>
 
+
 ### Scaled Multi-Quantile Loss
 
-$$
-
+```math
 \mathrm{MQL}(\mathbf{y}_{\tau},
 [\mathbf{\hat{y}}^{(q_{1})}_{\tau}, ... ,\hat{y}^{(q_{n})}_{\tau}]) = 
 \frac{1}{n} \sum_{q_{i}} \frac{\mathrm{QL}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{(q_{i})}_{\tau})}{\mathrm{MAE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}^{season}_{\tau})}
-
-$$
+```
 
 #### `scaled_mqloss`
 
@@ -686,6 +669,7 @@ Type | Description
 
 </details>
 
+
 ### Coverage
 
 #### `coverage`
@@ -720,6 +704,7 @@ Type | Description
 
 </details>
 
+
 ### Calibration
 
 #### `calibration`
@@ -753,14 +738,13 @@ Type | Description
 
 </details>
 
+
 ### CRPS
 
-$$
-
+```math
 \mathrm{sCRPS}(\hat{F}_{\tau}, \mathbf{y}_{\tau}) = \frac{2}{N} \sum_{i}
 \int^{1}_{0} \frac{\mathrm{QL}(\hat{F}_{i,\tau}, y_{i,\tau})_{q}}{\sum_{i} | y_{i,\tau} |} dq
-
-$$
+```
 
 Where $\hat{F}_{\tau}$ is the an estimated multivariate distribution,
 and $y_{i,\tau}$ are its realizations.
@@ -802,22 +786,20 @@ Type | Description
 
 </details>
 
+
 ### Tweedie Deviance
 
 For a set of forecasts $\{\mu_i\}_{i=1}^N$ and observations
 $\{y_i\}_{i=1}^N$, the mean Tweedie deviance with power $p$ is
 
-$$
-
+```math
 \mathrm{TD}_{p}(\boldsymbol{\mu}, \mathbf{y})
 = \frac{1}{N} \sum_{i=1}^{N} d_{p}(y_i, \mu_i)
-
-$$
+```
 
 where the unit-scaled deviance for each pair $(y,\mu)$ is
 
-$$
-
+```math
 d_{p}(y,\mu)
 =
 2
@@ -836,8 +818,7 @@ y\,\ln\!\frac{y}{\mu}\;-\;(y-\mu),
 -2\Bigl[\ln\!\frac{y}{\mu}\;-\;\frac{y-\mu}{\mu}\Bigr],
 & p = 2\quad(\text{Gamma deviance}).
 \end{cases}
-
-$$
+```
 
 - $y_i$ are the true values, $\mu_i$ the predicted means.  
 - $p$ controls the variance relationship
@@ -857,11 +838,10 @@ Each group's deviance is calculated using the mean_tweedie_deviance function, wh
 measures the deviation between actual and predicted values under the Tweedie distribution.
 
 The `power` parameter defines the specific compound distribution:
-
-- 1: Poisson
-- (1, 2): Compound Poisson-Gamma
-- 2: Gamma
-- > 2: Inverse Gaussian
+  - 1: Poisson
+  - (1, 2): Compound Poisson-Gamma
+  - 2: Gamma
+  - >2: Inverse Gaussian
 
 **Parameters:**
 
@@ -886,3 +866,4 @@ Type | Description
 [1] https://en.wikipedia.org/wiki/Tweedie_distribution
 
 </details>
+

@@ -16,8 +16,8 @@ Plot forecasts and insample values.
 
 Name | Type | Description | Default
 ---- | ---- | ----------- | -------
-`df` | <code>pandas or polars DataFrame</code> | DataFrame with columns \[`id_col`, `time_col`, `target_col`\]. Defaults to None. | <code>None</code>
-`forecasts_df` | <code>pandas or polars DataFrame</code> | DataFrame with columns \[`id_col`, `time_col`\] and models. Defaults to None. | <code>None</code>
+`df` | <code>pandas or polars DataFrame</code> | DataFrame with columns [`id_col`, `time_col`, `target_col`]. Defaults to None. | <code>None</code>
+`forecasts_df` | <code>pandas or polars DataFrame</code> | DataFrame with columns [`id_col`, `time_col`] and models. Defaults to None. | <code>None</code>
 `ids` | <code>list of str</code> | Time Series to plot. If None, time series are selected randomly. Defaults to None. | <code>None</code>
 `plot_random` | <code>[bool](#bool)</code> | Select time series to plot randomly. Defaults to True. | <code>True</code>
 `max_ids` | <code>[int](#int)</code> | Maximum number of ids to plot. Defaults to 8. | <code>8</code>
@@ -38,7 +38,8 @@ Name | Type | Description | Default
 
 Type | Description
 ---- | -----------
-| matplotlib or plotly figure: Plot's figure
+ | matplotlib or plotly figure: Plot's figure
+
 
 
 ```python
