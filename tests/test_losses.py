@@ -178,7 +178,7 @@ def tweedie_deviance_single(y_true, y_pred, power, **kwargs):
 
 
 def linex_single(y_true, y_pred, a=1.0, **kwargs):
-    error = y_pred - y_true
+    error = y_true - y_pred
     return np.mean(np.exp(a * error) - a * error - 1)
 
 
