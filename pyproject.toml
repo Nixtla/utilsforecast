@@ -29,9 +29,6 @@ dependencies = [
     "narwhals>=2.0",
 ]
 
-[tool.setuptools.dynamic]
-version = {attr = "utilsforecast.__version__"}
-
 [project.optional-dependencies]
 plotting = [
     "pandas[plot]<3.0.0",
