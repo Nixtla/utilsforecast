@@ -289,9 +289,9 @@ def test_linex_loss_numerical(engine):
         df = pl.DataFrame(data)
 
     # Calculate expected value
-    # errors: model - y = [0.0, 0.5, -1.0]
+    # errors: y - model = [0.0, -0.5, 1.0]
     # linex: exp(a*e) - a*e - 1
-    errors = np.array([0.0, 0.5, -1.0])
+    errors = np.array([0.0, -0.5, 1.0])
     expected_values = np.exp(a * errors) - a * errors - 1
     expected_mean = expected_values.mean()
 
