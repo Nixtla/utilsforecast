@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name="utilsforecast"
-dynamic = ["version"]
+version = "0.2.16"
 description = "Forecasting utilities"
 authors = [{name = "Nixtla", email = "business@nixtla.io"}]
 license = {text = "Apache Software License 2.0"}
@@ -29,10 +29,7 @@ dependencies = [
     "narwhals>=2.0",
 ]
 
-[tool.setuptools.dynamic]
-version = {attr = "utilsforecast.__version__"}
-
-[dependency-groups]
+[project.optional-dependencies]
 plotting = [
     "pandas[plot]<3.0.0",
     "plotly",
@@ -41,6 +38,8 @@ plotting = [
 polars = [
     "polars[numpy]<=1.31",
 ]
+
+[dependency-groups]
 dev = [
     "datasetsforecast==0.0.8",
     "numba>=0.58.0",
@@ -57,7 +56,7 @@ dev = [
     "fugue[dask,spark]>=0.9.4",
     "dask",
     "pip-licenses",
-    "mkdocstrings-parser@git+https://github.com/Nixtla/mkdocstrings-parser.git",
+    "mkdocstrings-parser@git+https://github.com/Nixtla/mkdocstrings-parser.git@main",
 ]
 
 [project.urls]

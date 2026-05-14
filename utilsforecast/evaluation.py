@@ -451,7 +451,7 @@ def evaluate(
         df = pd.concat(results_per_metric).reset_index(drop=True)
     else:
         df = pl.concat(results_per_metric, how="diagonal")
-    
+
     if cutoff_col in df.columns:
         id_cols = [id_col, cutoff_col, "metric"]
     else:
