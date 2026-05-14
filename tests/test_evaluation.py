@@ -336,6 +336,37 @@ def test_evaluate_weights_validation(setup_series):
         )
 
 
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+@pytest.mark.parametrize("weight", [np.nan, np.inf])
+def test_evaluate_weighted_mean_rejects_non_finite_weights(engine, weight):
+    df = pd.DataFrame(
+        {
+            "unique_id": ["a", "a", "b", "b"],
+            "ds": [1, 2, 1, 2],
+            "y": [0, 0, 0, 0],
+            "model": [1, 1, 2, 2],
+        }
+    )
+    weights = pd.DataFrame(
+        {
+            "unique_id": ["a", "b"],
+            "weight": [1.0, weight],
+        }
+    )
+    if engine == "polars":
+        df = pl.from_pandas(df)
+        weights = pl.from_pandas(weights)
+
+    with pytest.raises(ValueError, match="finite"):
+        evaluate(
+            df=df,
+            metrics=[mse],
+            models=["model"],
+            weights=weights,
+            agg_fn="weighted_mean",
+        )
+
+
 def daily_mase(y, y_hat, y_train):
     return ds_losses.mase(y, y_hat, y_train, seasonality=7)
 

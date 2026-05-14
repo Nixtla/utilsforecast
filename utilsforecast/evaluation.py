@@ -30,6 +30,13 @@ def _function_name(f: Callable):
     return name
 
 
+def _check_weights_are_finite(weights: nw.DataFrame) -> None:
+    if weights[_WEIGHT_COL].is_null().any() or (
+        ~weights[_WEIGHT_COL].is_finite()
+    ).any():
+        raise ValueError("`weights` must contain only finite values.")
+
+
 def _quantiles_from_levels(level: List[int]) -> np.ndarray:
     """Returns quantiles associated to `level` and the sorte columns of `model_name`"""
     level = sorted(level)
@@ -72,11 +79,13 @@ def _get_weights(
     if isinstance(weights, str):
         if weights != "auto":
             raise ValueError("`weights` must be 'auto', a dataframe or None.")
-        return (
+        weights_df = (
             nw.from_native(df)
             .group_by(*group_cols)
             .agg(nw.col(target_col).sum().alias(_WEIGHT_COL))
         )
+        _check_weights_are_finite(weights_df)
+        return weights_df
 
     weights_nw = nw.from_native(weights)
     if "weight" not in weights_nw.columns:
@@ -101,10 +110,12 @@ def _get_weights(
         raise ValueError(
             "`weights` contains duplicated entries for the aggregation keys."
         )
-    return weights_nw.select(
+    weights_df = weights_nw.select(
         *join_cols,
         nw.col("weight").alias(_WEIGHT_COL),
     )
+    _check_weights_are_finite(weights_df)
+    return weights_df
 
 
 def _weighted_mean_agg(
@@ -135,6 +146,8 @@ def _weighted_mean_agg(
     df_nw = nw.from_native(df).join(weights_df, on=join_cols, how="left")
     if df_nw[_WEIGHT_COL].is_null().any():
         raise ValueError("`weights` is missing entries for some evaluation rows.")
+    if (~df_nw[_WEIGHT_COL].is_finite()).any():
+        raise ValueError("`weights` must contain only finite values.")
 
     weighted_cols = [f"__utilsforecast_weighted_{i}" for i, _ in enumerate(model_cols)]
     df_nw = df_nw.with_columns(
