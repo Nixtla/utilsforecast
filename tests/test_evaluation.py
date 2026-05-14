@@ -217,6 +217,125 @@ def test_evaluate(setup_series, setup_models, setup_metrics):
     )
 
 
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_evaluate_weighted_mean(engine):
+    df = pd.DataFrame(
+        {
+            "unique_id": ["a", "a", "b", "b", "c", "c"],
+            "ds": [1, 2, 1, 2, 1, 2],
+            "y": [0, 0, 0, 0, 0, 0],
+            "model": [1, 1, 2, 2, 3, 3],
+        }
+    )
+    weights = pd.DataFrame(
+        {
+            "unique_id": ["a", "b", "c"],
+            "weight": [1, 2, 3],
+        }
+    )
+    if engine == "polars":
+        df = pl.from_pandas(df)
+        weights = pl.from_pandas(weights)
+
+    result = evaluate(
+        df=df,
+        metrics=[mse],
+        models=["model"],
+        weights=weights,
+        agg_fn="weighted_mean",
+    )
+
+    result_nw = nw.from_native(result)
+    assert result_nw.shape == (1, 2)
+    assert result_nw["metric"].item() == "mse"
+    np.testing.assert_allclose(result_nw["model"].to_numpy(), [6.0])
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_evaluate_auto_weighted_mean(engine):
+    df = pd.DataFrame(
+        {
+            "unique_id": ["a", "a", "b", "b"],
+            "ds": [1, 2, 1, 2],
+            "y": [1, 1, 2, 2],
+            "model": [2, 2, 4, 4],
+        }
+    )
+    if engine == "polars":
+        df = pl.from_pandas(df)
+
+    result = evaluate(
+        df=df,
+        metrics=[mse],
+        models=["model"],
+        weights="auto",
+        agg_fn="weighted_mean",
+    )
+
+    result_nw = nw.from_native(result)
+    assert result_nw.shape == (1, 2)
+    assert result_nw["metric"].item() == "mse"
+    np.testing.assert_allclose(result_nw["model"].to_numpy(), [3.0])
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_evaluate_cutoff_weighted_mean(engine):
+    df = pd.DataFrame(
+        {
+            "unique_id": ["a", "a", "b", "b", "a", "a", "b", "b"],
+            "cutoff": [1, 1, 1, 1, 2, 2, 2, 2],
+            "ds": [2, 3, 2, 3, 4, 5, 4, 5],
+            "y": [0, 0, 0, 0, 0, 0, 0, 0],
+            "model": [1, 1, 3, 3, 2, 2, 4, 4],
+        }
+    )
+    weights = pd.DataFrame(
+        {
+            "unique_id": ["a", "b", "a", "b"],
+            "cutoff": [1, 1, 2, 2],
+            "weight": [10, 1, 1, 3],
+        }
+    )
+    if engine == "polars":
+        df = pl.from_pandas(df)
+        weights = pl.from_pandas(weights)
+
+    result = evaluate(
+        df=df,
+        metrics=[mse],
+        models=["model"],
+        weights=weights,
+        cutoff_col="cutoff",
+        agg_fn="weighted_mean",
+    )
+
+    result_nw = nw.from_native(result).sort("cutoff")
+    assert result_nw.shape == (2, 3)
+    np.testing.assert_allclose(
+        result_nw["model"].to_numpy(),
+        [(1 * 10 + 9 * 1) / 11, (4 * 1 + 16 * 3) / 4],
+    )
+
+
+def test_evaluate_weights_validation(setup_series):
+    weights = pd.DataFrame({"unique_id": [0], "weight": [1.0]})
+    with pytest.raises(ValueError, match="agg_fn='weighted_mean'"):
+        evaluate(
+            df=setup_series,
+            metrics=[mse],
+            models=["model0"],
+            weights=weights,
+        )
+
+    with pytest.raises(ValueError, match="requires setting `weights`"):
+        evaluate(
+            df=setup_series,
+            metrics=[mse],
+            models=["model0"],
+            agg_fn="weighted_mean",
+        )
+
+
 def daily_mase(y, y_hat, y_train):
     return ds_losses.mase(y, y_hat, y_train, seasonality=7)
 
