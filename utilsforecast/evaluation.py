@@ -143,10 +143,29 @@ def _weighted_mean_agg(
         raise ValueError("`weights` is missing entries for some evaluation rows.")
 
     weighted_cols = [f"__utilsforecast_weighted_{i}" for i, _ in enumerate(model_cols)]
+    effective_weight_cols = [
+        f"__utilsforecast_effective_weight_{i}" for i, _ in enumerate(model_cols)
+    ]
     df_nw = df_nw.with_columns(
         *[
-            (nw.col(model) * nw.col(_WEIGHT_COL)).alias(weighted_col)
+            nw.when(
+                (~nw.col(model).is_null())
+                & (~nw.col(model).is_nan().fill_null(False))
+            )
+            .then(nw.col(model) * nw.col(_WEIGHT_COL))
+            .otherwise(None)
+            .alias(weighted_col)
             for model, weighted_col in zip(model_cols, weighted_cols)
+        ],
+        *[
+            nw.when(
+                (~nw.col(model).is_null())
+                & (~nw.col(model).is_nan().fill_null(False))
+            )
+            .then(nw.col(_WEIGHT_COL))
+            .otherwise(None)
+            .alias(effective_weight_col)
+            for model, effective_weight_col in zip(model_cols, effective_weight_cols)
         ]
     )
     df_nw = df_nw.group_by(*group_cols).agg(
@@ -155,15 +174,29 @@ def _weighted_mean_agg(
             nw.col(weighted_col).sum().alias(model)
             for model, weighted_col in zip(model_cols, weighted_cols)
         ],
+        *[
+            nw.col(effective_weight_col).sum().alias(effective_weight_col)
+            for effective_weight_col in effective_weight_cols
+        ],
     )
     if (df_nw[_WEIGHT_SUM_COL] == 0).any():
         raise ValueError("The sum of weights must be different from zero.")
 
     return (
-        df_nw.with_columns(
+        df_nw
+        .with_columns(
             *[
-                (nw.col(model) / nw.col(_WEIGHT_SUM_COL)).alias(model)
-                for model in model_cols
+                nw.when(nw.col(effective_weight_col) != 0)
+                .then(nw.col(effective_weight_col))
+                .otherwise(float("nan"))
+                .alias(effective_weight_col)
+                for effective_weight_col in effective_weight_cols
+            ]
+        )
+        .with_columns(
+            *[
+                (nw.col(model) / nw.col(effective_weight_col)).alias(model)
+                for model, effective_weight_col in zip(model_cols, effective_weight_cols)
             ]
         )
         .select(*group_cols, *model_cols)
