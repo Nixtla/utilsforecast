@@ -31,9 +31,7 @@ def _function_name(f: Callable):
 
 
 def _check_weights_are_finite(weights: nw.DataFrame) -> None:
-    if weights[_WEIGHT_COL].is_null().any() or (
-        ~weights[_WEIGHT_COL].is_finite()
-    ).any():
+    if not weights[_WEIGHT_COL].is_finite().fill_null(False).all():
         raise ValueError("`weights` must contain only finite values.")
 
 
@@ -103,10 +101,7 @@ def _get_weights(
         raise ValueError(
             f"`weights` dataframe is missing required columns: {missing_cols}."
         )
-    weight_counts = weights_nw.group_by(*join_cols).agg(
-        nw.col("weight").len().alias("_weight_count")
-    )
-    if (weight_counts["_weight_count"] > 1).any():
+    if weights_nw.select(*join_cols).unique().shape[0] != weights_nw.shape[0]:
         raise ValueError(
             "`weights` contains duplicated entries for the aggregation keys."
         )
@@ -120,7 +115,7 @@ def _get_weights(
 
 def _weighted_mean_agg(
     df: DFType,
-    weights_df_source: DFType,
+    forecasts_df: DFType,
     weights: Union[str, DFType],
     id_col: str,
     target_col: str,
@@ -134,7 +129,7 @@ def _weighted_mean_agg(
     group_cols = id_cols[1:]
     join_cols = [id_col]
     weights_df = _get_weights(
-        df=weights_df_source,
+        df=forecasts_df,
         weights=weights,
         id_col=id_col,
         target_col=target_col,
@@ -146,8 +141,6 @@ def _weighted_mean_agg(
     df_nw = nw.from_native(df).join(weights_df, on=join_cols, how="left")
     if df_nw[_WEIGHT_COL].is_null().any():
         raise ValueError("`weights` is missing entries for some evaluation rows.")
-    if (~df_nw[_WEIGHT_COL].is_finite()).any():
-        raise ValueError("`weights` must contain only finite values.")
 
     weighted_cols = [f"__utilsforecast_weighted_{i}" for i, _ in enumerate(model_cols)]
     df_nw = df_nw.with_columns(
@@ -217,6 +210,7 @@ def _distributed_evaluate(
     models: Optional[List[str]],
     train_df: Optional[DFType],
     level: Optional[List[int]],
+    weights: Optional[Union[str, DFType]],
     id_col: str,
     time_col: str,
     target_col: str,
@@ -225,6 +219,12 @@ def _distributed_evaluate(
 ) -> DistributedDFType:
     import fugue.api as fa
 
+    if agg_fn == "weighted_mean":
+        raise NotImplementedError(
+            "`agg_fn='weighted_mean'` is not supported in distributed evaluation."
+        )
+    if weights is not None:
+        raise NotImplementedError("`weights` is not supported in distributed evaluation.")
     if agg_fn is not None:
         raise ValueError("`agg_fn` is not supported in distributed")
     df_cols = fa.get_column_names(df)
@@ -310,9 +310,11 @@ def evaluate(
             losses that rely on quantiles. Defaults to None.
         weights (str, pandas or polars DataFrame, optional): Weights to use when
             `agg_fn='weighted_mean'`. If 'auto', weights are computed as the sum
-            of the target over each series forecast horizon. If a dataframe, it
-            must contain `id_col` and `weight`; if `cutoff_col` is present in `df`,
-            it can also contain `cutoff_col` for cutoff-level weights.
+            of the target in the forecast/evaluation window, not from `train_df`.
+            If a dataframe, it must contain `id_col` and `weight`; if `cutoff_col`
+            is present in `df`, it can also contain `cutoff_col` for cutoff-level
+            weights. If `df` has `cutoff_col` but the weights dataframe does not,
+            the same per-series weight is used for every cutoff.
         id_col (str, optional): Column that identifies each serie.
             Defaults to 'unique_id'.
         time_col (str, optional): Column that identifies each timestep, its values
@@ -340,6 +342,7 @@ def evaluate(
             models=models,
             train_df=train_df,
             level=level,
+            weights=weights,
             id_col=id_col,
             time_col=time_col,
             target_col=target_col,
@@ -350,7 +353,7 @@ def evaluate(
         model_cols = _get_model_cols(df.columns, id_col, time_col, target_col, cutoff_col)
     else:
         model_cols = models
-    weights_df_source = df
+    forecasts_df = df
 
     # interval cols
     if level is not None:
@@ -464,7 +467,7 @@ def evaluate(
             assert weights is not None
             df = _weighted_mean_agg(
                 df=df,
-                weights_df_source=weights_df_source,
+                forecasts_df=forecasts_df,
                 weights=weights,
                 id_col=id_col,
                 target_col=target_col,
@@ -472,7 +475,7 @@ def evaluate(
                 model_cols=model_cols,
             )
         else:
-            group_cols = id_cols[1:] # exclude id_col
+            group_cols = id_cols[1:]  # exclude id_col
             df = ufp.group_by_agg(
                 df,
                 by=group_cols,

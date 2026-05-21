@@ -367,6 +367,18 @@ def test_evaluate_weighted_mean_rejects_non_finite_weights(engine, weight):
         )
 
 
+def test_distributed_evaluate_weighted_mean_not_implemented(setup_series):
+    dask_df = dd.from_pandas(setup_series, npartitions=2)
+    with pytest.raises(NotImplementedError, match="weighted_mean"):
+        evaluate(
+            dask_df,
+            metrics=[mse],
+            models=["model0"],
+            weights="auto",
+            agg_fn="weighted_mean",
+        )
+
+
 def daily_mase(y, y_hat, y_train):
     return ds_losses.mase(y, y_hat, y_train, seasonality=7)
 
