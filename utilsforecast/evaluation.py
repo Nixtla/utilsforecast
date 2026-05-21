@@ -287,12 +287,12 @@ def evaluate(
     models: Optional[List[str]] = None,
     train_df: Optional[AnyDFType] = None,
     level: Optional[List[int]] = None,
-    weights: Optional[Union[str, AnyDFType]] = None,
     id_col: str = "unique_id",
     time_col: str = "ds",
     target_col: str = "y",
     cutoff_col: str = "cutoff",
     agg_fn: Optional[str] = None,
+    weights: Optional[Union[str, AnyDFType]] = None,
 ) -> AnyDFType:
     """Evaluate forecast using different metrics.
 
@@ -308,13 +308,6 @@ def evaluate(
             Used to evaluate metrics such as `mase`. Defaults to None.
         level (list of int, optional): Prediction interval levels. Used to compute
             losses that rely on quantiles. Defaults to None.
-        weights (str, pandas or polars DataFrame, optional): Weights to use when
-            `agg_fn='weighted_mean'`. If 'auto', weights are computed as the sum
-            of the target in the forecast/evaluation window, not from `train_df`.
-            If a dataframe, it must contain `id_col` and `weight`; if `cutoff_col`
-            is present in `df`, it can also contain `cutoff_col` for cutoff-level
-            weights. If `df` has `cutoff_col` but the weights dataframe does not,
-            the same per-series weight is used for every cutoff.
         id_col (str, optional): Column that identifies each serie.
             Defaults to 'unique_id'.
         time_col (str, optional): Column that identifies each timestep, its values
@@ -325,6 +318,13 @@ def evaluate(
             each forecast cross-validation fold. Defaults to 'cutoff'.
         agg_fn (str, optional): Statistic to compute on the scores by id to reduce
             them to a single number. Defaults to None.
+        weights (str, pandas or polars DataFrame, optional): Weights to use when
+            `agg_fn='weighted_mean'`. If 'auto', weights are computed as the sum
+            of the target in the forecast/evaluation window, not from `train_df`.
+            If a dataframe, it must contain `id_col` and `weight`; if `cutoff_col`
+            is present in `df`, it can also contain `cutoff_col` for cutoff-level
+            weights. If `df` has `cutoff_col` but the weights dataframe does not,
+            the same per-series weight is used for every cutoff.
 
     Returns:
         pandas, polars, dask or spark DataFrame: Metrics with one row per

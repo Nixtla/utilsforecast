@@ -336,6 +336,33 @@ def test_evaluate_weights_validation(setup_series):
         )
 
 
+def test_evaluate_positional_api_compatibility():
+    df = pd.DataFrame(
+        {
+            "id": ["a", "a", "b", "b"],
+            "time": [1, 2, 1, 2],
+            "target": [0, 0, 0, 0],
+            "prediction": [1, 1, 3, 3],
+        }
+    )
+
+    result = evaluate(
+        df,
+        [mse],
+        ["prediction"],
+        None,
+        None,
+        "id",
+        "time",
+        "target",
+        "cutoff",
+        "mean",
+    )
+
+    expected = pd.DataFrame({"metric": ["mse"], "prediction": [5.0]})
+    pd.testing.assert_frame_equal(result, expected)
+
+
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
 @pytest.mark.parametrize("weight", [np.nan, np.inf])
 def test_evaluate_weighted_mean_rejects_non_finite_weights(engine, weight):
