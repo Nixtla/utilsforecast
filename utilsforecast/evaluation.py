@@ -18,7 +18,6 @@ from .compat import AnyDFType, DFType, DistributedDFType, pl, pl_DataFrame
 from .losses import _get_group_cols
 
 _WEIGHT_COL = "__utilsforecast_weight"
-_WEIGHT_SUM_COL = "__utilsforecast_weight_sum"
 
 
 def _function_name(f: Callable):
@@ -146,6 +145,9 @@ def _weighted_mean_agg(
     effective_weight_cols = [
         f"__utilsforecast_effective_weight_{i}" for i, _ in enumerate(model_cols)
     ]
+    valid_count_cols = [
+        f"__utilsforecast_valid_count_{i}" for i, _ in enumerate(model_cols)
+    ]
     df_nw = df_nw.with_columns(
         *[
             nw.when(
@@ -166,10 +168,19 @@ def _weighted_mean_agg(
             .otherwise(None)
             .alias(effective_weight_col)
             for model, effective_weight_col in zip(model_cols, effective_weight_cols)
+        ],
+        *[
+            nw.when(
+                (~nw.col(model).is_null())
+                & (~nw.col(model).is_nan().fill_null(False))
+            )
+            .then(1)
+            .otherwise(0)
+            .alias(valid_count_col)
+            for model, valid_count_col in zip(model_cols, valid_count_cols)
         ]
     )
     df_nw = df_nw.group_by(*group_cols).agg(
-        nw.col(_WEIGHT_COL).sum().alias(_WEIGHT_SUM_COL),
         *[
             nw.col(weighted_col).sum().alias(model)
             for model, weighted_col in zip(model_cols, weighted_cols)
@@ -178,9 +189,22 @@ def _weighted_mean_agg(
             nw.col(effective_weight_col).sum().alias(effective_weight_col)
             for effective_weight_col in effective_weight_cols
         ],
+        *[
+            nw.col(valid_count_col).sum().alias(valid_count_col)
+            for valid_count_col in valid_count_cols
+        ],
     )
-    if (df_nw[_WEIGHT_SUM_COL] == 0).any():
-        raise ValueError("The sum of weights must be different from zero.")
+    for effective_weight_col, valid_count_col in zip(
+        effective_weight_cols, valid_count_cols
+    ):
+        if (
+            (df_nw[effective_weight_col] == 0)
+            & (df_nw[valid_count_col] > 0)
+        ).any():
+            raise ValueError(
+                "The sum of weights for non-missing metric values must be "
+                "different from zero."
+            )
 
     return (
         df_nw
@@ -196,7 +220,9 @@ def _weighted_mean_agg(
         .with_columns(
             *[
                 (nw.col(model) / nw.col(effective_weight_col)).alias(model)
-                for model, effective_weight_col in zip(model_cols, effective_weight_cols)
+                for model, effective_weight_col in zip(
+                    model_cols, effective_weight_cols
+                )
             ]
         )
         .select(*group_cols, *model_cols)
