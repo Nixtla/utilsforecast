@@ -72,10 +72,10 @@ def _get_weights(
     target_col: str,
     cutoff_col: str,
 ) -> nw.DataFrame:
-    group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
     if isinstance(weights, str):
         if weights != "auto":
             raise ValueError("`weights` must be 'auto', a dataframe or None.")
+        group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
         weights_df = (
             nw.from_native(df)
             .group_by(*group_cols)
@@ -121,11 +121,7 @@ def _weighted_mean_agg(
     cutoff_col: str,
     model_cols: List[str],
 ) -> DFType:
-    if cutoff_col in df.columns:
-        id_cols = [id_col, cutoff_col, "metric"]
-    else:
-        id_cols = [id_col, "metric"]
-    group_cols = id_cols[1:]
+    group_cols = [cutoff_col, "metric"] if cutoff_col in df.columns else ["metric"]
     join_cols = [id_col]
     weights_df = _get_weights(
         df=forecasts_df,
