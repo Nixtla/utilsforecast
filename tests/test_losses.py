@@ -19,7 +19,7 @@ def pd_vs_pl(pd_df, pl_df, models):
     """Compare pandas and polars results for narwhals-based loss functions."""
     pd.testing.assert_frame_equal(
         pd_df[models].reset_index(drop=True),
-        pl_df[models].to_pandas().reset_index(drop=True)
+        pl_df[models].to_pandas().reset_index(drop=True),
     )
 
 
@@ -182,6 +182,15 @@ def linex_single(y_true, y_pred, a=1.0, **kwargs):
     return np.mean(np.exp(a * error) - a * error - 1)
 
 
+def wape_single(y_true, y_pred, **kwargs):
+    """Numpy reference implementation for WAPE."""
+    abs_err = np.sum(np.abs(y_true - y_pred))
+    abs_y = np.sum(np.abs(y_true))
+    if abs_y == 0:
+        return np.nan
+    return abs_err / abs_y
+
+
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
 @pytest.mark.parametrize(
     "utils_fn,single_fn",
@@ -200,6 +209,7 @@ def linex_single(y_true, y_pred, a=1.0, **kwargs):
         (ufl.msse, msse_single),
         (ufl.rmsse, rmsse_single),
         (ufl.nd, nd_single),
+        (ufl.wape, wape_single),
         (ufl.coverage, coverage_single),
         (ufl.linex, linex_single),
         (
@@ -241,7 +251,11 @@ def test_loss(engine, utils_fn, single_fn):
         kwargs["level"] = level
     if "a" in loss_params:
         # Get the default value or use 1.0
-        kwargs["a"] = loss_params["a"].default if loss_params["a"].default != inspect.Parameter.empty else 1.0
+        kwargs["a"] = (
+            loss_params["a"].default
+            if loss_params["a"].default != inspect.Parameter.empty
+            else 1.0
+        )
     actual = utils_fn(series, models, **kwargs)
 
     df = nw.from_native(series)
@@ -286,6 +300,7 @@ def test_linex_loss_numerical(engine):
         df = pd.DataFrame(data)
     else:
         import polars as pl
+
         df = pl.DataFrame(data)
 
     # Calculate expected value
@@ -467,7 +482,9 @@ class TestMultiQuantileLoss:
         df_nw = nw.from_native(series)
         df_test = df_nw.with_columns(nw.col("unique_id").cast(nw.String))
 
-        mql_df = ufl.mqloss(df_test.to_native(), multi_quantile_models, quantiles=quantiles)
+        mql_df = ufl.mqloss(
+            df_test.to_native(), multi_quantile_models, quantiles=quantiles
+        )
 
         # Check shape
         expected_shape = (df_nw["unique_id"].n_unique(), 1 + len(models))
