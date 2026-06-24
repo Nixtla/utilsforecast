@@ -9,6 +9,7 @@ __all__ = [
     "pis",
     "spis",
     "mape",
+    "wape",
     "smape",
     "mase",
     "rmae",
@@ -23,7 +24,7 @@ __all__ = [
     "calibration",
     "scaled_crps",
     "tweedie_deviance",
-    "linex"
+    "linex",
 ]
 
 from typing import Callable, Dict, List, Union
@@ -39,6 +40,7 @@ def _get_group_cols(df: IntoDataFrameT, id_col: str, cutoff_col: str) -> list[st
     else:
         group_cols = [id_col]
     return group_cols
+
 
 def _base_docstring(*args, **kwargs) -> Callable:
     base_docstring = """
@@ -87,24 +89,19 @@ def _create_train_with_cutoffs(
     df: IntoDataFrameT,
     id_col: str,
     time_col: str,
-    cutoff_col: str
+    cutoff_col: str,
 ) -> IntoDataFrameT:
     group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
     train_df = nw.from_native(train_df)
-    
+
     if cutoff_col in group_cols:
-        cutoffs_df = (
-            nw.from_native(df)
-            .select(*group_cols)
-            .unique()
-        )
-        train_df = (
-            train_df
-            .join(cutoffs_df, on="unique_id", how="inner")
-            .filter(nw.col(time_col) <= nw.col(cutoff_col))
+        cutoffs_df = nw.from_native(df).select(*group_cols).unique()
+        train_df = train_df.join(cutoffs_df, on="unique_id", how="inner").filter(
+            nw.col(time_col) <= nw.col(cutoff_col)
         )
 
     return train_df
+
 
 def _scale_loss(
     df: IntoDataFrameT,
@@ -121,6 +118,7 @@ def _scale_loss(
         .select([*group_cols, *exprs])
         .to_native()
     )
+
 
 @_base_docstring
 def mae(
@@ -188,11 +186,18 @@ def rmse(
     as the original time series so its comparison with other
     series is possible only if they share a common scale.
     RMSE has a direct connection to the L2 norm."""
-    
-    df = mse(df=df, models=models, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
+
+    df = mse(
+        df=df,
+        models=models,
+        id_col=id_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
+    )
     return (
         nw.from_native(df).with_columns(*[nw.col(m).sqrt() for m in models]).to_native()
     )
+
 
 @_base_docstring
 def bias(
@@ -200,7 +205,7 @@ def bias(
     models: List[str],
     id_col: str = "unique_id",
     target_col: str = "y",
-    cutoff_col: str = "cutoff"
+    cutoff_col: str = "cutoff",
 ) -> IntoDataFrameT:
     """Forecast estimator bias.
 
@@ -285,26 +290,42 @@ def spis(
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'.
 
     Returns:
-        pandas or polars DataFrame: dataframe with one row per id and one column per model.    
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.
     """
+
     def gen_expr(_m):
         return nw.col(target_col).alias("scale")
 
     df = nw.from_native(df)
-    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, time_col=time_col, cutoff_col=cutoff_col)
+    train_df = _create_train_with_cutoffs(
+        train_df=train_df,
+        df=df,
+        id_col=id_col,
+        time_col=time_col,
+        cutoff_col=cutoff_col,
+    )
     scales = _nw_agg_expr(
         df=train_df,
         models=["unused"],
         id_col=id_col,
         cutoff_col=cutoff_col,
-        gen_expr=gen_expr
+        gen_expr=gen_expr,
     )
-    raw = pis(df=df, models=models, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
-    return _scale_loss(df=raw, models=models, scales=scales, id_col=id_col, cutoff_col=cutoff_col)
+    raw = pis(
+        df=df,
+        models=models,
+        id_col=id_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
+    )
+    return _scale_loss(
+        df=raw, models=models, scales=scales, id_col=id_col, cutoff_col=cutoff_col
+    )
 
 
 def _zero_to_nan(series):
     return nw.when(series == 0).then(float("nan")).otherwise(series)
+
 
 @_base_docstring
 def mape(
@@ -338,6 +359,60 @@ def mape(
 
 
 @_base_docstring
+def wape(
+    df: IntoDataFrameT,
+    models: List[str],
+    id_col: str = "unique_id",
+    target_col: str = "y",
+    cutoff_col: str = "cutoff",
+) -> IntoDataFrameT:
+    """Weighted Absolute Percentage Error (WAPE)
+
+    WAPE = sum(|y - ŷ|) / sum(|y|)
+
+    Unlike MAPE, which averages per-point percentage errors, WAPE normalizes
+    the total absolute error by the total absolute value of actuals. This makes
+    it robust to zero values and gives more weight to higher-volume items.
+
+    References
+    ----------
+    - Kolassa & Schütz (2007). "Advantages of the MAD/Mean ratio over the MAPE."
+    - https://robjhyndman.com/hyndsight/wmape/
+    """
+
+    # Step 1: per-group sum of absolute errors
+    def gen_numer(model):
+        return (nw.col(target_col) - nw.col(model)).abs().alias(model)
+
+    numer = _nw_agg_expr(
+        df=df,
+        models=models,
+        id_col=id_col,
+        gen_expr=gen_numer,
+        cutoff_col=cutoff_col,
+        agg="sum",
+    )
+
+    # Step 2: per-group sum of |y| (denominator)
+    group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
+    denom = (
+        nw.from_native(df)
+        .select([*group_cols, nw.col(target_col).abs().alias("__abs_y__")])
+        .group_by(*group_cols)
+        .agg(nw.col("__abs_y__").sum())
+        .sort(*group_cols)
+    )
+
+    # Step 3: join and divide
+    result = nw.from_native(numer).join(denom, on=group_cols, how="left")
+    for model in models:
+        result = result.with_columns(
+            (nw.col(model) / _zero_to_nan(nw.col("__abs_y__"))).alias(model)
+        )
+    return result.drop("__abs_y__").to_native()
+
+
+@_base_docstring
 def smape(
     df: IntoDataFrameT,
     models: List[str],
@@ -368,6 +443,7 @@ def smape(
         gen_expr=gen_expr,
         cutoff_col=cutoff_col,
     )
+
 
 def mase(
     df: IntoDataFrameT,
@@ -410,8 +486,20 @@ def mase(
         lagged = nw.col(target_col).shift(seasonality).over(group_cols)
         return (nw.col(target_col) - lagged).abs().alias("scale")
 
-    mae_df = mae(df=df, models=models, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
-    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, time_col=time_col, cutoff_col=cutoff_col)
+    mae_df = mae(
+        df=df,
+        models=models,
+        id_col=id_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
+    )
+    train_df = _create_train_with_cutoffs(
+        train_df=train_df,
+        df=df,
+        id_col=id_col,
+        time_col=time_col,
+        cutoff_col=cutoff_col,
+    )
 
     scales = _nw_agg_expr(
         df=train_df,
@@ -435,7 +523,7 @@ def rmae(
     baseline: str,
     id_col: str = "unique_id",
     target_col: str = "y",
-    cutoff_col: str = "cutoff"
+    cutoff_col: str = "cutoff",
 ) -> IntoDataFrameT:
     """Relative Mean Absolute Error (RMAE)
 
@@ -471,6 +559,7 @@ def rmae(
         cutoff_col=cutoff_col,
     )
 
+
 @_base_docstring
 def nd(
     df: IntoDataFrameT,
@@ -501,7 +590,9 @@ def nd(
         )
         .group_by(*group_cols)
         .agg(nw.all().sum())
-        .select(*group_cols, *[(nw.col(m) / _zero_to_nan(nw.col("scale"))) for m in models])
+        .select(
+            *group_cols, *[(nw.col(m) / _zero_to_nan(nw.col("scale"))) for m in models]
+        )
         .sort(*group_cols)
         .to_native()
     )
@@ -540,13 +631,33 @@ def msse(
     References:
         [1] https://otexts.com/fpp3/accuracy.html
     """
-    mse_df = mse(df=df, models=models, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
-    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, time_col=time_col,cutoff_col=cutoff_col)
-    train_group_cols = _get_group_cols(df=train_df, id_col=id_col, cutoff_col=cutoff_col)
+    mse_df = mse(
+        df=df,
+        models=models,
+        id_col=id_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
+    )
+    train_df = _create_train_with_cutoffs(
+        train_df=train_df,
+        df=df,
+        id_col=id_col,
+        time_col=time_col,
+        cutoff_col=cutoff_col,
+    )
+    train_group_cols = _get_group_cols(
+        df=train_df, id_col=id_col, cutoff_col=cutoff_col
+    )
     baseline = train_df.with_columns(
         scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
     )
-    scales = mse(df=baseline, models=["scale"], id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
+    scales = mse(
+        df=baseline,
+        models=["scale"],
+        id_col=id_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
+    )
     return _scale_loss(
         df=mse_df,
         scales=scales,
@@ -630,6 +741,7 @@ def quantile_loss(
         cutoff_col=cutoff_col,
     )
 
+
 def scaled_quantile_loss(
     df: IntoDataFrameT,
     models: Dict[str, str],
@@ -669,14 +781,33 @@ def scaled_quantile_loss(
         [1] https://www.sciencedirect.com/science/article/pii/S0169207021001722
     """
     qloss_df = quantile_loss(
-        df=df, models=models, q=q, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col
+        df=df,
+        models=models,
+        q=q,
+        id_col=id_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
     )
-    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, time_col=time_col, cutoff_col=cutoff_col)
-    train_group_cols = _get_group_cols(df=train_df, id_col=id_col, cutoff_col=cutoff_col)
+    train_df = _create_train_with_cutoffs(
+        train_df=train_df,
+        df=df,
+        id_col=id_col,
+        time_col=time_col,
+        cutoff_col=cutoff_col,
+    )
+    train_group_cols = _get_group_cols(
+        df=train_df, id_col=id_col, cutoff_col=cutoff_col
+    )
     baseline = train_df.with_columns(
         scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
     )
-    scales = mae(df=baseline, models=["scale"], id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
+    scales = mae(
+        df=baseline,
+        models=["scale"],
+        id_col=id_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
+    )
     return _scale_loss(
         df=qloss_df,
         scales=scales,
@@ -740,19 +871,27 @@ def mqloss(
     quantile_preds = {}
     for q, idx in zip(sorted_quantiles, range(len(sorted_quantiles))):
         quantile_preds[q] = {
-            model: forecasts[idx]
-            for model, forecasts in sorted_models.items()
+            model: forecasts[idx] for model, forecasts in sorted_models.items()
         }
 
-    res = (
-        nw.concat(
-            [
-                nw.from_native(quantile_loss(df, models=quantile_preds[q], q=q, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col))
-                for q in sorted_quantiles
-            ]
-        )
+    res = nw.concat(
+        [
+            nw.from_native(
+                quantile_loss(
+                    df,
+                    models=quantile_preds[q],
+                    q=q,
+                    id_col=id_col,
+                    target_col=target_col,
+                    cutoff_col=cutoff_col,
+                )
+            )
+            for q in sorted_quantiles
+        ]
     )
-    res = res.group_by(group_cols).agg([nw.col(col).mean().alias(col) for col in res.columns if col not in group_cols])
+    res = res.group_by(group_cols).agg(
+        [nw.col(col).mean().alias(col) for col in res.columns if col not in group_cols]
+    )
     res = res.to_native()
 
     return res
@@ -802,14 +941,33 @@ def scaled_mqloss(
         [1] https://www.sciencedirect.com/science/article/pii/S0169207021001722
     """
     mql_df = mqloss(
-        df=df, models=models, quantiles=quantiles, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col
+        df=df,
+        models=models,
+        quantiles=quantiles,
+        id_col=id_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
     )
-    train_df = _create_train_with_cutoffs(train_df=train_df, df=df, id_col=id_col, time_col=time_col,cutoff_col=cutoff_col)
-    train_group_cols = _get_group_cols(df=train_df, id_col=id_col, cutoff_col=cutoff_col)
+    train_df = _create_train_with_cutoffs(
+        train_df=train_df,
+        df=df,
+        id_col=id_col,
+        time_col=time_col,
+        cutoff_col=cutoff_col,
+    )
+    train_group_cols = _get_group_cols(
+        df=train_df, id_col=id_col, cutoff_col=cutoff_col
+    )
     baseline = train_df.with_columns(
         scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
     )
-    scales = mae(df=baseline, models=["scale"], id_col=id_col, target_col=target_col, cutoff_col=cutoff_col)
+    scales = mae(
+        df=baseline,
+        models=["scale"],
+        id_col=id_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
+    )
     return _scale_loss(
         df=mql_df,
         scales=scales,
@@ -825,7 +983,7 @@ def coverage(
     level: int,
     id_col: str = "unique_id",
     target_col: str = "y",
-    cutoff_col: str = "cutoff"
+    cutoff_col: str = "cutoff",
 ) -> IntoDataFrameT:
     """Coverage of y with y_hat_lo and y_hat_hi.
 
@@ -865,7 +1023,7 @@ def calibration(
     models: Dict[str, str],
     id_col: str = "unique_id",
     target_col: str = "y",
-    cutoff_col: str = "cutoff"
+    cutoff_col: str = "cutoff",
 ) -> IntoDataFrameT:
     """
     Fraction of y that is lower than the model's predictions.
@@ -903,7 +1061,7 @@ def scaled_crps(
     quantiles: np.ndarray,
     id_col: str = "unique_id",
     target_col: str = "y",
-    cutoff_col: str = "cutoff"
+    cutoff_col: str = "cutoff",
 ) -> IntoDataFrameT:
     """Scaled Continues Ranked Probability Score
 
@@ -930,13 +1088,19 @@ def scaled_crps(
     eps = np.finfo(np.float64).eps
     quantiles = np.asarray(quantiles)
     loss = mqloss(
-        df=df, models=models, quantiles=quantiles, id_col=id_col, target_col=target_col, cutoff_col=cutoff_col
+        df=df,
+        models=models,
+        quantiles=quantiles,
+        id_col=id_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
     )
 
     def gen_expr(model):
         return (2 * nw.col(model) * nw.col("counts") / (nw.col("norm") + eps)).alias(
             model
         )
+
     group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
     stats = (
         df.with_columns(target_col=nw.col(target_col).abs())
