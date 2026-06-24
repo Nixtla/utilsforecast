@@ -6,7 +6,7 @@ description: Model performance evaluation
 ### `evaluate`
 
 ```python
-evaluate(df, metrics, models=None, train_df=None, level=None, id_col='unique_id', time_col='ds', target_col='y', cutoff_col='cutoff', agg_fn=None)
+evaluate(df, metrics, models=None, train_df=None, level=None, id_col='unique_id', time_col='ds', target_col='y', cutoff_col='cutoff', agg_fn=None, weights=None)
 ```
 
 Evaluate forecast using different metrics.
@@ -25,6 +25,7 @@ Name | Type | Description | Default
 `target_col` | <code>[str](#str)</code> | Column that contains the target. Defaults to 'y'. | <code>'y'</code>
 `cutoff_col` | <code>[str](#str)</code> | Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. | <code>'cutoff'</code>
 `agg_fn` | <code>[str](#str)</code> | Statistic to compute on the scores by id to reduce them to a single number. Defaults to None. | <code>None</code>
+`weights` | <code>str, pandas or polars DataFrame</code> | Weights to use when `agg_fn='weighted_mean'`. If 'auto', weights are computed as the sum of the target in the forecast/evaluation window, not from `train_df`. If a dataframe, it must contain `id_col` and `weight`; if `cutoff_col` is present in `df`, it can also contain `cutoff_col` for cutoff-level weights. If `df` has `cutoff_col` but the weights dataframe does not, the same per-series weight is used for every cutoff. | <code>None</code>
 
 **Returns:**
 
