@@ -334,6 +334,37 @@ value at a given time and dividing it by the sum of the absolute
 value of the ground truth.
 
 
+### Weighted Absolute Percentage Error
+
+```math
+\mathrm{WAPE}(\mathbf{y}_{\tau}, \mathbf{\hat{y}}_{\tau}) = \frac{\sum^{t+H}_{\tau=t+1} |y_{\tau} - \hat{y}_{\tau}|}{\sum^{t+H}_{\tau=t+1} | y_{\tau} |}
+```
+
+WAPE (also known as wMAPE or the MAD/Mean ratio) is mathematically identical
+to the Normalized Deviation (ND) above; it is exposed under this more common
+name for convenience.
+
+#### `wape`
+
+```python
+wape(df, models, id_col='unique_id', target_col='y', cutoff_col='cutoff')
+```
+
+Weighted Absolute Percentage Error (WAPE)
+
+WAPE = sum(|y - ŷ|) / sum(|y|)
+
+Unlike MAPE, which averages per-point percentage errors, WAPE normalizes
+the total absolute error by the total absolute value of the actuals. This
+makes it robust to zero actuals and gives more weight to higher-volume
+points.
+
+WAPE is mathematically identical to the Normalized Deviation (`nd`); it is
+also known as wMAPE or the MAD/Mean ratio. It is exposed under the WAPE
+name -- the most common name for this metric in business forecasting -- and
+delegates to `nd`.
+
+
 ### Mean Squared Scaled Error
 
 ```math
