@@ -1043,9 +1043,7 @@ def winkler_score(
         penalty = (
             nw.when(y < lo)
             .then((2 / alpha) * (lo - y))
-            .otherwise(
-                nw.when(y > hi).then((2 / alpha) * (y - hi)).otherwise(0.0)
-            )
+            .otherwise(nw.when(y > hi).then((2 / alpha) * (y - hi)).otherwise(0.0))
         )
         return (width + penalty).alias(model)
 
