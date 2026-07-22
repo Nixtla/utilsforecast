@@ -21,6 +21,7 @@ __all__ = [
     "mqloss",
     "scaled_mqloss",
     "coverage",
+    "winkler_score",
     "calibration",
     "scaled_crps",
     "tweedie_deviance",
@@ -984,6 +985,70 @@ def coverage(
             .is_between(nw.col(f"{model}-lo-{level}"), nw.col(f"{model}-hi-{level}"))
             .alias(model)
         )
+
+    return _nw_agg_expr(
+        df=df,
+        models=models,
+        id_col=id_col,
+        gen_expr=gen_expr,
+        cutoff_col=cutoff_col,
+    )
+
+
+def winkler_score(
+    df: IntoDataFrameT,
+    models: List[str],
+    level: int,
+    id_col: str = "unique_id",
+    target_col: str = "y",
+    cutoff_col: str = "cutoff",
+) -> IntoDataFrameT:
+    """Winkler Score
+
+    The Winkler score evaluates a prediction interval by rewarding narrow
+    intervals and penalizing observations that fall outside them. For a
+    100(1-alpha)% prediction interval [lo, hi] and an observation y, it is
+    defined as the width of the interval plus a penalty when y lies outside it:
+
+    - (hi - lo)                          if lo <= y <= hi
+    - (hi - lo) + (2/alpha)(lo - y)      if y < lo
+    - (hi - lo) + (2/alpha)(y - hi)      if y > hi
+
+    where alpha = 1 - level/100. Lower scores are better: intervals that are
+    both narrow and well calibrated are rewarded, while observations outside the
+    interval incur a penalty inversely proportional to alpha. The score is
+    averaged over the series.
+
+    Args:
+        df (pandas or polars DataFrame): Input dataframe with id, times, actuals and predictions.
+        models (list of str): Columns that identify the models predictions.
+        level (int): Confidence level used for intervals.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'.
+
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and one column per model.
+
+    References:
+        [1] https://otexts.com/fpppy/05-toolbox.html#winkler-score
+        [2] Winkler, R. L. (1972). A decision-theoretic approach to interval estimation.
+    """
+    alpha = (100 - level) / 100
+
+    def gen_expr(model):
+        lo = nw.col(f"{model}-lo-{level}")
+        hi = nw.col(f"{model}-hi-{level}")
+        y = nw.col(target_col)
+        width = hi - lo
+        penalty = (
+            nw.when(y < lo)
+            .then((2 / alpha) * (lo - y))
+            .otherwise(
+                nw.when(y > hi).then((2 / alpha) * (y - hi)).otherwise(0.0)
+            )
+        )
+        return (width + penalty).alias(model)
 
     return _nw_agg_expr(
         df=df,
