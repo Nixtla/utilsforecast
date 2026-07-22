@@ -1007,17 +1007,16 @@ def winkler_score(
 
     The Winkler score evaluates a prediction interval by rewarding narrow
     intervals and penalizing observations that fall outside them. For a
-    100(1-alpha)% prediction interval [lo, hi] and an observation y, it is
-    defined as the width of the interval plus a penalty when y lies outside it:
+    100(1-alpha)% prediction interval [lo, hi] and an observation y, with
+    alpha = 1 - level/100, it is defined as:
 
-    - (hi - lo)                          if lo <= y <= hi
-    - (hi - lo) + (2/alpha)(lo - y)      if y < lo
-    - (hi - lo) + (2/alpha)(y - hi)      if y > hi
+    - The interval width (hi - lo), if the observation lies within the interval
+      (between lo and hi, inclusive).
+    - (hi - lo) + (2/alpha)(lo - y), if the observation lies below the interval.
+    - (hi - lo) + (2/alpha)(y - hi), if the observation lies above the interval.
 
-    where alpha = 1 - level/100. Lower scores are better: intervals that are
-    both narrow and well calibrated are rewarded, while observations outside the
-    interval incur a penalty inversely proportional to alpha. The score is
-    averaged over the series.
+    Lower scores are better. Intervals that are both narrow and well calibrated
+    are rewarded, while observations outside the interval incur on a penalty.
 
     Args:
         df (pandas or polars DataFrame): Input dataframe with id, times, actuals and predictions.
