@@ -1021,7 +1021,7 @@ def winkler_score(
     Args:
         df (pandas or polars DataFrame): Input dataframe with id, times, actuals and predictions.
         models (list of str): Columns that identify the models predictions.
-        level (int): Confidence level used for intervals.
+        level (int): Confidence level used for intervals. Must satisfy 0 < level < 100.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'.
@@ -1033,6 +1033,8 @@ def winkler_score(
         [1] https://otexts.com/fpppy/05-toolbox.html#winkler-score
         [2] Winkler, R. L. (1972). A decision-theoretic approach to interval estimation.
     """
+    if level <= 0 or level >= 100:
+        raise ValueError(f"`level` must satisfy 0 < level < 100, but got {level}.")
     alpha = (100 - level) / 100
 
     def gen_expr(model):
