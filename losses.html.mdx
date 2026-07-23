@@ -782,7 +782,7 @@ Name | Type | Description | Default
 ---- | ---- | ----------- | -------
 `df` | <code>pandas or polars DataFrame</code> | Input dataframe with id, times, actuals and predictions. | *required*
 `models` | <code>list of str</code> | Columns that identify the models predictions. | *required*
-`level` | <code>[int](#int)</code> | Confidence level used for intervals. | *required*
+`level` | <code>[int](#int)</code> | Confidence level used for intervals. Must satisfy 0 < level < 100. | *required*
 `id_col` | <code>[str](#str)</code> | Column that identifies each serie. Defaults to 'unique_id'. | <code>'unique_id'</code>
 `target_col` | <code>[str](#str)</code> | Column that contains the target. Defaults to 'y'. | <code>'y'</code>
 `cutoff_col` | <code>[str](#str)</code> | Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. | <code>'cutoff'</code>
