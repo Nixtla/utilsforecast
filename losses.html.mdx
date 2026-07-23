@@ -736,6 +736,72 @@ Type | Description
 </details>
 
 
+### Winkler Score
+
+```math
+\mathrm{Winkler}_{\alpha}(\mathbf{y}_{\tau}, \boldsymbol{\ell}_{\alpha,\tau}, \mathbf{u}_{\alpha,\tau}) = \frac{1}{H} \sum^{t+H}_{\tau=t+1} W_{\alpha,\tau}
+```
+
+where
+
+```math
+W_{\alpha,\tau} =
+\begin{cases}
+(u_{\alpha,\tau} - \ell_{\alpha,\tau}) + \frac{2}{\alpha} (\ell_{\alpha,\tau} - y_{\tau}) & \text{if } y_{\tau} < \ell_{\alpha,\tau} \\
+(u_{\alpha,\tau} - \ell_{\alpha,\tau}) & \text{if } \ell_{\alpha,\tau} \le y_{\tau} \le u_{\alpha,\tau} \\
+(u_{\alpha,\tau} - \ell_{\alpha,\tau}) + \frac{2}{\alpha} (y_{\tau} - u_{\alpha,\tau}) & \text{if } y_{\tau} > u_{\alpha,\tau}
+\end{cases}
+```
+
+where $[\ell_{\alpha,\tau}, u_{\alpha,\tau}]$ is the $100(1-\alpha)\%$ prediction interval and $\alpha = 1 - \text{level}/100$.
+
+#### `winkler_score`
+
+```python
+winkler_score(df, models, level, id_col='unique_id', target_col='y', cutoff_col='cutoff')
+```
+
+Winkler Score
+
+The Winkler score evaluates a prediction interval by rewarding narrow
+intervals and penalizing observations that fall outside them. For a
+100(1-alpha)% prediction interval [lo, hi] and an observation y, with
+alpha = 1 - level/100, it is defined as:
+
+- The interval width (hi - lo), if the observation lies within the interval
+  (between lo and hi, inclusive).
+- (hi - lo) + (2/alpha)(lo - y), if the observation lies below the interval.
+- (hi - lo) + (2/alpha)(y - hi), if the observation lies above the interval.
+
+Lower scores are better. Intervals that are both narrow and well calibrated
+are rewarded, while observations outside the interval incur on a penalty.
+
+**Parameters:**
+
+Name | Type | Description | Default
+---- | ---- | ----------- | -------
+`df` | <code>pandas or polars DataFrame</code> | Input dataframe with id, times, actuals and predictions. | *required*
+`models` | <code>list of str</code> | Columns that identify the models predictions. | *required*
+`level` | <code>[int](#int)</code> | Confidence level used for intervals. | *required*
+`id_col` | <code>[str](#str)</code> | Column that identifies each serie. Defaults to 'unique_id'. | <code>'unique_id'</code>
+`target_col` | <code>[str](#str)</code> | Column that contains the target. Defaults to 'y'. | <code>'y'</code>
+`cutoff_col` | <code>[str](#str)</code> | Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'. | <code>'cutoff'</code>
+
+**Returns:**
+
+Type | Description
+---- | -----------
+<code>[IntoDataFrameT](#narwhals.stable.v2.typing.IntoDataFrameT)</code> | pandas or polars DataFrame: dataframe with one row per id and one column per model.
+
+<details class="references" open markdown="1">
+<summary>References</summary>
+
+[1] https://otexts.com/fpppy/05-toolbox.html#winkler-score
+[2] Winkler, R. L. (1972). A decision-theoretic approach to interval estimation.
+
+</details>
+
+
 ### Calibration
 
 #### `calibration`
