@@ -57,6 +57,23 @@ def test_append_several_2d():
         np.array([0, 2, 4, 8]),
     )
 
+# 2d data, 1d new_values: exercises the `data.ndim == 2 and new_values.ndim
+# == 1` reshape branch in `_append_several` (as opposed to `test_append_
+# several_2d` above, where `new_values` is already 2D and that branch is
+# never taken).
+def test_append_several_2d_data_1d_new_values():
+    data = np.arange(5).reshape(-1, 1)
+    indptr = np.array([0, 2, 5])
+    new_sizes = np.array([0, 2, 1])
+    new_values = np.array([6, 7, 5])  # 1D, must be reshaped to match `data`
+    new_groups = np.array([False, True, False])
+    new_data, new_indptr = _append_several(data, indptr, new_sizes, new_values, new_groups)
+    np.testing.assert_equal(new_data, np.array([0, 1, 6, 7, 2, 3, 4, 5]).reshape(-1, 1))
+    np.testing.assert_equal(
+        new_indptr,
+        np.array([0, 2, 4, 8]),
+    )
+
 
 # The `GroupedArray` is used internally for storing the series values and performing transformations.
 def test_grouped_array():
