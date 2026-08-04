@@ -6,7 +6,13 @@ from typing import Sequence, Tuple, Union
 import numpy as np
 
 from .compat import DataFrame
-from .processing import counts_by_id, value_cols_to_numpy
+from .processing import _ranges_to_indexer, counts_by_id, value_cols_to_numpy
+
+
+def _empty_like_rows(data: np.ndarray, n_rows: int) -> np.ndarray:
+    if data.ndim == 2:
+        return np.empty_like(data, shape=(n_rows, data.shape[1]))
+    return np.empty_like(data, shape=n_rows)
 
 
 def _append_one(
@@ -15,17 +21,19 @@ def _append_one(
     """Append each value of new to each group in data formed by indptr."""
     n_groups = len(indptr) - 1
     n_rows = data.shape[0] + new.shape[0]
-    if data.ndim == 2:
-        new_data = np.empty_like(data, shape=(n_rows, data.shape[1]))
-    else:
-        new_data = np.empty_like(data, shape=n_rows)
+    new_data = _empty_like_rows(data, n_rows)
     new_indptr = indptr.copy()
     new_indptr[1:] += np.arange(1, n_groups + 1)
-    for i in range(n_groups):
-        prev_slice = slice(indptr[i], indptr[i + 1])
-        new_slice = slice(new_indptr[i], new_indptr[i + 1] - 1)
-        new_data[new_slice] = data[prev_slice]
-        new_data[new_indptr[i + 1] - 1] = new[i]
+    # every group grows by exactly one row, appended at its end (position
+    # new_indptr[i + 1] - 1); scatter `new` there and the untouched positions
+    # keep the original per-group order from `data`.
+    insert_pos = new_indptr[1:] - 1
+    keep_mask = np.ones(n_rows, dtype=bool)
+    keep_mask[insert_pos] = False
+    new_data[keep_mask] = data
+    new_data[insert_pos] = (
+        new.reshape(-1, 1) if data.ndim == 2 and new.ndim == 1 else new
+    )
     return new_data, new_indptr
 
 
@@ -36,30 +44,30 @@ def _append_several(
     new_values: np.ndarray,
     new_groups: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    n_groups = new_sizes.size
     n_rows = data.shape[0] + new_values.shape[0]
-    if data.ndim == 2:
-        new_data = np.empty_like(data, shape=(n_rows, data.shape[1]))
-    else:
-        new_data = np.empty_like(data, shape=n_rows)
-    new_indptr = np.empty_like(indptr, shape=new_sizes.size + 1)
+    new_data = _empty_like_rows(data, n_rows)
+
+    is_old = ~new_groups
+    old_sizes = np.zeros(n_groups, dtype=np.int64)
+    old_sizes[is_old] = np.diff(indptr)
+    total_sizes = old_sizes + new_sizes
+    new_indptr = np.empty_like(indptr, shape=n_groups + 1)
     new_indptr[0] = 0
-    old_indptr_idx = 0
-    new_vals_idx = 0
-    for i, is_new in enumerate(new_groups):
-        new_size = new_sizes[i]
-        if is_new:
-            old_size = 0
-        else:
-            prev_slice = slice(indptr[old_indptr_idx], indptr[old_indptr_idx + 1])
-            old_indptr_idx += 1
-            old_size = prev_slice.stop - prev_slice.start
-            new_size += old_size
-            new_data[new_indptr[i] : new_indptr[i] + old_size] = data[prev_slice]
-        new_indptr[i + 1] = new_indptr[i] + new_size
-        new_data[new_indptr[i] + old_size : new_indptr[i + 1]] = new_values[
-            new_vals_idx : new_vals_idx + new_sizes[i]
-        ]
-        new_vals_idx += new_sizes[i]
+    np.cumsum(total_sizes, out=new_indptr[1:])
+
+    # existing rows keep their relative order at the start of each group
+    old_starts = new_indptr[:-1][is_old]
+    old_idx = _ranges_to_indexer(old_starts, old_starts + old_sizes[is_old])
+    new_data[old_idx] = data
+    # new rows are appended right after each group's (possibly empty) old data
+    new_starts = new_indptr[:-1] + old_sizes
+    new_idx = _ranges_to_indexer(new_starts, new_starts + new_sizes)
+    new_data[new_idx] = (
+        new_values.reshape(-1, 1)
+        if data.ndim == 2 and new_values.ndim == 1
+        else new_values
+    )
     return new_data, new_indptr
 
 
