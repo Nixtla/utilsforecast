@@ -137,3 +137,146 @@ def test_grouped_array_1d():
     ga_pl = GroupedArray.from_sorted_df(series_pl, "unique_id", "ds", "y")
     np.testing.assert_allclose(ga_pd.data, ga_pl.data)
     np.testing.assert_equal(ga_pd.indptr, ga_pl.indptr)
+
+
+# ========================================
+# _append_one / _append_several: vectorized scatter (perf)
+# ========================================
+#
+# Both used a python loop over every group to splice new rows in. They're
+# now vectorized scatter-writes (see `_ranges_to_indexer` reuse in
+# grouped_array.py). These tests pin the vectorized versions against the
+# literal original per-group loop on adversarial inputs: empty groups, all
+# groups new/old, 1D and 2D data, and varying dtypes.
+
+
+def _reference_append_one(data, indptr, new):
+    n_groups = len(indptr) - 1
+    n_rows = data.shape[0] + new.shape[0]
+    if data.ndim == 2:
+        new_data = np.empty_like(data, shape=(n_rows, data.shape[1]))
+    else:
+        new_data = np.empty_like(data, shape=n_rows)
+    new_indptr = indptr.copy()
+    new_indptr[1:] += np.arange(1, n_groups + 1)
+    for i in range(n_groups):
+        prev_slice = slice(indptr[i], indptr[i + 1])
+        new_slice = slice(new_indptr[i], new_indptr[i + 1] - 1)
+        new_data[new_slice] = data[prev_slice]
+        new_data[new_indptr[i + 1] - 1] = new[i]
+    return new_data, new_indptr
+
+
+def _reference_append_several(data, indptr, new_sizes, new_values, new_groups):
+    n_rows = data.shape[0] + new_values.shape[0]
+    if data.ndim == 2:
+        new_data = np.empty_like(data, shape=(n_rows, data.shape[1]))
+    else:
+        new_data = np.empty_like(data, shape=n_rows)
+    new_indptr = np.empty_like(indptr, shape=new_sizes.size + 1)
+    new_indptr[0] = 0
+    old_indptr_idx = 0
+    new_vals_idx = 0
+    for i, is_new in enumerate(new_groups):
+        new_size = new_sizes[i]
+        if is_new:
+            old_size = 0
+        else:
+            prev_slice = slice(indptr[old_indptr_idx], indptr[old_indptr_idx + 1])
+            old_indptr_idx += 1
+            old_size = prev_slice.stop - prev_slice.start
+            new_size += old_size
+            new_data[new_indptr[i] : new_indptr[i] + old_size] = data[prev_slice]
+        new_indptr[i + 1] = new_indptr[i] + new_size
+        new_data[new_indptr[i] + old_size : new_indptr[i + 1]] = new_values[
+            new_vals_idx : new_vals_idx + new_sizes[i]
+        ]
+        new_vals_idx += new_sizes[i]
+    return new_data, new_indptr
+
+
+class TestAppendVectorizedMatchesReferenceLoop:
+    def test_append_one_adversarial(self):
+        rng = np.random.default_rng(0)
+        for trial in range(100):
+            n_groups = rng.integers(1, 30)
+            sizes = rng.integers(0, 10, size=n_groups)  # allow empty groups
+            indptr = np.append(0, sizes.cumsum()).astype(np.int64)
+            total = int(sizes.sum())
+            if rng.random() < 0.5:
+                data = rng.normal(size=total)
+                new = rng.normal(size=n_groups)
+            else:
+                ncols = rng.integers(1, 4)
+                data = rng.normal(size=(total, ncols))
+                new = rng.normal(size=(n_groups, ncols))
+            actual_data, actual_indptr = _append_one(data, indptr, new)
+            expected_data, expected_indptr = _reference_append_one(data, indptr, new)
+            np.testing.assert_array_equal(
+                actual_indptr, expected_indptr, err_msg=f"trial {trial}"
+            )
+            np.testing.assert_allclose(
+                actual_data, expected_data, err_msg=f"trial {trial}"
+            )
+
+    def test_append_several_adversarial(self):
+        rng = np.random.default_rng(1)
+        for trial in range(100):
+            n_groups = rng.integers(1, 30)
+            new_groups = rng.random(n_groups) < 0.3
+            n_old_groups = int((~new_groups).sum())
+            old_sizes = rng.integers(0, 8, size=n_old_groups)
+            indptr = np.append(0, old_sizes.cumsum()).astype(np.int64)
+            total_old = int(old_sizes.sum())
+            new_sizes = rng.integers(0, 5, size=n_groups)
+            total_new = int(new_sizes.sum())
+            if rng.random() < 0.5:
+                data = rng.normal(size=total_old)
+                new_values = rng.normal(size=total_new)
+            else:
+                ncols = rng.integers(1, 4)
+                data = rng.normal(size=(total_old, ncols))
+                new_values = rng.normal(size=(total_new, ncols))
+            actual_data, actual_indptr = _append_several(
+                data, indptr, new_sizes, new_values, new_groups
+            )
+            expected_data, expected_indptr = _reference_append_several(
+                data, indptr, new_sizes, new_values, new_groups
+            )
+            np.testing.assert_array_equal(
+                actual_indptr, expected_indptr, err_msg=f"trial {trial}"
+            )
+            np.testing.assert_allclose(
+                actual_data, expected_data, err_msg=f"trial {trial}"
+            )
+
+    def test_append_several_all_new_groups(self):
+        # no pre-existing groups at all (e.g. GroupedArray starting empty)
+        data = np.array([])
+        indptr = np.array([0])
+        new_sizes = np.array([2, 0, 3])
+        new_values = np.array([1.0, 2.0, 5.0, 6.0, 7.0])
+        new_groups = np.array([True, True, True])
+        actual_data, actual_indptr = _append_several(
+            data, indptr, new_sizes, new_values, new_groups
+        )
+        expected_data, expected_indptr = _reference_append_several(
+            data, indptr, new_sizes, new_values, new_groups
+        )
+        np.testing.assert_array_equal(actual_indptr, expected_indptr)
+        np.testing.assert_allclose(actual_data, expected_data)
+
+    def test_append_several_all_old_groups_no_new_values(self):
+        data = np.arange(6.0)
+        indptr = np.array([0, 2, 4, 6])
+        new_sizes = np.array([0, 0, 0])
+        new_values = np.array([])
+        new_groups = np.array([False, False, False])
+        actual_data, actual_indptr = _append_several(
+            data, indptr, new_sizes, new_values, new_groups
+        )
+        expected_data, expected_indptr = _reference_append_several(
+            data, indptr, new_sizes, new_values, new_groups
+        )
+        np.testing.assert_array_equal(actual_indptr, expected_indptr)
+        np.testing.assert_allclose(actual_data, expected_data)
