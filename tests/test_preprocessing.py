@@ -7,7 +7,7 @@ import pandas as pd
 import polars as pl
 import pytest
 
-from utilsforecast.preprocessing import fill_gaps
+from utilsforecast.preprocessing import fill_gaps, id_time_grid
 
 
 @pytest.fixture
@@ -523,3 +523,129 @@ class TestFillGapsIncompatibleFrequency:
                 data = create_error_test_data(dates_int, N_PERIODS, include_start, include_end, "polars")
                 with pytest.raises(ValueError):
                     fill_gaps(data, freq_str, start=start, end=end)
+
+
+# ========================================
+# id_time_grid: vectorized per-serie range construction (perf)
+# ========================================
+#
+# `id_time_grid`'s pandas path used to build each serie's timestamps with a
+# python-level loop (`np.hstack([np.arange(s, e, delta) for s, e in
+# zip(starts, ends)])`). It's now a single vectorized computation. These
+# tests pin the vectorized version against that literal inline loop on
+# adversarial series (varying lengths, single-point series, multi-step
+# deltas, datetime and integer frequencies).
+
+
+def _reference_arange_hstack(starts, ends, delta):
+    """The original per-serie python loop `id_time_grid` used to build."""
+    return np.hstack([np.arange(s, e, delta) for s, e in zip(starts, ends)])
+
+
+class TestIdTimeGridVectorizedRanges:
+    def test_matches_reference_loop_int_freq(self):
+        rng = np.random.default_rng(123)
+        for _ in range(25):
+            n = rng.integers(1, 40)
+            delta = int(rng.integers(1, 5))
+            # starts/ends land on multiples of delta, like real timestamps do
+            starts = (rng.integers(0, 100, size=n) * delta).astype(np.int64)
+            n_steps = rng.integers(1, 25, size=n)
+            ends = starts + n_steps * delta
+            expected = _reference_arange_hstack(starts, ends, delta)
+            sizes = np.maximum(((ends - starts) / delta).astype(np.int64), 0)
+            total = int(sizes.sum())
+            offsets_in_serie = np.arange(total, dtype=np.int64) - np.repeat(
+                np.cumsum(sizes) - sizes, sizes
+            )
+            actual = np.repeat(starts, sizes) + offsets_in_serie * delta
+            np.testing.assert_array_equal(actual, expected)
+
+    def test_matches_reference_loop_datetime_freq(self):
+        rng = np.random.default_rng(321)
+        for _ in range(25):
+            n = rng.integers(1, 40)
+            base = np.datetime64("2020-01-01")
+            delta = np.timedelta64(int(rng.integers(1, 4)), "D")
+            starts = base + (rng.integers(0, 500, size=n).astype(np.int64) * delta)
+            n_steps = rng.integers(1, 25, size=n)
+            ends = starts + n_steps.astype(np.int64) * delta
+            expected = _reference_arange_hstack(starts, ends, delta)
+            sizes = np.maximum(((ends - starts) / delta).astype(np.int64), 0)
+            total = int(sizes.sum())
+            offsets_in_serie = np.arange(total, dtype=np.int64) - np.repeat(
+                np.cumsum(sizes) - sizes, sizes
+            )
+            actual = np.repeat(starts, sizes) + offsets_in_serie * delta
+            np.testing.assert_array_equal(actual, expected)
+
+    def test_id_time_grid_int_freq_end_to_end(self):
+        df = pd.DataFrame(
+            {
+                "unique_id": np.repeat(["a", "b", "c"], [5, 1, 10]),
+                "ds": np.concatenate(
+                    [np.arange(5), np.array([7]), np.arange(10)]
+                ),
+            }
+        )
+        # explicit per_serie/per_serie so each id spans only its own
+        # [min, max] inclusive at step 1 (the default `end` is "global")
+        grid = id_time_grid(df, freq=1, start="per_serie", end="per_serie")
+        for uid, sub in df.groupby("unique_id"):
+            g = grid[grid["unique_id"] == uid]["ds"].to_numpy()
+            np.testing.assert_array_equal(
+                g, np.arange(sub["ds"].min(), sub["ds"].max() + 1)
+            )
+
+    def test_id_time_grid_business_day_freq(self):
+        df = pd.DataFrame(
+            {
+                "unique_id": np.repeat(["a", "b"], [10, 8]),
+                "ds": np.concatenate(
+                    [
+                        pd.bdate_range("2020-01-01", periods=10),
+                        pd.bdate_range("2020-01-06", periods=8),
+                    ]
+                ),
+            }
+        )
+        grid = id_time_grid(df, freq="B")
+        assert (pd.DatetimeIndex(grid["ds"]).dayofweek < 5).all()
+
+    def test_id_time_grid_single_point_series(self):
+        # start == end for every serie: each should contribute exactly its
+        # own single timestamp when start/end are 'per_serie'.
+        df = pd.DataFrame(
+            {
+                "unique_id": ["a", "b", "c"],
+                "ds": pd.to_datetime(["2020-01-01", "2020-01-05", "2020-01-10"]),
+            }
+        )
+        grid = id_time_grid(df, freq="D", start="per_serie", end="per_serie")
+        # id_time_grid always returns datetime64[ns]; compare values only
+        # (dtype -- ns vs pandas' default us -- is intentional and unrelated
+        # to the ranges themselves)
+        pd.testing.assert_series_equal(
+            grid.sort_values("unique_id")["ds"].reset_index(drop=True),
+            df.sort_values("unique_id")["ds"].reset_index(drop=True),
+            check_dtype=False,
+        )
+
+    def test_id_time_grid_monthly_freq(self):
+        df = pd.DataFrame(
+            {
+                "unique_id": np.repeat(["a", "b"], [6, 4]),
+                "ds": np.concatenate(
+                    [
+                        pd.date_range("2020-01-01", periods=6, freq="MS"),
+                        pd.date_range("2020-03-01", periods=4, freq="MS"),
+                    ]
+                ),
+            }
+        )
+        grid = id_time_grid(df, freq="MS")
+        for uid, sub in df.groupby("unique_id"):
+            g = pd.DatetimeIndex(grid[grid["unique_id"] == uid]["ds"])
+            expected = pd.date_range(sub["ds"].min(), sub["ds"].max(), freq="MS")
+            # values only, see the dtype note in test_id_time_grid_single_point_series
+            np.testing.assert_array_equal(g.to_numpy(), expected.to_numpy())
