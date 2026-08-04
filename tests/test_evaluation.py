@@ -1544,3 +1544,120 @@ def test_evaluate_batched_simple_metrics_duplicate_and_mixed():
         .reset_index(drop=True)
     )
     pd.testing.assert_frame_equal(mae_block[models], direct_mae[models])
+
+
+# ========================================
+# Non-batched fallback must forward a non-default `cutoff_col` (bugfix)
+# ========================================
+#
+# `evaluate`'s `kwargs` dict used to only include `cutoff_col` when a metric
+# required `train_df`. Any metric that instead fell through to the plain
+# `else` branch -- a `functools.partial`-wrapped registry metric (which
+# never batches, since `_SIMPLE_METRIC_SPECS` is keyed by function identity)
+# or a metric outside `_SIMPLE_METRIC_SPECS` entirely, e.g. `nd` -- was
+# called without `cutoff_col`, so it silently fell back to the metric's own
+# default ('cutoff') instead of the caller's column. With a non-default
+# `cutoff_col` name and a `cutoff` column absent from `df`, that collapsed
+# every cutoff fold for a series into a single row instead of one row per
+# (id, cutoff). The batched path (which receives `cutoff_col` directly, not
+# through `kwargs`) already grouped correctly -- this is what made the bug a
+# same-call, divergent-answer split between the two code paths. These tests
+# pin all three call shapes to the same per-cutoff grouping a direct metric
+# call produces.
+
+
+def _cutoff_adversarial_df(engine: str, cutoff_col: str):
+    """Like `_adversarial_eval_df`, but with two folds per series stored
+    under a non-default `cutoff_col` name."""
+    df = _adversarial_eval_df("pandas")
+    n = len(df)
+    cutoff_vals = np.where(
+        np.arange(n) % 2 == 0,
+        np.datetime64("2020-01-01"),
+        np.datetime64("2020-01-02"),
+    )
+    df[cutoff_col] = cutoff_vals
+    if engine == "polars":
+        df = pl.from_pandas(df)
+    return df
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_evaluate_non_default_cutoff_col_batched_metric(engine):
+    """(a) A batched metric (`mae`) groups per-cutoff under a non-default
+    `cutoff_col` name, matching a direct call."""
+    cutoff_col = "fold_id"
+    df = _cutoff_adversarial_df(engine, cutoff_col)
+    models = ["model0", "model1", "model2"]
+    n_series = nw.from_native(df)["unique_id"].n_unique()
+
+    result = evaluate(df, [mae], models=models, cutoff_col=cutoff_col)
+    result_nw = nw.from_native(result)
+    assert cutoff_col in result_nw.columns
+    assert result_nw.shape[0] == 2 * n_series
+
+    direct = nw.from_native(mae(df, models=models, cutoff_col=cutoff_col)).sort(
+        ["unique_id", cutoff_col]
+    )
+    sub = result_nw.drop("metric").sort(["unique_id", cutoff_col])
+    for model in models:
+        np.testing.assert_allclose(
+            direct[model].to_numpy().astype(float),
+            sub[model].to_numpy().astype(float),
+            equal_nan=True,
+        )
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_evaluate_non_default_cutoff_col_partial_registry_metric(engine):
+    """(b) A `functools.partial`-wrapped registry metric never batches
+    (`_SIMPLE_METRIC_SPECS` is keyed by function identity, not name), so it
+    always goes through the non-batched fallback -- this is exactly the path
+    that dropped `cutoff_col`."""
+    cutoff_col = "fold_id"
+    df = _cutoff_adversarial_df(engine, cutoff_col)
+    models = ["model0", "model1", "model2"]
+    n_series = nw.from_native(df)["unique_id"].n_unique()
+    partial_mae = partial(mae)
+
+    result = evaluate(df, [partial_mae], models=models, cutoff_col=cutoff_col)
+    result_nw = nw.from_native(result)
+    assert cutoff_col in result_nw.columns
+    assert result_nw.shape[0] == 2 * n_series
+
+    direct = nw.from_native(mae(df, models=models, cutoff_col=cutoff_col)).sort(
+        ["unique_id", cutoff_col]
+    )
+    sub = result_nw.drop("metric").sort(["unique_id", cutoff_col])
+    for model in models:
+        np.testing.assert_allclose(
+            direct[model].to_numpy().astype(float),
+            sub[model].to_numpy().astype(float),
+            equal_nan=True,
+        )
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_evaluate_non_default_cutoff_col_non_registry_metric(engine):
+    """(c) A metric outside `_SIMPLE_METRIC_SPECS` entirely (`nd`) also
+    always goes through the non-batched fallback."""
+    cutoff_col = "fold_id"
+    df = _cutoff_adversarial_df(engine, cutoff_col)
+    models = ["model0", "model1", "model2"]
+    n_series = nw.from_native(df)["unique_id"].n_unique()
+
+    result = evaluate(df, [nd], models=models, cutoff_col=cutoff_col)
+    result_nw = nw.from_native(result)
+    assert cutoff_col in result_nw.columns
+    assert result_nw.shape[0] == 2 * n_series
+
+    direct = nw.from_native(nd(df, models=models, cutoff_col=cutoff_col)).sort(
+        ["unique_id", cutoff_col]
+    )
+    sub = result_nw.drop("metric").sort(["unique_id", cutoff_col])
+    for model in models:
+        np.testing.assert_allclose(
+            direct[model].to_numpy().astype(float),
+            sub[model].to_numpy().astype(float),
+            equal_nan=True,
+        )
