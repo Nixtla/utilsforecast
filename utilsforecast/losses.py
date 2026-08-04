@@ -173,7 +173,7 @@ def _scale_loss(
 
 
 def _mae_expr(target_col: str) -> Callable[[Any], nw.Expr]:
-    def gen_expr(model) -> nw.Expr:
+    def gen_expr(model: str) -> nw.Expr:
         return (nw.col(target_col) - nw.col(model)).abs().alias(model)
 
     return gen_expr
@@ -204,7 +204,7 @@ def mae(
 
 
 def _mse_expr(target_col: str) -> Callable[[Any], nw.Expr]:
-    def gen_expr(model) -> nw.Expr:
+    def gen_expr(model: str) -> nw.Expr:
         return ((nw.col(target_col) - nw.col(model)) ** 2).alias(model)
 
     return gen_expr
@@ -266,7 +266,7 @@ def rmse(
 
 
 def _bias_expr(target_col: str) -> Callable[[Any], nw.Expr]:
-    def gen_expr(model) -> nw.Expr:
+    def gen_expr(model: str) -> nw.Expr:
         return (nw.col(model) - nw.col(target_col)).alias(model)
 
     return gen_expr
@@ -316,7 +316,7 @@ def cfe(
 
 
 def _pis_expr(target_col: str) -> Callable[[Any], nw.Expr]:
-    def gen_expr(model) -> nw.Expr:
+    def gen_expr(model: str) -> nw.Expr:
         return (nw.col(model) - nw.col(target_col)).abs().alias(model)
 
     return gen_expr
@@ -408,7 +408,7 @@ def _zero_to_nan(series):
 
 
 def _mape_expr(target_col: str) -> Callable[[Any], nw.Expr]:
-    def gen_expr(model) -> nw.Expr:
+    def gen_expr(model: str) -> nw.Expr:
         abs_err = (nw.col(target_col) - nw.col(model)).abs()
         abs_target = _zero_to_nan(nw.col(target_col)).abs()
         return (abs_err / abs_target).alias(model)
@@ -442,7 +442,7 @@ def mape(
 
 
 def _smape_expr(target_col: str) -> Callable[[Any], nw.Expr]:
-    def gen_expr(model) -> nw.Expr:
+    def gen_expr(model: str) -> nw.Expr:
         abs_err = (nw.col(model) - nw.col(target_col)).abs()
         denominator = _zero_to_nan(nw.col(model).abs() + nw.col(target_col).abs())
         return (abs_err / denominator).alias(model).fill_null(0)
@@ -482,8 +482,19 @@ def smape(
 # per-model expression reduced with `mean` or `sum`, with no `train_df`,
 # `level`, `quantiles` or `baseline` argument involved. Maps each metric to
 # its `(agg, expr_builder)` pair.
+#
+# The `expr_builder`s below (`_mae_expr`, ...) declare their returned
+# `gen_expr` as `Callable[[Any], nw.Expr]`, looser than the `Callable[[str],
+# nw.Expr]` declared here: they're also passed directly to `_nw_agg_expr`
+# (e.g. inside `mae()`), whose `gen_expr` parameter must accept `str` *or*
+# `tuple[str, str]` (for `quantile_loss`/`calibration`-style callers), and
+# `Callable[[str], nw.Expr]` isn't assignable there (parameter types are
+# contravariant, and `str` alone doesn't cover the wider union). Every entry
+# actually registered here is only ever called with a plain `str` model
+# column, so this dict's own type is intentionally narrower -- `Any` is
+# compatible with both, so the same functions satisfy both call sites.
 _SIMPLE_METRIC_SPECS: Dict[
-    Callable, Tuple[str, Callable[[str], Callable[[Any], nw.Expr]]]
+    Callable, Tuple[str, Callable[[str], Callable[[str], nw.Expr]]]
 ] = {
     mae: ("mean", _mae_expr),
     mse: ("mean", _mse_expr),
