@@ -6,7 +6,7 @@ __all__ = ["evaluate"]
 import inspect
 import re
 import reprlib
-from typing import Callable, Dict, List, Optional, Union, get_origin
+from typing import Callable, Dict, List, Mapping, Optional, Union, get_origin
 
 import narwhals.stable.v2 as nw
 import numpy as np
@@ -225,7 +225,7 @@ def _weighted_mean_agg(
     )
 
 
-def _is_simple_call(metric_params) -> bool:
+def _is_simple_call(metric_params: Mapping[str, inspect.Parameter]) -> bool:
     """Whether `evaluate` would call a metric through the plain `else` branch:
     no `train_df`, `baseline`, `q`/quantile-dict, `quantiles` or `level`."""
     return (
@@ -254,14 +254,17 @@ def _precompute_batched_simple_metrics(
     its result dataframe, with columns `[*group_cols, *model_cols]` exactly
     like a standalone call to that metric would produce.
     """
-    base_metrics_needed = set()
+    # a dict (not a set) so the batched dataframe's internal column order is
+    # deterministic (insertion order, matching the order metrics appear in
+    # `metrics`) rather than depending on function objects' hash/id order.
+    base_metrics_needed: Dict[Callable, None] = {}
     for metric in metrics:
         base_metric = _SQRT_DERIVED_METRICS.get(metric, metric)
         if base_metric not in _SIMPLE_METRIC_SPECS:
             continue
         metric_params = inspect.signature(metric).parameters
         if _is_simple_call(metric_params):
-            base_metrics_needed.add(base_metric)
+            base_metrics_needed[base_metric] = None
     if not base_metrics_needed:
         return {}
 
@@ -534,12 +537,24 @@ def evaluate(
     results_per_metric = []
     for metric in metrics:
         metric_name = _function_name(metric)
+        metric_params = inspect.signature(metric).parameters
         kwargs = dict(df=df, models=model_cols, id_col=id_col, target_col=target_col)
+        # Forward `cutoff_col` whenever the metric accepts it (every builtin
+        # metric does; a user-supplied metric may not, per `evaluate`'s
+        # docstring, so this stays conditional rather than unconditional).
+        # This also covers the non-batched fallback below (the plain `else`
+        # branch): it used to only receive `cutoff_col` when the metric
+        # required `train_df`, so any other metric shape -- e.g. a
+        # `functools.partial`-wrapped registry metric, which never batches
+        # since `_SIMPLE_METRIC_SPECS` is keyed by function identity, or a
+        # metric outside that registry entirely -- silently fell back to the
+        # metric's own default `cutoff_col` and collapsed every cutoff fold
+        # for a series into a single row instead of one row per (id, cutoff).
+        if "cutoff_col" in metric_params:
+            kwargs["cutoff_col"] = cutoff_col
         if metric_requires_y_train[metric_name]:
             kwargs["train_df"] = train_df
-            kwargs["cutoff_col"] = cutoff_col
             kwargs["time_col"] = time_col
-        metric_params = inspect.signature(metric).parameters
         if "baseline" in metric_params:
             metric_name = f"{metric_name}_{metric_params['baseline'].default}"
         if "q" in metric_params or metric_params["models"].annotation is Dict[str, str]:
@@ -577,6 +592,10 @@ def evaluate(
                 )
                 results_per_metric.append(result)
         else:
+            # keep in sync with _is_simple_call's exclusion set: this branch
+            # is reached for exactly the metrics _is_simple_call considers a
+            # "plain" call (no train_df/baseline/q/quantiles/level), which is
+            # also the only shape _precompute_batched_simple_metrics batches.
             base_metric = _SQRT_DERIVED_METRICS.get(metric, metric)
             if base_metric in batched_simple_results:
                 result = ufp.copy_if_pandas(batched_simple_results[base_metric])
