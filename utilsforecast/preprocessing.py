@@ -166,10 +166,15 @@ def id_time_grid(
     times_by_id = df.groupby(id_col, observed=True)[time_col].agg(["min", "max"])
     starts = _determine_bound(start, freq, times_by_id, "min")
     ends = _determine_bound(end, freq, times_by_id, "max") + delta
-    sizes = ((ends - starts) / delta).astype(np.int64)
-    times = np.hstack(
-        [np.arange(start, end, delta) for start, end in zip(starts, ends)]
+    sizes = np.maximum(((ends - starts) / delta).astype(np.int64), 0)
+    # equivalent to np.hstack([np.arange(s, e, delta) for s, e in zip(starts, ends)])
+    # but avoids a per-series python loop: broadcast each serie's start over
+    # its size and add the running offset within that serie.
+    total = int(sizes.sum())
+    offsets_in_serie = np.arange(total, dtype=np.int64) - np.repeat(
+        np.cumsum(sizes) - sizes, sizes
     )
+    times = np.repeat(starts, sizes) + offsets_in_serie * delta
     uids = np.repeat(times_by_id.index, sizes)
     if isinstance(freq, str):
         if isinstance(offset.base, pd.offsets.BusinessDay):
