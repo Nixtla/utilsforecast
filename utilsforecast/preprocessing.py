@@ -3,10 +3,11 @@
 __all__ = ["id_time_grid", "fill_gaps"]
 
 
+import reprlib
 import warnings
 from datetime import date, datetime
 from functools import partial
-from typing import Union
+from typing import Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -53,6 +54,40 @@ def _determine_bound_pl(
             val = bound
         out = repeat(pl_Series([val]), times_by_id.shape[0])
     return out
+
+
+def _vectorized_serie_ranges(
+    starts,
+    ends,
+    delta: Union[np.timedelta64, int],
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Equivalent to `np.hstack([np.arange(s, e, delta) for s, e in zip(starts, ends)])`,
+    but avoids a per-serie python loop: broadcasts each serie's start over its size and
+    adds the running offset within that serie.
+
+    `starts`/`ends` are left untyped (not `np.ndarray`) on purpose: `id_time_grid`'s local
+    variables of the same name are also assigned a `pl_Series` in its polars branch, which
+    mypy's single-scope inference conflates across both branches for the whole function --
+    an existing, pre-this-PR limitation of that function, not something this helper should
+    paper over with a falsely-precise annotation.
+
+    Callers must ensure `ends >= starts` (i.e. `((ends - starts) / delta).astype(np.int64)`
+    is non-negative) for every serie beforehand -- `np.repeat` below raises an opaque,
+    unrelated-looking error for a negative repeat count otherwise. This helper doesn't
+    re-check that itself so it stays a small, pure, easily-testable unit; `id_time_grid`
+    validates it upfront with a clear message naming the offending series.
+
+    Returns:
+        times: the concatenated per-serie ranges, in serie order.
+        sizes: the number of timestamps contributed by each serie.
+    """
+    sizes = ((ends - starts) / delta).astype(np.int64)
+    total = int(sizes.sum())
+    offsets_in_serie = np.arange(total, dtype=np.int64) - np.repeat(
+        np.cumsum(sizes) - sizes, sizes
+    )
+    times = np.repeat(starts, sizes) + offsets_in_serie * delta
+    return times, sizes
 
 
 def id_time_grid(
@@ -166,15 +201,26 @@ def id_time_grid(
     times_by_id = df.groupby(id_col, observed=True)[time_col].agg(["min", "max"])
     starts = _determine_bound(start, freq, times_by_id, "min")
     ends = _determine_bound(end, freq, times_by_id, "max") + delta
-    sizes = np.maximum(((ends - starts) / delta).astype(np.int64), 0)
-    # equivalent to np.hstack([np.arange(s, e, delta) for s, e in zip(starts, ends)])
-    # but avoids a per-series python loop: broadcast each serie's start over
-    # its size and add the running offset within that serie.
-    total = int(sizes.sum())
-    offsets_in_serie = np.arange(total, dtype=np.int64) - np.repeat(
-        np.cumsum(sizes) - sizes, sizes
-    )
-    times = np.repeat(starts, sizes) + offsets_in_serie * delta
+    # a negative range (end before start) happens when a fixed `start`/`end`
+    # bound doesn't align with a particular serie's own timestamps, e.g. a
+    # fixed `start` later than that serie's `end`. Check for it explicitly
+    # with a clear message -- left unchecked, `_vectorized_serie_ranges`'
+    # `np.repeat(starts, sizes)` raises an opaque "negative dimensions are
+    # not allowed" error instead. A range that's exactly zero-length (e.g.
+    # `start == end`, a single-point serie) is legitimate and yields an
+    # empty range for that serie, not an error.
+    raw_sizes = ((ends - starts) / delta).astype(np.int64)
+    negative_mask = raw_sizes < 0
+    if negative_mask.any():
+        bad_ids = times_by_id.index[negative_mask].tolist()
+        raise ValueError(
+            "`id_time_grid` computed a negative time range (`end` before "
+            f"`start`) for {len(bad_ids)} serie(s): {reprlib.repr(bad_ids)}. "
+            "This happens when the `start`/`end` bounds don't align with a "
+            f"serie's own timestamps, e.g. a fixed `start={start!r}` later "
+            f"than that serie's own `end` (`end={end!r}`, `freq={freq!r}`)."
+        )
+    times, sizes = _vectorized_serie_ranges(starts, ends, delta)
     uids = np.repeat(times_by_id.index, sizes)
     if isinstance(freq, str):
         if isinstance(offset.base, pd.offsets.BusinessDay):
