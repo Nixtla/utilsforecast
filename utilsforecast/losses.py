@@ -28,7 +28,7 @@ __all__ = [
     "linex",
 ]
 
-from typing import Callable, Dict, List, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import narwhals.stable.v2 as nw
 import numpy as np
@@ -85,6 +85,57 @@ def _nw_agg_expr(
     )
 
 
+def _batch_nw_agg_expr(
+    df: IntoDataFrameT,
+    id_col: str,
+    cutoff_col: str,
+    specs: List[Tuple[str, str, List[str], Callable[[Any], nw.Expr]]],
+) -> IntoDataFrameT:
+    """Compute several `_nw_agg_expr`-shaped metrics with a single `group_by` pass.
+
+    `evaluate` calls several metric functions on the same `df`, each of which
+    (for the "simple" per-model metrics, e.g. `mae`/`mse`/`bias`) independently
+    performs its own `select` + `group_by` + `agg` through `_nw_agg_expr`. That
+    means the `id_col` (and `cutoff_col`) grouping is recomputed from scratch
+    once per metric even though it's identical every time. This combines any
+    number of such metrics into one `select` + `group_by` + `agg` call.
+
+    Args:
+        specs: One entry per metric, as `(alias_prefix, agg, models, gen_expr)`
+            -- the same arguments a standalone `_nw_agg_expr` call would take
+            for that metric, plus an `alias_prefix` used to namespace its
+            output columns.
+
+    Returns:
+        A dataframe with the group columns plus one `f"{alias_prefix}__{model}"`
+        column per `(metric, model)` pair, sorted by the group columns (matching
+        `_nw_agg_expr`'s own output order).
+    """
+    group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
+    raw_exprs = []
+    mean_cols: List[str] = []
+    sum_cols: List[str] = []
+    for alias_prefix, agg, models, gen_expr in specs:
+        if agg not in ("mean", "sum"):
+            raise ValueError(f"Unsupported batched aggregation: '{agg}'.")
+        agg_cols = mean_cols if agg == "mean" else sum_cols
+        for model in models:
+            out_col = f"{alias_prefix}__{model}"
+            raw_exprs.append(gen_expr(model).alias(out_col))
+            agg_cols.append(out_col)
+    return (
+        nw.from_native(df)
+        .select(*group_cols, *raw_exprs)
+        .group_by(*group_cols)
+        .agg(
+            *[nw.col(c).mean().alias(c) for c in mean_cols],
+            *[nw.col(c).sum().alias(c) for c in sum_cols],
+        )
+        .sort(*group_cols)
+        .to_native()
+    )
+
+
 def _create_train_with_cutoffs(
     train_df: IntoDataFrameT,
     df: IntoDataFrameT,
@@ -121,6 +172,13 @@ def _scale_loss(
     )
 
 
+def _mae_expr(target_col: str) -> Callable[[Any], nw.Expr]:
+    def gen_expr(model) -> nw.Expr:
+        return (nw.col(target_col) - nw.col(model)).abs().alias(model)
+
+    return gen_expr
+
+
 @_base_docstring
 def mae(
     df: IntoDataFrameT,
@@ -141,8 +199,15 @@ def mae(
         models=models,
         id_col=id_col,
         cutoff_col=cutoff_col,
-        gen_expr=lambda m: (nw.col(target_col) - nw.col(m)).abs().alias(m),
+        gen_expr=_mae_expr(target_col),
     )
+
+
+def _mse_expr(target_col: str) -> Callable[[Any], nw.Expr]:
+    def gen_expr(model) -> nw.Expr:
+        return ((nw.col(target_col) - nw.col(model)) ** 2).alias(model)
+
+    return gen_expr
 
 
 @_base_docstring
@@ -165,7 +230,7 @@ def mse(
         models=models,
         id_col=id_col,
         cutoff_col=cutoff_col,
-        gen_expr=lambda m: ((nw.col(target_col) - nw.col(m)) ** 2).alias(m),
+        gen_expr=_mse_expr(target_col),
     )
 
 
@@ -200,6 +265,13 @@ def rmse(
     )
 
 
+def _bias_expr(target_col: str) -> Callable[[Any], nw.Expr]:
+    def gen_expr(model) -> nw.Expr:
+        return (nw.col(model) - nw.col(target_col)).alias(model)
+
+    return gen_expr
+
+
 @_base_docstring
 def bias(
     df: IntoDataFrameT,
@@ -216,7 +288,7 @@ def bias(
         models=models,
         id_col=id_col,
         cutoff_col=cutoff_col,
-        gen_expr=lambda m: (nw.col(m) - nw.col(target_col)).alias(m),
+        gen_expr=_bias_expr(target_col),
     )
 
 
@@ -238,9 +310,16 @@ def cfe(
         models=models,
         id_col=id_col,
         cutoff_col=cutoff_col,
-        gen_expr=lambda m: (nw.col(m) - nw.col(target_col)).alias(m),
+        gen_expr=_bias_expr(target_col),
         agg="sum",
     )
+
+
+def _pis_expr(target_col: str) -> Callable[[Any], nw.Expr]:
+    def gen_expr(model) -> nw.Expr:
+        return (nw.col(model) - nw.col(target_col)).abs().alias(model)
+
+    return gen_expr
 
 
 @_base_docstring
@@ -262,7 +341,7 @@ def pis(
         models=models,
         id_col=id_col,
         cutoff_col=cutoff_col,
-        gen_expr=lambda m: (nw.col(m) - nw.col(target_col)).abs().alias(m),
+        gen_expr=_pis_expr(target_col),
         agg="sum",
     )
 
@@ -328,6 +407,15 @@ def _zero_to_nan(series):
     return nw.when(series == 0).then(float("nan")).otherwise(series)
 
 
+def _mape_expr(target_col: str) -> Callable[[Any], nw.Expr]:
+    def gen_expr(model) -> nw.Expr:
+        abs_err = (nw.col(target_col) - nw.col(model)).abs()
+        abs_target = _zero_to_nan(nw.col(target_col)).abs()
+        return (abs_err / abs_target).alias(model)
+
+    return gen_expr
+
+
 @_base_docstring
 def mape(
     df: IntoDataFrameT,
@@ -344,19 +432,22 @@ def mape(
     averages these devations over the length of the series.
     The closer to zero an observed value is, the higher penalty MAPE loss
     assigns to the corresponding error."""
-
-    def gen_expr(model):
-        abs_err = (nw.col(target_col) - nw.col(model)).abs()
-        abs_target = _zero_to_nan(nw.col(target_col)).abs()
-        return (abs_err / abs_target).alias(model)
-
     return _nw_agg_expr(
         df=df,
         models=models,
         id_col=id_col,
-        gen_expr=gen_expr,
+        gen_expr=_mape_expr(target_col),
         cutoff_col=cutoff_col,
     )
+
+
+def _smape_expr(target_col: str) -> Callable[[Any], nw.Expr]:
+    def gen_expr(model) -> nw.Expr:
+        abs_err = (nw.col(model) - nw.col(target_col)).abs()
+        denominator = _zero_to_nan(nw.col(model).abs() + nw.col(target_col).abs())
+        return (abs_err / denominator).alias(model).fill_null(0)
+
+    return gen_expr
 
 
 @_base_docstring
@@ -377,19 +468,34 @@ def smape(
     of the series. This allows the SMAPE to have bounds between
     0% and 100% which is desirable compared to normal MAPE that
     may be undetermined when the target is zero."""
-
-    def gen_expr(model):
-        abs_err = (nw.col(model) - nw.col(target_col)).abs()
-        denominator = _zero_to_nan(nw.col(model).abs() + nw.col(target_col).abs())
-        return (abs_err / denominator).alias(model).fill_null(0)
-
     return _nw_agg_expr(
         df=df,
         models=models,
         id_col=id_col,
-        gen_expr=gen_expr,
+        gen_expr=_smape_expr(target_col),
         cutoff_col=cutoff_col,
     )
+
+
+# Metrics that `evaluate` can compute in a single batched `group_by` (see
+# `_batch_nw_agg_expr`) because they share the `_nw_agg_expr` shape: a single
+# per-model expression reduced with `mean` or `sum`, with no `train_df`,
+# `level`, `quantiles` or `baseline` argument involved. Maps each metric to
+# its `(agg, expr_builder)` pair.
+_SIMPLE_METRIC_SPECS: Dict[
+    Callable, Tuple[str, Callable[[str], Callable[[Any], nw.Expr]]]
+] = {
+    mae: ("mean", _mae_expr),
+    mse: ("mean", _mse_expr),
+    bias: ("mean", _bias_expr),
+    cfe: ("sum", _bias_expr),
+    pis: ("sum", _pis_expr),
+    mape: ("mean", _mape_expr),
+    smape: ("mean", _smape_expr),
+}
+# Metrics computed from one of the entries above via an extra elementwise
+# transform applied after the (batched) aggregation.
+_SQRT_DERIVED_METRICS: Dict[Callable, Callable] = {rmse: mse}
 
 
 def mase(

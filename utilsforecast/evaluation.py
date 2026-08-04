@@ -15,7 +15,12 @@ import pandas as pd
 import utilsforecast.processing as ufp
 
 from .compat import AnyDFType, DFType, DistributedDFType, pl, pl_DataFrame
-from .losses import _get_group_cols
+from .losses import (
+    _SIMPLE_METRIC_SPECS,
+    _SQRT_DERIVED_METRICS,
+    _batch_nw_agg_expr,
+    _get_group_cols,
+)
 
 _WEIGHT_COL = "__utilsforecast_weight"
 
@@ -218,6 +223,67 @@ def _weighted_mean_agg(
         .sort(*group_cols)
         .to_native()
     )
+
+
+def _is_simple_call(metric_params) -> bool:
+    """Whether `evaluate` would call a metric through the plain `else` branch:
+    no `train_df`, `baseline`, `q`/quantile-dict, `quantiles` or `level`."""
+    return (
+        "train_df" not in metric_params
+        and "baseline" not in metric_params
+        and "q" not in metric_params
+        and metric_params["models"].annotation is not Dict[str, str]
+        and "quantiles" not in metric_params
+        and "level" not in metric_params
+    )
+
+
+def _precompute_batched_simple_metrics(
+    df: DFType,
+    metrics: List[Callable],
+    model_cols: List[str],
+    id_col: str,
+    target_col: str,
+    cutoff_col: str,
+) -> Dict[Callable, DFType]:
+    """Batch every requested metric that matches `_SIMPLE_METRIC_SPECS` (and any
+    metric derived from one, e.g. `rmse` from `mse`) into a single `group_by`
+    pass instead of computing each with its own. See `_batch_nw_agg_expr`.
+
+    Returns a mapping from each such base metric (e.g. `mse`, not `rmse`) to
+    its result dataframe, with columns `[*group_cols, *model_cols]` exactly
+    like a standalone call to that metric would produce.
+    """
+    base_metrics_needed = set()
+    for metric in metrics:
+        base_metric = _SQRT_DERIVED_METRICS.get(metric, metric)
+        if base_metric not in _SIMPLE_METRIC_SPECS:
+            continue
+        metric_params = inspect.signature(metric).parameters
+        if _is_simple_call(metric_params):
+            base_metrics_needed.add(base_metric)
+    if not base_metrics_needed:
+        return {}
+
+    specs = []
+    for base_metric in base_metrics_needed:
+        agg, expr_builder = _SIMPLE_METRIC_SPECS[base_metric]
+        specs.append(
+            (_function_name(base_metric), agg, model_cols, expr_builder(target_col))
+        )
+    batched = _batch_nw_agg_expr(
+        df=df, id_col=id_col, cutoff_col=cutoff_col, specs=specs
+    )
+    group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
+    batched_nw = nw.from_native(batched)
+    results = {}
+    for base_metric in base_metrics_needed:
+        alias_prefix = _function_name(base_metric)
+        results[base_metric] = batched_nw.select(
+            *group_cols,
+            *[nw.col(f"{alias_prefix}__{m}").alias(m) for m in model_cols],
+        ).to_native()
+    return results
 
 
 def _evaluate_wrapper(
@@ -456,6 +522,15 @@ def evaluate(
                 f"The following series are missing from the train_df: {reprlib.repr(missing_series)}"
             )
 
+    batched_simple_results = _precompute_batched_simple_metrics(
+        df=df,
+        metrics=metrics,
+        model_cols=model_cols,
+        id_col=id_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
+    )
+
     results_per_metric = []
     for metric in metrics:
         metric_name = _function_name(metric)
@@ -502,7 +577,18 @@ def evaluate(
                 )
                 results_per_metric.append(result)
         else:
-            result = metric(**kwargs)
+            base_metric = _SQRT_DERIVED_METRICS.get(metric, metric)
+            if base_metric in batched_simple_results:
+                result = ufp.copy_if_pandas(batched_simple_results[base_metric])
+                if base_metric is not metric:
+                    # e.g. rmse = sqrt(mse); mse was the one that got batched
+                    result = (
+                        nw.from_native(result)
+                        .with_columns(*[nw.col(m).sqrt() for m in model_cols])
+                        .to_native()
+                    )
+            else:
+                result = metric(**kwargs)
             result = ufp.assign_columns(result, "metric", metric_name)
             results_per_metric.append(result)
     if isinstance(df, pd.DataFrame):
