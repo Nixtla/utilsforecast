@@ -7,7 +7,11 @@ import pandas as pd
 import polars as pl
 import pytest
 
-from utilsforecast.preprocessing import fill_gaps, id_time_grid
+from utilsforecast.preprocessing import (
+    _vectorized_serie_ranges,
+    fill_gaps,
+    id_time_grid,
+)
 
 
 @pytest.fixture
@@ -531,10 +535,12 @@ class TestFillGapsIncompatibleFrequency:
 #
 # `id_time_grid`'s pandas path used to build each serie's timestamps with a
 # python-level loop (`np.hstack([np.arange(s, e, delta) for s, e in
-# zip(starts, ends)])`). It's now a single vectorized computation. These
-# tests pin the vectorized version against that literal inline loop on
-# adversarial series (varying lengths, single-point series, multi-step
-# deltas, datetime and integer frequencies).
+# zip(starts, ends)])`). It's now a single vectorized computation, extracted
+# into `_vectorized_serie_ranges` so it's a pure, directly-testable unit
+# (also called by `id_time_grid` itself -- these tests exercise the actual
+# production code, not a copy of the algorithm). These tests pin it against
+# that literal inline loop on adversarial series (varying lengths,
+# single-point series, multi-step deltas, datetime and integer frequencies).
 
 
 def _reference_arange_hstack(starts, ends, delta):
@@ -553,12 +559,7 @@ class TestIdTimeGridVectorizedRanges:
             n_steps = rng.integers(1, 25, size=n)
             ends = starts + n_steps * delta
             expected = _reference_arange_hstack(starts, ends, delta)
-            sizes = np.maximum(((ends - starts) / delta).astype(np.int64), 0)
-            total = int(sizes.sum())
-            offsets_in_serie = np.arange(total, dtype=np.int64) - np.repeat(
-                np.cumsum(sizes) - sizes, sizes
-            )
-            actual = np.repeat(starts, sizes) + offsets_in_serie * delta
+            actual, _sizes = _vectorized_serie_ranges(starts, ends, delta)
             np.testing.assert_array_equal(actual, expected)
 
     def test_matches_reference_loop_datetime_freq(self):
@@ -571,12 +572,7 @@ class TestIdTimeGridVectorizedRanges:
             n_steps = rng.integers(1, 25, size=n)
             ends = starts + n_steps.astype(np.int64) * delta
             expected = _reference_arange_hstack(starts, ends, delta)
-            sizes = np.maximum(((ends - starts) / delta).astype(np.int64), 0)
-            total = int(sizes.sum())
-            offsets_in_serie = np.arange(total, dtype=np.int64) - np.repeat(
-                np.cumsum(sizes) - sizes, sizes
-            )
-            actual = np.repeat(starts, sizes) + offsets_in_serie * delta
+            actual, _sizes = _vectorized_serie_ranges(starts, ends, delta)
             np.testing.assert_array_equal(actual, expected)
 
     def test_id_time_grid_int_freq_end_to_end(self):
@@ -648,4 +644,104 @@ class TestIdTimeGridVectorizedRanges:
             g = pd.DatetimeIndex(grid[grid["unique_id"] == uid]["ds"])
             expected = pd.date_range(sub["ds"].min(), sub["ds"].max(), freq="MS")
             # values only, see the dtype note in test_id_time_grid_single_point_series
+            np.testing.assert_array_equal(g.to_numpy(), expected.to_numpy())
+
+
+# ========================================
+# id_time_grid: negative-range validation
+# ========================================
+#
+# A negative time range (computed `end` before `start` for a particular
+# serie) happens when a fixed `start`/`end` bound doesn't align with that
+# serie's own timestamps -- e.g. a fixed `start` later than a serie's own
+# `end` (`end="per_serie"`). On `main`, this crashed with an opaque,
+# accidental `ValueError: repeats may not contain negative values` from
+# `np.repeat(times_by_id.index, sizes)`, only because `sizes` happened to be
+# negative in that case, not because it validated anything -- the crash
+# depended on the vagaries of `np.repeat`'s error handling and would have
+# behaved differently for a near-zero negative gap (see the exactly-zero
+# test below). `id_time_grid` now validates this explicitly upfront and
+# raises a clear `ValueError` naming the offending series.
+
+
+class TestIdTimeGridNegativeRangeValidation:
+    def test_negative_range_datetime_raises_clear_error(self):
+        # serie "a" ends 2020-01-05; a fixed start of 2020-01-10 is after it
+        df = pd.DataFrame(
+            {
+                "unique_id": ["a", "a", "b", "b"],
+                "ds": pd.to_datetime(
+                    ["2020-01-01", "2020-01-05", "2020-06-01", "2020-06-10"]
+                ),
+            }
+        )
+        with pytest.raises(ValueError, match="negative time range") as exc_info:
+            id_time_grid(df, freq="D", start="2020-01-10", end="per_serie")
+        message = str(exc_info.value)
+        assert "'a'" in message
+        assert "1 serie" in message
+
+    def test_negative_range_int_raises_clear_error(self):
+        # serie "a" ends at 5; a fixed start of 50 is after it
+        df = pd.DataFrame(
+            {
+                "unique_id": ["a", "a", "b", "b"],
+                "ds": [0, 5, 100, 110],
+            }
+        )
+        with pytest.raises(ValueError, match="negative time range") as exc_info:
+            id_time_grid(df, freq=1, start=50, end="per_serie")
+        message = str(exc_info.value)
+        assert "'a'" in message
+        assert "1 serie" in message
+
+    def test_negative_range_names_every_offending_serie(self):
+        # both series have a fixed start after their own end
+        df = pd.DataFrame(
+            {
+                "unique_id": ["a", "a", "b", "b"],
+                "ds": pd.to_datetime(
+                    ["2020-01-01", "2020-01-05", "2020-01-02", "2020-01-06"]
+                ),
+            }
+        )
+        with pytest.raises(ValueError, match="negative time range") as exc_info:
+            id_time_grid(df, freq="D", start="2020-01-10", end="per_serie")
+        message = str(exc_info.value)
+        assert "2 serie" in message
+
+    def test_zero_length_range_is_legitimate_not_an_error(self):
+        # start == end for every serie (single-point series): a legitimate
+        # empty/single-point range, not a negative one -- must not raise.
+        df = pd.DataFrame(
+            {
+                "unique_id": ["a", "b"],
+                "ds": pd.to_datetime(["2020-01-01", "2020-01-05"]),
+            }
+        )
+        grid = id_time_grid(df, freq="D", start="per_serie", end="per_serie")
+        assert len(grid) == 2
+
+    def test_normal_ranges_unaffected_by_validation(self):
+        # sanity: typical per_serie/global usage (positive ranges for every
+        # serie) still produces the expected grid and doesn't raise.
+        df = pd.DataFrame(
+            {
+                "unique_id": np.repeat(["a", "b"], [3, 3]),
+                "ds": pd.to_datetime(
+                    [
+                        "2020-01-01",
+                        "2020-01-02",
+                        "2020-01-05",
+                        "2020-01-03",
+                        "2020-01-04",
+                        "2020-01-10",
+                    ]
+                ),
+            }
+        )
+        grid = id_time_grid(df, freq="D")
+        for uid, sub in df.groupby("unique_id"):
+            g = pd.DatetimeIndex(grid[grid["unique_id"] == uid]["ds"])
+            expected = pd.date_range(sub["ds"].min(), df["ds"].max(), freq="D")
             np.testing.assert_array_equal(g.to_numpy(), expected.to_numpy())
