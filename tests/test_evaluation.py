@@ -1406,3 +1406,141 @@ def test_plot_pareto_2d_polars():
 
     import matplotlib.pyplot as plt
     plt.close("all")
+
+
+# ========================================
+# Batched simple-metric evaluation (perf)
+# ========================================
+#
+# `evaluate` batches mae/mse/rmse/bias/cfe/pis/mape/smape into a single
+# `group_by` pass instead of one per metric (see `_batch_nw_agg_expr` and
+# `_SIMPLE_METRIC_SPECS` in losses.py). These tests pin that batched path to
+# the same output a standalone call to each metric produces, on adversarial
+# inputs (zero targets, an all-zero model, NaNs, duplicated/mixed metrics).
+
+
+def _adversarial_eval_df(engine: str):
+    rng = np.random.default_rng(7)
+    n_series, n_points = 12, 9
+    ids = np.repeat([f"id_{i}" for i in range(n_series)], n_points)
+    dates = pd.date_range("2020-01-01", periods=n_points, freq="D")
+    times = np.tile(dates.values, n_series)
+    y = rng.normal(size=n_series * n_points)
+    y[::5] = 0.0  # zero targets: mape/nd/wape division edge case
+    df = pd.DataFrame({"unique_id": ids, "ds": times, "y": y})
+    for m in range(3):
+        df[f"model{m}"] = y + rng.normal(scale=0.5, size=len(df))
+    df.loc[df.index[::7], "model1"] = np.nan  # missing predictions
+    df["model2"] = 0.0  # all-zero model: smape denominator edge case
+    if engine == "polars":
+        df = pl.from_pandas(df)
+    return df
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_evaluate_batched_simple_metrics_match_direct_calls(engine):
+    df = _adversarial_eval_df(engine)
+    models = ["model0", "model1", "model2"]
+    batchable_metrics = [mae, mse, rmse, bias, cfe, pis, mape, smape]
+
+    result = evaluate(df, batchable_metrics, models=models)
+    result_nw = nw.from_native(result)
+
+    for metric in batchable_metrics:
+        direct = nw.from_native(metric(df, models=models)).sort("unique_id")
+        sub = (
+            result_nw.filter(nw.col("metric") == metric.__name__)
+            .drop("metric")
+            .sort("unique_id")
+        )
+        for model in models:
+            np.testing.assert_allclose(
+                direct[model].to_numpy().astype(float),
+                sub[model].to_numpy().astype(float),
+                equal_nan=True,
+                err_msg=f"batched evaluate() diverged from direct {metric.__name__}() call",
+            )
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_evaluate_batched_simple_metrics_with_cutoff(engine):
+    df = _adversarial_eval_df(engine)
+    n = ufp.to_numpy(df[["unique_id"]]).shape[0]
+    cutoff_vals = np.where(
+        np.arange(n) % 2 == 0,
+        np.datetime64("2020-01-01"),
+        np.datetime64("2020-01-02"),
+    )
+    df = ufp.assign_columns(df, "cutoff", cutoff_vals)
+    models = ["model0", "model1", "model2"]
+    metrics = [mae, mse, rmse, bias, cfe, pis, mape, smape]
+
+    result = evaluate(df, metrics, models=models, cutoff_col="cutoff")
+    result_nw = nw.from_native(result)
+
+    for metric in metrics:
+        direct = nw.from_native(metric(df, models=models, cutoff_col="cutoff")).sort(
+            ["unique_id", "cutoff"]
+        )
+        sub = (
+            result_nw.filter(nw.col("metric") == metric.__name__)
+            .drop("metric")
+            .sort(["unique_id", "cutoff"])
+        )
+        for model in models:
+            np.testing.assert_allclose(
+                direct[model].to_numpy().astype(float),
+                sub[model].to_numpy().astype(float),
+                equal_nan=True,
+                err_msg=f"batched evaluate() with cutoff_col diverged for {metric.__name__}()",
+            )
+
+
+def test_evaluate_batched_simple_metrics_duplicate_and_mixed():
+    """A metric requested twice, and a mix of batchable + non-batchable
+    metrics (mae/mse batched, mase not), must not corrupt each other's
+    output blocks -- guards against accidental aliasing of the cached
+    batched result across multiple `results_per_metric` entries."""
+    df = _adversarial_eval_df("pandas")
+    models = ["model0", "model1", "model2"]
+    n_series = df["unique_id"].nunique()
+
+    result = evaluate(df, [mae, mse, mae, rmse], models=models)
+    assert result.shape[0] == 4 * n_series
+    mae_blocks = result[result["metric"] == "mae"]
+    assert len(mae_blocks) == 2 * n_series
+    direct_mae = mae(df, models=models).sort_values("unique_id").reset_index(drop=True)
+    for block_start in range(0, len(mae_blocks), n_series):
+        block = (
+            mae_blocks.iloc[block_start : block_start + n_series]
+            .sort_values("unique_id")
+            .reset_index(drop=True)
+        )
+        pd.testing.assert_frame_equal(
+            block[models].reset_index(drop=True),
+            direct_mae[models].reset_index(drop=True),
+        )
+
+    result_mixed = evaluate(
+        df, [mae, partial(mase, seasonality=7), mse], models=models, train_df=df
+    )
+    direct_mase = mase(df, models=models, seasonality=7, train_df=df).sort_values(
+        "unique_id"
+    )
+    mase_block = (
+        result_mixed[result_mixed["metric"] == "mase"]
+        .drop(columns="metric")
+        .sort_values("unique_id")
+        .reset_index(drop=True)
+    )
+    np.testing.assert_allclose(
+        mase_block[models].to_numpy(),
+        direct_mase[models].reset_index(drop=True)[models].to_numpy(),
+    )
+    mae_block = (
+        result_mixed[result_mixed["metric"] == "mae"]
+        .drop(columns="metric")
+        .sort_values("unique_id")
+        .reset_index(drop=True)
+    )
+    pd.testing.assert_frame_equal(mae_block[models], direct_mae[models])
