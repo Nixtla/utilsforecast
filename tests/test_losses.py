@@ -176,7 +176,7 @@ def tweedie_deviance_single(y_true, y_pred, power, **kwargs):
     elif power == 1:
         return np.mean(2 * (y_true * np.log(y_true / y_pred) - (y_true - y_pred)))
     elif power == 2:
-        return np.mean(2 * (np.log(y_pred) - np.log(y_true)) + y_true / y_pred - 1)
+        return np.mean(2 * ((np.log(y_pred) - np.log(y_true)) + y_true / y_pred - 1))
     else:
         return np.mean(
             2
@@ -234,6 +234,14 @@ def linex_single(y_true, y_pred, a=1.0, **kwargs):
         (
             partial(ufl.tweedie_deviance, power=2),
             partial(tweedie_deviance_single, power=2),
+        ),
+        (
+            partial(ufl.tweedie_deviance, power=1.5),
+            partial(tweedie_deviance_single, power=1.5),
+        ),
+        (
+            partial(ufl.tweedie_deviance, power=2.5),
+            partial(tweedie_deviance_single, power=2.5),
         ),
     ],
 )

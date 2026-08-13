@@ -1232,9 +1232,12 @@ def tweedie_deviance(
 
         def gen_expr(model):
             return (
-                2 * (nw.col(model).log() - nw.col(target_col).log())
-                + (nw.col(target_col) / nw.col(model))
-                - 1
+                2
+                * (
+                    (nw.col(model).log() - nw.col(target_col).log())
+                    + (nw.col(target_col) / nw.col(model))
+                    - 1
+                )
             ).alias(model)
 
     else:
@@ -1245,9 +1248,13 @@ def tweedie_deviance(
                 * (
                     nw.col(target_col).clip(0) ** (2 - power)
                     / ((1 - power) * (2 - power))
+                    - (
+                        nw.col(target_col)
+                        * (nw.col(model) ** (1 - power))
+                        / (1 - power)
+                    )
+                    + (nw.col(model) ** (2 - power) / (2 - power))
                 )
-                - (nw.col(target_col) * (nw.col(model) ** (1 - power)) / (1 - power))
-                + (nw.col(model) ** (2 - power) / (2 - power))
             ).alias(model)
 
     return _nw_agg_expr(
