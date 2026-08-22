@@ -589,3 +589,44 @@ class TestTweedieDeviance:
             assert td_nw[col].null_count() == 0, (
                 f"NaNs found in {engine} DataFrame for power {power}"
             )
+
+
+@pytest.mark.parametrize("metric", [ufl.mase, ufl.msse, ufl.rmsse])
+def test_scaled_metrics_with_cutoffs_respect_id_col(metric):
+    # Cross-validation output carries a `cutoff` column. The scaled metrics
+    # must honour a non-default `id_col` there, and give the same numbers as
+    # they do for the default one.
+    def frames(id_col):
+        df = pd.DataFrame(
+            {
+                id_col: ["a", "a", "b", "b"],
+                "ds": pd.to_datetime(["2024-01-03", "2024-01-04"] * 2),
+                "cutoff": pd.to_datetime(["2024-01-02"] * 4),
+                "y": [10.0, 11.0, 20.0, 21.0],
+                "model": [10.5, 11.5, 20.5, 21.5],
+            }
+        )
+        train_df = pd.DataFrame(
+            {
+                id_col: ["a", "a", "b", "b"],
+                "ds": pd.to_datetime(["2024-01-01", "2024-01-02"] * 2),
+                "y": [8.0, 9.0, 18.0, 19.0],
+            }
+        )
+        return df, train_df
+
+    default_df, default_train = frames("unique_id")
+    renamed_df, renamed_train = frames("item_id")
+
+    expected = metric(
+        default_df, models=["model"], seasonality=1, train_df=default_train
+    )
+    actual = metric(
+        renamed_df,
+        models=["model"],
+        seasonality=1,
+        train_df=renamed_train,
+        id_col="item_id",
+    )
+
+    np.testing.assert_allclose(actual["model"].to_numpy(), expected["model"].to_numpy())
