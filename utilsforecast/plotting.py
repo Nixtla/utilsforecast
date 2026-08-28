@@ -239,10 +239,11 @@ def plot_series(
     if ax is None:
         postprocess = True
         if engine.startswith("plotly"):
+            vertical_spacing = 0.3 / n_rows
             fig = make_subplots(
                 rows=n_rows,
                 cols=n_cols,
-                vertical_spacing=0.15,
+                vertical_spacing=vertical_spacing,
                 horizontal_spacing=0.07,
                 x_title=xlabel,
                 y_title=ylabel,
