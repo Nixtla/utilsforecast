@@ -242,9 +242,7 @@ def plot_series(
             fig = make_subplots(
                 rows=n_rows,
                 cols=n_cols,
-                vertical_spacing=(
-                    min(0.15, 0.9 / (n_rows - 1)) if n_rows > 1 else 0.15
-                ),
+                vertical_spacing=0.3 / n_rows,
                 horizontal_spacing=0.07,
                 x_title=xlabel,
                 y_title=ylabel,
