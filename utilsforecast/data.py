@@ -27,7 +27,7 @@ def generate_series(
     seed: int = 0,
     n_hist_exog: int = 0,
     n_futr_exog: int = 0,
-    h: int = 1,
+    h: int = 0,
 ) -> Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame]]: ...
 
 
@@ -47,7 +47,7 @@ def generate_series(
     seed: int = 0,
     n_hist_exog: int = 0,
     n_futr_exog: int = 0,
-    h: int = 1,
+    h: int = 0,
 ) -> Union[pl_DataFrame, Tuple[pl_DataFrame, pl_DataFrame]]: ...
 
 
@@ -66,7 +66,7 @@ def generate_series(
     seed: int = 0,
     n_hist_exog: int = 0,
     n_futr_exog: int = 0,
-    h: int = 1,
+    h: int = 0,
 ) -> Union[DataFrame, Tuple[DataFrame, DataFrame]]:
     """Generate Synthetic Panel Series.
 
@@ -88,12 +88,14 @@ def generate_series(
         static_as_categorical (bool, optional): Static features should have a
             categorical data type. Defaults to True.
         n_hist_exog (int, optional): Number of historic exogenous variables.
-            These are included only in the training dataframe. Defaults to 0.
+            Must be non-negative. Creates columns named `hist_exog_{i}` only in
+            the historic dataframe. Defaults to 0.
         n_futr_exog (int, optional): Number of future exogenous variables.
-            These are included in both the training dataframe and the returned
-            future dataframe. Defaults to 0.
+            Must be non-negative. Each variable is generated once and split
+            between the historic and future dataframes. Creates columns named
+            `futr_exog_{i}` in both dataframes. Defaults to 0.
         h (int, optional): Number of future periods to generate per series when
-            `n_futr_exog` is greater than 0. Defaults to 1.
+            `n_futr_exog` is greater than 0. Defaults to 0.
         n_models (int, optional): Number of models predictions to simulate.
             Defaults to 0.
         level (list of float, optional): Confidence level for intervals to
@@ -114,6 +116,10 @@ def generate_series(
         raise ValueError(
             f"{engine} is not a correct engine; available options: {available_engines}"
         )
+    if n_hist_exog < 0:
+        raise ValueError("n_hist_exog must be non-negative")
+    if n_futr_exog < 0:
+        raise ValueError("n_futr_exog must be non-negative")
     if n_futr_exog and h < 1:
         raise ValueError("h must be at least 1 when n_futr_exog is greater than 0")
     seasonalities = {
@@ -142,8 +148,11 @@ def generate_series(
 
     for i in range(n_hist_exog):
         vals_dict[f"hist_exog_{i}"] = rng.rand(total_length)
+    futr_exog_vals = {}
     for i in range(n_futr_exog):
-        vals_dict[f"futr_exog_{i}"] = rng.rand(total_length)
+        exog = rng.rand(total_length + n_series * h)
+        vals_dict[f"futr_exog_{i}"] = exog[:total_length]
+        futr_exog_vals[f"futr_exog_{i}"] = exog[total_length:]
 
     for i in range(n_static_features):
         static_values = np.repeat(rng.randint(0, 100, n_series), series_lengths)
@@ -191,8 +200,7 @@ def generate_series(
             ]
         ),
     }
-    for i in range(n_futr_exog):
-        futr_vals[f"futr_exog_{i}"] = rng.rand(n_series * h)
+    futr_vals.update(futr_exog_vals)
     if engine == "pandas":
         futr_df = pd.DataFrame(futr_vals)
         if static_as_categorical:
