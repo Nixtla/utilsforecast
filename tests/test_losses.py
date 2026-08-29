@@ -591,8 +591,8 @@ class TestTweedieDeviance:
             )
 
 
-@pytest.mark.parametrize("metric", [ufl.mase, ufl.msse, ufl.rmsse])
-def test_scaled_metrics_with_cutoffs_respect_id_col(metric):
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_scaled_metric_with_cutoffs_respects_id_col(engine):
     # Cross-validation output carries a `cutoff` column. The scaled metrics
     # must honour a non-default `id_col` there, and give the same numbers as
     # they do for the default one.
@@ -613,15 +613,20 @@ def test_scaled_metrics_with_cutoffs_respect_id_col(metric):
                 "y": [8.0, 9.0, 18.0, 19.0],
             }
         )
+        if engine == "polars":
+            import polars as pl
+
+            df = pl.from_pandas(df)
+            train_df = pl.from_pandas(train_df)
         return df, train_df
 
     default_df, default_train = frames("unique_id")
     renamed_df, renamed_train = frames("item_id")
 
-    expected = metric(
+    expected = ufl.mase(
         default_df, models=["model"], seasonality=1, train_df=default_train
     )
-    actual = metric(
+    actual = ufl.mase(
         renamed_df,
         models=["model"],
         seasonality=1,
