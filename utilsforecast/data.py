@@ -26,6 +26,46 @@ def generate_series(
     engine: Literal["pandas"] = "pandas",
     seed: int = 0,
     n_hist_exog: int = 0,
+    n_futr_exog: Literal[0] = 0,
+    h: int = 0,
+) -> pd.DataFrame: ...
+
+
+@overload
+def generate_series(
+    n_series: int,
+    freq: str = "D",
+    min_length: int = 50,
+    max_length: int = 500,
+    n_static_features: int = 0,
+    equal_ends: bool = False,
+    with_trend: bool = False,
+    static_as_categorical: bool = True,
+    n_models: int = 0,
+    level: Optional[List[float]] = None,
+    engine: Literal["polars"] = "polars",
+    seed: int = 0,
+    n_hist_exog: int = 0,
+    n_futr_exog: Literal[0] = 0,
+    h: int = 0,
+) -> pl_DataFrame: ...
+
+
+@overload
+def generate_series(
+    n_series: int,
+    freq: str = "D",
+    min_length: int = 50,
+    max_length: int = 500,
+    n_static_features: int = 0,
+    equal_ends: bool = False,
+    with_trend: bool = False,
+    static_as_categorical: bool = True,
+    n_models: int = 0,
+    level: Optional[List[float]] = None,
+    engine: Literal["pandas"] = "pandas",
+    seed: int = 0,
+    n_hist_exog: int = 0,
     n_futr_exog: int = 0,
     h: int = 0,
 ) -> Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame]]: ...
