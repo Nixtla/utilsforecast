@@ -7,7 +7,7 @@ description: Utilies for generating time series datasets
 ### `generate_series`
 
 ```python
-generate_series(n_series, freq='D', min_length=50, max_length=500, n_static_features=0, equal_ends=False, with_trend=False, static_as_categorical=True, n_models=0, level=None, engine='pandas', seed=0)
+generate_series(n_series, freq='D', min_length=50, max_length=500, n_static_features=0, equal_ends=False, with_trend=False, static_as_categorical=True, n_models=0, level=None, engine='pandas', seed=0, n_hist_exog=0, n_futr_exog=0, h=0)
 ```
 
 Generate Synthetic Panel Series.
@@ -24,6 +24,9 @@ Name | Type | Description | Default
 `equal_ends` | <code>[bool](#bool)</code> | Series should end in the same timestamp. Defaults to False. | <code>False</code>
 `with_trend` | <code>[bool](#bool)</code> | Series should have a (positive) trend. Defaults to False. | <code>False</code>
 `static_as_categorical` | <code>[bool](#bool)</code> | Static features should have a categorical data type. Defaults to True. | <code>True</code>
+`n_hist_exog` | <code>[int](#int)</code> | Number of historic exogenous variables. Must be non-negative. Creates columns named `hist_exog_{i}` only in the historic dataframe. Defaults to 0. | <code>0</code>
+`n_futr_exog` | <code>[int](#int)</code> | Number of future exogenous variables. Must be non-negative. Each variable is generated once and split between the historic and future dataframes. Creates columns named `futr_exog_{i}` in both dataframes. Defaults to 0. | <code>0</code>
+`h` | <code>[int](#int)</code> | Number of future periods to generate per series when `n_futr_exog` is greater than 0. Defaults to 0. | <code>0</code>
 `n_models` | <code>[int](#int)</code> | Number of models predictions to simulate. Defaults to 0. | <code>0</code>
 `level` | <code>list of float</code> | Confidence level for intervals to simulate for each model. Defaults to None. | <code>None</code>
 `engine` | <code>[str](#str)</code> | Output Dataframe type. Defaults to 'pandas'. | <code>'pandas'</code>
@@ -33,7 +36,7 @@ Name | Type | Description | Default
 
 Type | Description
 ---- | -----------
-<code>[DataFrame](#utilsforecast.compat.DataFrame)</code> | pandas or polars DataFrame: Synthetic panel with columns [`unique_id`, `ds`, `y`] and exogenous features.
+<code>[Union](#typing.Union)[[DataFrame](#utilsforecast.compat.DataFrame), [Tuple](#typing.Tuple)[[DataFrame](#utilsforecast.compat.DataFrame), [DataFrame](#utilsforecast.compat.DataFrame)]]</code> | pandas or polars DataFrame, or tuple of DataFrames: Synthetic panel with columns [`unique_id`, `ds`, `y`] and exogenous features. When `n_futr_exog` is greater than 0, returns `(df, futr_df)`, where `futr_df` has `h` future timestamps per series.
 
 
 
