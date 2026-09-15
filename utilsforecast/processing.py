@@ -536,14 +536,8 @@ def time_ranges(
     if isinstance(starts, pd.Index):
         if _is_int_dtype(starts):
             starts_np = starts.to_numpy(copy=False)  # may be pyarrow
-            out = np.hstack(
-                [
-                    np.arange(
-                        start, start + freq * periods, freq, dtype=starts_np.dtype
-                    )
-                    for start in starts_np
-                ]
-            )
+            steps = (np.arange(periods) * freq).astype(starts_np.dtype)
+            out = np.repeat(starts_np, periods) + np.tile(steps, starts_np.size)
         elif _is_dt_dtype(starts):
             if isinstance(freq, str):
                 freq = pd.tseries.frequencies.to_offset(freq)

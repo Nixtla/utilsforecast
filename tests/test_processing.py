@@ -448,6 +448,11 @@ def test_time_ranges_with_integers_pd():
     pd.testing.assert_series_equal(
         time_ranges(dates, freq=4, periods=3), pd.Series([1, 5, 9, 10, 14, 18])
     )
+    arrow_dates = dates.astype("int64[pyarrow]")
+    pd.testing.assert_series_equal(
+        time_ranges(arrow_dates, freq=2, periods=3),
+        pd.Series([1, 3, 5, 10, 12, 14], dtype="int64[pyarrow]"),
+    )
 
 
 # datetimes
