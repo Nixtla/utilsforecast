@@ -176,14 +176,15 @@ def tweedie_deviance_single(y_true, y_pred, power, **kwargs):
     elif power == 1:
         return np.mean(2 * (y_true * np.log(y_true / y_pred) - (y_true - y_pred)))
     elif power == 2:
-        return np.mean(2 * (np.log(y_pred) - np.log(y_true)) + y_true / y_pred - 1)
+        ratio = y_true / y_pred
+        return np.mean(2 * (ratio - np.log(ratio) - 1))
     else:
         return np.mean(
             2
             * (
                 (y_true ** (2 - power)) / ((1 - power) * (2 - power))
-                - (y_true * (y_pred ** (1 - power))) / (1 - power)
                 + (y_pred ** (2 - power)) / (2 - power)
+                - (y_true * (y_pred ** (1 - power))) / (1 - power)
             )
         )
 
@@ -635,3 +636,22 @@ def test_scaled_metric_with_cutoffs_respects_id_col(engine):
     )
 
     np.testing.assert_allclose(actual["model"].to_numpy(), expected["model"].to_numpy())
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+@pytest.mark.parametrize("power", [0.0, 1.0, 1.2, 1.5, 1.8, 2.0, 2.5, 3.0])
+def test_tweedie_deviance_powers(engine, power):
+    import polars as pl
+
+    rng = np.random.default_rng(0)
+    y = rng.uniform(0.5, 10, size=40)
+    pred = rng.uniform(0.5, 10, size=40)
+    data = {"unique_id": ["id0"] * 40, "y": y, "model": pred, "perfect": y}
+    df = pd.DataFrame(data) if engine == "pandas" else pl.DataFrame(data)
+    res = ufl.tweedie_deviance(df, ["model", "perfect"], power=power)
+    res = res if engine == "pandas" else res.to_pandas()
+    expected = tweedie_deviance_single(y, pred, power=power)
+    np.testing.assert_allclose(res["model"].iloc[0], expected)
+    # a deviance is non-negative and vanishes for a perfect forecast
+    assert res["model"].iloc[0] > 0
+    np.testing.assert_allclose(res["perfect"].iloc[0], 0.0, atol=1e-12)
