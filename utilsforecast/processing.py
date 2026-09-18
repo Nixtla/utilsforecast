@@ -444,6 +444,12 @@ def _offset_times_array_n(
     times: Union[pd.Series, pd.Index], freq: BaseOffset, n: np.ndarray
 ) -> Union[pd.Series, pd.Index]:
     n = np.asarray(n)
+    if n.shape != (len(times),):
+        raise ValueError(f"Expected n to have shape ({len(times)},), got {n.shape}.")
+    if not np.issubdtype(n.dtype, np.integer):
+        raise TypeError(f"Expected n to have an integer dtype, got {n.dtype}.")
+    # a python int multiplier keeps n's dtype, so narrower ints would overflow
+    n = n.astype(np.int64, copy=False)
     if isinstance(freq, pd.offsets.Tick):
         # the coarsest resolution that can hold both the times and the offset,
         # which is the one pandas uses with a scalar n

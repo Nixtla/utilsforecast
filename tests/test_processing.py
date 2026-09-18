@@ -321,6 +321,42 @@ def test_offset_times_with_constant_array_n(n):
     )
 
 
+@pytest.mark.parametrize("freq", [pd.offsets.Day(), pd.offsets.MonthBegin()])
+@pytest.mark.parametrize(
+    "n",
+    [
+        np.array([1, 0, 2, 1, 0], dtype="int8"),
+        np.array([1, 0, 2, 1, 0], dtype="uint32"),
+        pd.Series([1, 0, 2, 1, 0], dtype="uint32[pyarrow]"),
+        pd.Series([1, 0, 2, 1, 0], dtype="Int64"),
+    ],
+)
+def test_offset_times_with_narrow_array_n(freq, n):
+    times = pd.Series(_ARRAY_N_TIMES)
+    assert list(offset_times(times, freq, n)) == _offset_times_elementwise(
+        times, freq, n
+    )
+
+
+@pytest.mark.parametrize("freq", [pd.offsets.Day(), pd.offsets.MonthBegin()])
+@pytest.mark.parametrize("times", [_ARRAY_N_TIMES, pd.Series(_ARRAY_N_TIMES)])
+@pytest.mark.parametrize(
+    "n", [np.array([1, 2]), np.array([2]), np.ones((1, 5), dtype=np.int64)]
+)
+def test_offset_times_with_array_n_wrong_shape(freq, times, n):
+    assert_raises_with_message(
+        offset_times, "Expected n to have shape (5,)", times, freq, n
+    )
+
+
+@pytest.mark.parametrize("freq", [pd.offsets.Day(), pd.offsets.MonthBegin()])
+def test_offset_times_with_float_array_n(freq):
+    n = np.array([1.5, 2.0, 0.0, 1.0, 3.0])
+    assert_raises_with_message(
+        offset_times, "Expected n to have an integer dtype", _ARRAY_N_TIMES, freq, n
+    )
+
+
 def test_offset_times_pl():
     pl.testing.assert_series_equal(
         offset_times(
