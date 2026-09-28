@@ -217,6 +217,23 @@ class TestFillGapsBasic:
         assert isinstance(result, pl.DataFrame)
 
 
+@pytest.mark.parametrize(
+    "freq", ["2QE", "2QS", "3QE", "3QS", "2QE-FEB", "2QS-FEB"]
+)
+def test_fill_gaps_preserves_multiple_quarter_frequency(freq):
+    """Test fill_gaps uses the multiplier in quarterly frequencies."""
+    dates = pd.date_range("2020-01-01", periods=6, freq=freq)
+    data = pd.DataFrame({"unique_id": "firm", "ds": dates, "y": np.arange(6.0)}).drop(
+        index=2
+    )
+
+    filled = fill_gaps(data, freq=freq)
+
+    expected = pd.date_range(dates[0], dates[-1], freq=freq)
+    assert filled["ds"].tolist() == expected.tolist()
+    assert filled["y"].isna().sum() == 1
+
+
 class TestFillGapsWarning:
     """Test fill_gaps warning behavior."""
 

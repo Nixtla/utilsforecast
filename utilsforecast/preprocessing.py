@@ -133,7 +133,7 @@ def id_time_grid(
             # hours are represented as 'h' in numpy
             freq = "h"
         elif isinstance(offset.base, (pd.offsets.QuarterBegin, pd.offsets.QuarterEnd)):
-            n = 3
+            n *= 3
             freq = "M"
         elif isinstance(offset.base, (pd.offsets.YearBegin, pd.offsets.YearEnd)):
             freq = "Y"
