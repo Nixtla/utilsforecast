@@ -380,8 +380,13 @@ def smape(
 
     def gen_expr(model):
         abs_err = (nw.col(model) - nw.col(target_col)).abs()
-        denominator = _zero_to_nan(nw.col(model).abs() + nw.col(target_col).abs())
-        return (abs_err / denominator).alias(model).fill_null(0)
+        denominator = nw.col(model).abs() + nw.col(target_col).abs()
+        return (
+            nw.when(denominator == 0)
+            .then(0.0)
+            .otherwise(abs_err / denominator)
+            .alias(model)
+        )
 
     return _nw_agg_expr(
         df=df,
@@ -1143,7 +1148,7 @@ def scaled_crps(
 
     group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
     stats = (
-        df.with_columns(target_col=nw.col(target_col).abs())
+        df.with_columns(nw.col(target_col).abs())
         .group_by(*group_cols)
         .agg(
             counts=nw.col(id_col).len(),

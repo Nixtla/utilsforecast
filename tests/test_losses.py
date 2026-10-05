@@ -294,6 +294,38 @@ def test_wape_equals_nd(engine):
 
 
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_smape_handles_zero_and_missing_forecasts(engine):
+    """SMAPE treats 0/0 as zero but excludes missing forecasts."""
+    data = {
+        "unique_id": ["partial"] * 4 + ["zero"] * 2 + ["missing"] * 2,
+        "y": [10.0, 20.0, 30.0, 40.0, 0.0, 10.0, 10.0, 20.0],
+        "model": [11.0, 18.0, 33.0, None, 0.0, 11.0, None, None],
+    }
+    if engine == "pandas":
+        data["model"] = [
+            float("nan") if value is None else value for value in data["model"]
+        ]
+        df = pd.DataFrame(data)
+    else:
+        import polars as pl
+
+        df = pl.DataFrame(
+            {
+                **data,
+                "model": pl.Series(data["model"], dtype=pl.Float64),
+            }
+        )
+
+    result = nw.from_native(ufl.smape(df, ["model"]))
+    values = dict(zip(result["unique_id"].to_list(), result["model"].to_list()))
+    expected_partial = np.mean([1 / 21, 2 / 38, 3 / 63])
+
+    np.testing.assert_allclose(values["partial"], expected_partial)
+    np.testing.assert_allclose(values["zero"], 1 / 42)
+    assert values["missing"] is None or np.isnan(values["missing"])
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
 def test_linex_loss_numerical(engine):
     """Test linex loss with known numerical values."""
     a = 0.2
@@ -548,6 +580,26 @@ class TestProbabilisticMetrics:
         df_nw = nw.from_native(result)
         for col in models:
             assert col in df_nw.columns
+
+    @pytest.mark.parametrize("engine", ["pandas", "polars"])
+    def test_scaled_crps_negative_target(self, engine):
+        # the normalizer is sum(|y|), so negative targets must not flip the sign
+        y = np.array([-2.0, 1.5, -1.0, 3.0, -0.5, -2.5])
+        quantiles = np.array([0.1, 0.5, 0.9])
+        y_hat = np.column_stack([y - 1.0, y + 0.3, y + 1.2])
+        cols = ["model-q10", "model-q50", "model-q90"]
+        df = pd.DataFrame({"unique_id": 0, "ds": np.arange(y.size), "y": y})
+        df[cols] = y_hat
+        if engine == "polars":
+            import polars as pl
+
+            df = pl.from_pandas(df)
+        error = y[:, None] - y_hat
+        ql = np.maximum(quantiles * error, (quantiles - 1) * error).mean(axis=1)
+        expected = 2 * ql.sum() / np.abs(y).sum()
+
+        result = ufl.scaled_crps(df, {"model": cols}, quantiles)
+        np.testing.assert_allclose(nw.from_native(result)["model"].to_numpy(), expected)
 
 
 class TestTweedieDeviance:
