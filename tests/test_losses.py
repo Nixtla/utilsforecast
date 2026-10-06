@@ -719,6 +719,32 @@ def test_tweedie_deviance_powers(engine, power):
     np.testing.assert_allclose(res["perfect"].iloc[0], 0.0, atol=1e-12)
 
 
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_tweedie_deviance_power_zero_allows_any_prediction(engine):
+    # power=0 is the squared error, so non-positive predictions are valid
+    y = np.array([1.0, -2.0, 0.5])
+    pred = np.array([0.5, -1.0, 0.0])
+    data = {"unique_id": ["id0"] * y.size, "y": y, "model": pred}
+    if engine == "pandas":
+        df = pd.DataFrame(data)
+    else:
+        import polars as pl
+
+        df = pl.DataFrame(data)
+    res = ufl.tweedie_deviance(df, ["model"], power=0)
+    res = res if engine == "pandas" else res.to_pandas()
+    np.testing.assert_allclose(res["model"].iloc[0], np.mean((y - pred) ** 2))
+
+
+@pytest.mark.parametrize("power", [1.0, 1.5])
+def test_tweedie_deviance_rejects_negative_target(power):
+    df = pd.DataFrame(
+        {"unique_id": ["id0"] * 3, "y": [1.0, -2.0, 0.5], "model": [0.5, 1.0, 2.0]}
+    )
+    with pytest.raises(ValueError, match="non-negative"):
+        ufl.tweedie_deviance(df, ["model"], power=power)
+
+
 @pytest.mark.parametrize("power", TWEEDIE_POWERS)
 def test_tweedie_deviance_vs_sklearn(power):
     sklearn_metrics = pytest.importorskip("sklearn.metrics")
