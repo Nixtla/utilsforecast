@@ -247,6 +247,10 @@ def is_none(s: Series) -> Series:
 
 
 def is_nan_or_none(s: Series) -> Series:
+    if isinstance(s, pl_Series) and not s.dtype.is_float():
+        # polars only supports is_nan on numeric columns and only floats
+        # can hold NaN, so other columns (e.g. strings) can only have nulls
+        return s.is_null()
     return is_nan(s) | is_none(s)
 
 

@@ -117,6 +117,17 @@ def test_is_nan_or_none():
             is_nan_or_none(pl.Series([np.nan, 1.0, None])).to_numpy(),
             np.array([True, False, True]),
         )
+        for values in (["a", None, "b"], [True, None, False], [1, None, 2]):
+            np.testing.assert_equal(
+                is_nan_or_none(pl.Series(values)).to_numpy(),
+                np.array([False, True, False]),
+            )
+        np.testing.assert_equal(
+            is_nan_or_none(
+                pl.Series(["a", None, "b"], dtype=pl.Categorical)
+            ).to_numpy(),
+            np.array([False, True, False]),
+        )
 
 
 def test_vertical_concat_pd():
