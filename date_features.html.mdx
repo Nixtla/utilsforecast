@@ -1,0 +1,126 @@
+---
+title: Date Features | UtilsForecast
+description: Backend-agnostic calendar features
+---
+
+The `utilsforecast.date_features` module provides calendar features that
+compute the same values with the same dtypes for pandas and polars, including
+timezone-aware dates. They can be passed to
+`utilsforecast.feature_engineering.time_features`.
+
+```python
+from utilsforecast import date_features as dtf
+from utilsforecast.feature_engineering import time_features
+
+train, future = time_features(
+    df,
+    freq='D',
+    features=[dtf.day_of_week, dtf.month, dtf.is_month_end],
+    h=7,
+)
+```
+
+`dtf.available()` lists every calendar feature:
+
+| Feature | Values | dtype |
+|---------|--------|-------|
+| `year` | Year. | `uint16` |
+| `quarter` | Quarter of the year, from 1 to 4. | `uint8` |
+| `month` | Month of the year, from 1 to 12. | `uint8` |
+| `week_of_year` | ISO week of the year, from 1 to 53. | `uint8` |
+| `day` | Day of the month, from 1 to 31. | `uint8` |
+| `day_of_week` | Day of the week, from 0 (Monday) to 6 (Sunday). | `uint8` |
+| `day_of_year` | Day of the year, from 1 to 366. | `uint16` |
+| `days_in_month` | Number of days in the month, from 28 to 31. | `uint8` |
+| `hour` | Hour of the day, from 0 to 23. | `uint8` |
+| `minute` | Minute of the hour, from 0 to 59. | `uint8` |
+| `second` | Second of the minute, from 0 to 59. | `uint8` |
+| `is_month_start` | 1 on the first day of the month, 0 otherwise. | `uint8` |
+| `is_month_end` | 1 on the last day of the month, 0 otherwise. | `uint8` |
+| `is_quarter_start` | 1 on the first day of the quarter, 0 otherwise. | `uint8` |
+| `is_quarter_end` | 1 on the last day of the quarter, 0 otherwise. | `uint8` |
+| `is_year_start` | 1 on January 1st, 0 otherwise. | `uint8` |
+| `is_year_end` | 1 on December 31st, 0 otherwise. | `uint8` |
+
+### `available`
+
+```python
+available()
+```
+
+List the available calendar features.
+
+**Returns:**
+
+Type | Description
+---- | -----------
+<code>[List](#typing.List)[[CalendarFeature](#utilsforecast.date_features.CalendarFeature)]</code> | list of CalendarFeature: Available features.
+
+
+### `CalendarFeature`
+
+```python
+CalendarFeature(name, description, dtype, values, _compute)
+```
+
+Calendar feature exported by this module.
+
+**Attributes:**
+
+Name | Type | Description
+---- | ---- | -----------
+[`name`](#utilsforecast.date_features.CalendarFeature.name) | <code>[str](#str)</code> | Name of the feature, used as the column name.
+[`description`](#utilsforecast.date_features.CalendarFeature.description) | <code>[str](#str)</code> | Description of the values.
+[`dtype`](#utilsforecast.date_features.CalendarFeature.dtype) | <code>[type](#type)</code> | numpy dtype of the computed values.
+[`values`](#utilsforecast.date_features.CalendarFeature.values) | <code>[range](#range)</code> | Possible values of the feature, None if unbounded.
+
+#### `CalendarFeature.compute`
+
+```python
+compute(dates)
+```
+
+Compute the feature values.
+
+**Parameters:**
+
+Name | Type | Description | Default
+---- | ---- | ----------- | -------
+`dates` | <code>pandas or polars Series, or pandas DatetimeIndex</code> | Dates to compute the feature from. | *required*
+
+**Returns:**
+
+Type | Description
+---- | -----------
+<code>[ndarray](#numpy.ndarray)</code> | numpy.ndarray: Feature values, one per date.
+
+**Raises:**
+
+Type | Description
+---- | -----------
+<code>[ValueError](#ValueError)</code> | If there are null dates.
+
+#### `CalendarFeature.description`
+
+```python
+description: str = field(repr=False)
+```
+
+#### `CalendarFeature.dtype`
+
+```python
+dtype: type = field(repr=False)
+```
+
+#### `CalendarFeature.name`
+
+```python
+name: str
+```
+
+#### `CalendarFeature.values`
+
+```python
+values: Optional[range] = field(repr=False)
+```
+

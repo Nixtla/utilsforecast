@@ -69,7 +69,7 @@ Name | Type | Description | Default
 ---- | ---- | ----------- | -------
 `df` | <code>pandas or polars DataFrame</code> | Dataframe with ids, times and values for the exogenous regressors. | *required*
 `freq` | <code>[str](#str) or [int](#int)</code> | Frequency of the data. Must be a valid pandas or polars offset alias, or an integer. | *required*
-`features` | <code>list of str or callable</code> | Features to compute. Can be string aliases of timestamp attributes or functions to apply to the times. | *required*
+`features` | <code>list of str, callable or CalendarFeature</code> | Features to compute. Can be calendar features from `utilsforecast.date_features` (listed by `utilsforecast.date_features.available()`), string aliases of timestamp attributes of the dataframe backend or functions to apply to the times. | *required*
 `h` | <code>[int](#int)</code> | Forecast horizon. Defaults to 0. | <code>0</code>
 `id_col` | <code>[str](#str)</code> | Column that identifies each serie. Defaults to 'unique_id'. | <code>'unique_id'</code>
 `time_col` | <code>[str](#str)</code> | Column that identifies each timestep, its values can be timestamps or integers. Defaults to 'ds'. | <code>'ds'</code>
