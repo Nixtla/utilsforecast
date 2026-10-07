@@ -34,11 +34,13 @@ import pandas as pd
 class CalendarFeature:
     """Calendar feature exported by this module.
 
+    For internal use only, custom features can be passed to `time_features` as functions.
+
     Attributes:
         name (str): Name of the feature, used as the column name.
         description (str): Description of the values.
         dtype (type): numpy dtype of the computed values.
-        values (range, optional): Possible values of the feature, None if unbounded.
+        values (range, optional): Values to one-hot encode the feature with, None if it isn't one-hot encoded.
     """
 
     name: str
@@ -57,11 +59,21 @@ class CalendarFeature:
             numpy.ndarray: Feature values, one per date.
 
         Raises:
-            ValueError: If there are null dates.
+            ValueError: If the dates aren't datetimes or there are null dates.
         """
         if isinstance(dates, pd.Index):
             dates = pd.Series(dates)
         dates = nw.from_native(dates, series_only=True)
+        native = dates.to_native()
+        # narwhals reports some pandas time zones (e.g. America/New_York) as Unknown
+        is_datetime = isinstance(dates.dtype, (nw.Date, nw.Datetime)) or (
+            isinstance(native, pd.Series)
+            and pd.api.types.is_datetime64_any_dtype(native)
+        )
+        if not is_datetime:
+            raise ValueError(
+                f"Can't compute {self.name!r}, dates must be datetimes, got {dates.dtype}."
+            )
         n_nulls = dates.null_count()
         if n_nulls:
             raise ValueError(

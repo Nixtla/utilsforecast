@@ -37,6 +37,18 @@ def test_time_features_calendar_features(setup_series):
     assert future_df.columns.tolist() == ["unique_id", "ds", *names]
 
 
+@pytest.mark.parametrize(
+    "features",
+    [["month", dtf.month], [dtf.day, dtf.day], ["day", "day"]],
+    ids=["string_and_calendar", "calendar", "string"],
+)
+def test_time_features_duplicate_names_raise(setup_series, features):
+    series, series_pl = setup_series
+    for df, freq in [(series, "D"), (series_pl, "1d")]:
+        with pytest.raises(ValueError, match="duplicate time feature names"):
+            time_features(df, freq=freq, features=features, h=1)
+
+
 @pytest.fixture
 def setup_series():
     series = generate_series(5, equal_ends=True)

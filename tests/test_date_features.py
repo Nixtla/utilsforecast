@@ -1,5 +1,6 @@
 import copy
 import pickle
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -23,6 +24,18 @@ def test_available_lists_every_exported_feature():
     ]
     for feature in features:
         assert getattr(dtf, feature.name) is feature
+
+
+def test_docs_table_matches_available():
+    doc = Path(__file__).parents[1] / "docs" / "date_features.html.md"
+    rows = [
+        [cell.strip().strip("`") for cell in line.strip("|").split("|")]
+        for line in doc.read_text().splitlines()
+        if line.startswith("| `")
+    ]
+    assert rows == [
+        [f.name, f.description, np.dtype(f.dtype).name] for f in dtf.available()
+    ]
 
 
 @pytest.mark.parametrize(
@@ -69,6 +82,20 @@ def test_null_dates_raise(engine):
     if engine == "polars":
         dates = pl.from_pandas(dates)
     with pytest.raises(ValueError, match="'month', found 1 null dates"):
+        dtf.month.compute(dates)
+
+
+@pytest.mark.parametrize(
+    "dates",
+    [
+        pd.Series([1, 2, 3]),
+        pl.Series([1, 2, 3]),
+        pd.Series(pd.date_range("2020-01-01", periods=3).date),
+    ],
+    ids=["pandas_int", "polars_int", "pandas_date_objects"],
+)
+def test_non_datetime_dates_raise(dates):
+    with pytest.raises(ValueError, match="'month', dates must be datetimes"):
         dtf.month.compute(dates)
 
 
