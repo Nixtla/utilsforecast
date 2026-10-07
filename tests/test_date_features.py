@@ -28,13 +28,10 @@ def test_available_lists_every_exported_feature():
 
 def test_docs_table_matches_available():
     doc = Path(__file__).parents[1] / "docs" / "date_features.html.md"
-    rows = [
-        [cell.strip().strip("`") for cell in line.strip("|").split("|")]
-        for line in doc.read_text().splitlines()
-        if line.startswith("| `")
-    ]
+    rows = [l for l in doc.read_text().splitlines() if l.startswith("| `")]
     assert rows == [
-        [f.name, f.description, np.dtype(f.dtype).name] for f in dtf.available()
+        f"| `{f.name}` | {f.description} | `{np.dtype(f.dtype).name}` |"
+        for f in dtf.available()
     ]
 
 
