@@ -12,9 +12,11 @@ import pandas as pd
 import utilsforecast.processing as ufp
 
 from .compat import DataFrame, DFType, pl, pl_DataFrame, pl_Expr
+from .date_features import CalendarFeature
 from .validation import validate_format, validate_freq
 
 _Features = Tuple[List[str], np.ndarray, np.ndarray]
+_TimeFeature = Union[str, Callable, CalendarFeature]
 
 
 def _add_features(
@@ -185,12 +187,15 @@ def trend(
 
 def _compute_time_feature(
     times: Union[pd.Index, pl_Expr],
-    feature: Union[str, Callable],
+    feature: _TimeFeature,
 ) -> Tuple[
     Union[str, List[str]],
     Union[pd.DataFrame, pl_Expr, List[pl_Expr], pd.Index, np.ndarray],
 ]:
-    if callable(feature):
+    if isinstance(feature, CalendarFeature):
+        feat_name = feature.name
+        feat_vals = feature.compute(times)
+    elif callable(feature):
         feat_vals = feature(times)
         if isinstance(feat_vals, pd.DataFrame):
             feat_name = feat_vals.columns.tolist()
@@ -210,7 +215,7 @@ def _compute_time_feature(
 
 def _add_time_features(
     df: DFType,
-    features: List[Union[str, Callable]],
+    features: List[_TimeFeature],
     time_col: str = "ds",
 ) -> DFType:
     df = ufp.copy_if_pandas(df, deep=False)
@@ -225,6 +230,9 @@ def _add_time_features(
     elif isinstance(df, pl_DataFrame):
         exprs = []
         for feature in features:
+            if isinstance(feature, CalendarFeature):
+                exprs.append(pl.Series(feature.name, feature.compute(unique_times)))
+                continue
             name, vals = _compute_time_feature(pl.col(time_col), feature)
             if isinstance(vals, list):
                 exprs.extend(vals)
@@ -239,7 +247,7 @@ def _add_time_features(
 def time_features(
     df: DFType,
     freq: Union[str, int],
-    features: List[Union[str, Callable]],
+    features: List[_TimeFeature],
     h: int = 0,
     id_col: str = "unique_id",
     time_col: str = "ds",
@@ -251,8 +259,10 @@ def time_features(
             for the exogenous regressors.
         freq (str or int): Frequency of the data. Must be a valid pandas or
             polars offset alias, or an integer.
-        features (list of str or callable): Features to compute. Can be string
-            aliases of timestamp attributes or functions to apply to the times.
+        features (list of str, callable or CalendarFeature): Features to compute.
+            Can be calendar features from `utilsforecast.date_features` (listed by
+            `utilsforecast.date_features.available()`), string aliases of timestamp
+            attributes of the dataframe backend or functions to apply to the times.
         h (int, optional): Forecast horizon. Defaults to 0.
         id_col (str, optional): Column that identifies each serie.
             Defaults to 'unique_id'.
