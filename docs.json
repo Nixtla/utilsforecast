@@ -28,7 +28,6 @@
         "pages": [
           "preprocessing.html",
           "feature_engineering.html",
-          "date_features.html",
           "evaluation.html",
           "losses.html",
           "plotting.html",
