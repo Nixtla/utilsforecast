@@ -3,6 +3,7 @@
 __all__ = ["fourier", "trend", "time_features", "future_exog_to_historic", "pipeline"]
 
 
+from collections import Counter
 from functools import partial
 from typing import Callable, List, Optional, Tuple, Union
 
@@ -12,9 +13,11 @@ import pandas as pd
 import utilsforecast.processing as ufp
 
 from .compat import DataFrame, DFType, pl, pl_DataFrame, pl_Expr
+from .date_features import CalendarFeature
 from .validation import validate_format, validate_freq
 
 _Features = Tuple[List[str], np.ndarray, np.ndarray]
+_TimeFeature = Union[str, Callable, CalendarFeature]
 
 
 def _add_features(
@@ -208,9 +211,15 @@ def _compute_time_feature(
     return feat_name, feat_vals
 
 
+def _validate_unique_names(names: List[str]) -> None:
+    duplicates = [name for name, count in Counter(names).items() if count > 1]
+    if duplicates:
+        raise ValueError(f"Found duplicate time feature names: {duplicates}.")
+
+
 def _add_time_features(
     df: DFType,
-    features: List[Union[str, Callable]],
+    features: List[_TimeFeature],
     time_col: str = "ds",
 ) -> DFType:
     df = ufp.copy_if_pandas(df, deep=False)
@@ -219,18 +228,37 @@ def _add_time_features(
         times = pd.Index(unique_times)
         time2pos = {time: i for i, time in enumerate(times)}
         restore_idxs = df[time_col].map(time2pos).to_numpy()
+        computed = []
+        names: List[str] = []
+        name: Union[str, List[str]]
         for feature in features:
-            name, vals = _compute_time_feature(times, feature)
+            if isinstance(feature, CalendarFeature):
+                name, vals = feature.name, feature.compute(times)
+            else:
+                name, vals = _compute_time_feature(times, feature)
+            computed.append((name, vals))
+            names.extend(name if isinstance(name, list) else [name])
+        _validate_unique_names(names)
+        for name, vals in computed:
             df[name] = vals[restore_idxs]
     elif isinstance(df, pl_DataFrame):
-        exprs = []
+        exprs: List[Union[pl_Expr, pl.Series]] = []
         for feature in features:
+            if isinstance(feature, CalendarFeature):
+                exprs.append(pl.Series(feature.name, feature.compute(unique_times)))
+                continue
             name, vals = _compute_time_feature(pl.col(time_col), feature)
             if isinstance(vals, list):
                 exprs.extend(vals)
             else:
                 assert isinstance(vals, pl_Expr)
                 exprs.append(vals.alias(name))
+        _validate_unique_names(
+            [
+                e.name if isinstance(e, pl.Series) else e.meta.output_name()
+                for e in exprs
+            ]
+        )
         feats = unique_times.to_frame().with_columns(*exprs)
         df = df.join(feats, on=time_col, how="left")
     return df
@@ -239,7 +267,7 @@ def _add_time_features(
 def time_features(
     df: DFType,
     freq: Union[str, int],
-    features: List[Union[str, Callable]],
+    features: List[_TimeFeature],
     h: int = 0,
     id_col: str = "unique_id",
     time_col: str = "ds",
@@ -251,8 +279,10 @@ def time_features(
             for the exogenous regressors.
         freq (str or int): Frequency of the data. Must be a valid pandas or
             polars offset alias, or an integer.
-        features (list of str or callable): Features to compute. Can be string
-            aliases of timestamp attributes or functions to apply to the times.
+        features (list of str, callable or CalendarFeature): Features to compute.
+            Can be calendar features from `utilsforecast.date_features` (listed by
+            `utilsforecast.date_features.available()`), string aliases of timestamp
+            attributes of the dataframe backend or functions to apply to the times.
         h (int, optional): Forecast horizon. Defaults to 0.
         id_col (str, optional): Column that identifies each serie.
             Defaults to 'unique_id'.

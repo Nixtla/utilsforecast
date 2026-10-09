@@ -6,6 +6,7 @@ import polars as pl
 import polars.testing
 import pytest
 
+import utilsforecast.date_features as dtf
 from utilsforecast.data import generate_series
 from utilsforecast.feature_engineering import (
     fourier,
@@ -14,6 +15,38 @@ from utilsforecast.feature_engineering import (
     time_features,
     trend,
 )
+
+
+def test_time_features_calendar_features(setup_series):
+    series, series_pl = setup_series
+    features = dtf.available()
+    names = [f.name for f in features]
+    transformed_df, future_df = time_features(series, freq="D", features=features, h=2)
+    transformed_pl, future_pl = time_features(
+        series_pl, freq="1d", features=features, h=2
+    )
+    for pd_df, pl_df in [(transformed_df, transformed_pl), (future_df, future_pl)]:
+        for feature in features:
+            pd_vals = pd_df[feature.name].to_numpy()
+            pl_vals = pl_df[feature.name].to_numpy()
+            assert pd_vals.dtype == pl_vals.dtype == feature.dtype
+            np.testing.assert_array_equal(
+                pd_vals, feature.compute(pd_df["ds"]), err_msg=feature.name
+            )
+            np.testing.assert_array_equal(pd_vals, pl_vals, err_msg=feature.name)
+    assert future_df.columns.tolist() == ["unique_id", "ds", *names]
+
+
+@pytest.mark.parametrize(
+    "features",
+    [["month", dtf.month], [dtf.day, dtf.day], ["day", "day"]],
+    ids=["string_and_calendar", "calendar", "string"],
+)
+def test_time_features_duplicate_names_raise(setup_series, features):
+    series, series_pl = setup_series
+    for df, freq in [(series, "D"), (series_pl, "1d")]:
+        with pytest.raises(ValueError, match="duplicate time feature names"):
+            time_features(df, freq=freq, features=features, h=1)
 
 
 @pytest.fixture
