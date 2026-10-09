@@ -27,7 +27,7 @@ train, future = time_features(
 | `year` | Year. | `uint16` |
 | `quarter` | Quarter of the year, from 1 to 4. | `uint8` |
 | `month` | Month of the year, from 1 to 12. | `uint8` |
-| `week_of_year` | ISO week of the year, from 1 to 53. | `uint8` |
+| `week` | ISO week of the year, from 1 to 53. | `uint8` |
 | `day` | Day of the month, from 1 to 31. | `uint8` |
 | `day_of_week` | Day of the week, from 0 (Monday) to 6 (Sunday). | `uint8` |
 | `day_of_year` | Day of the year, from 1 to 366. | `uint16` |

@@ -5,7 +5,7 @@ __all__ = [
     "year",
     "quarter",
     "month",
-    "week_of_year",
+    "week",
     "day",
     "day_of_week",
     "day_of_year",
@@ -98,7 +98,7 @@ def _days_in_month(dates: nw.Series) -> np.ndarray:
     return _dt(last_day, "day")
 
 
-def _week_of_year(dates: nw.Series) -> np.ndarray:
+def _week(dates: nw.Series) -> np.ndarray:
     # the ISO week is the week of the year of the thursday of that week
     days = dates.to_numpy().astype("datetime64[D]")
     thursday = days + (4 - _dt(dates, "weekday")).astype("timedelta64[D]")
@@ -124,12 +124,12 @@ month = CalendarFeature(
     range(1, 13),
     lambda d: _dt(d, "month"),
 )
-week_of_year = CalendarFeature(
-    "week_of_year",
+week = CalendarFeature(
+    "week",
     "ISO week of the year, from 1 to 53.",
     np.uint8,
     range(1, 54),
-    _week_of_year,
+    _week,
 )
 day = CalendarFeature(
     "day",
@@ -229,7 +229,7 @@ _FEATURES: Dict[str, CalendarFeature] = {
         year,
         quarter,
         month,
-        week_of_year,
+        week,
         day,
         day_of_week,
         day_of_year,

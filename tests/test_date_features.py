@@ -11,7 +11,7 @@ import utilsforecast.date_features as dtf
 
 
 def _pandas_reference(dates: pd.Series, name: str) -> np.ndarray:
-    if name == "week_of_year":
+    if name == "week":
         return dates.dt.isocalendar().week.to_numpy()
     attr = {"day_of_week": "dayofweek", "day_of_year": "dayofyear"}.get(name, name)
     return getattr(dates.dt, attr).to_numpy()
