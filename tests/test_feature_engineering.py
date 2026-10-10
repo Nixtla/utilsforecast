@@ -7,6 +7,7 @@ import polars.testing
 import pytest
 
 import utilsforecast.date_features as dtf
+import utilsforecast.processing as ufp
 from utilsforecast.data import generate_series
 from utilsforecast.feature_engineering import (
     fourier,
@@ -17,13 +18,38 @@ from utilsforecast.feature_engineering import (
 )
 
 
-def test_time_features_calendar_features(setup_series):
-    series, series_pl = setup_series
+@pytest.fixture
+def setup_series():
+    series = generate_series(5, equal_ends=True)
+    series_pl = generate_series(5, equal_ends=True, engine="polars")
+    return series, series_pl
+
+
+def _calendar_series(case):
+    if case == "hourly_tz":
+        series = generate_series(5, freq="h", equal_ends=True)
+        # crosses the daylight saving time change of 2021-03-14
+        ds = series["ds"] + (pd.Timestamp("2021-03-01") - pd.Timestamp("2000-01-01"))
+        series["ds"] = ds.dt.tz_localize("UTC").dt.tz_convert("America/New_York")
+        return series, pl.from_pandas(series), "h", "1h"
+    series = generate_series(5, equal_ends=True)
+    if case == "shuffled":
+        series = series.sample(frac=1.0, random_state=0).reset_index(drop=True)
+        series.index = series.index + 10
+    series_pl = pl.from_pandas(series)
+    if case == "polars_date":
+        series_pl = series_pl.with_columns(pl.col("ds").cast(pl.Date))
+    return series, series_pl, "D", "1d"
+
+
+@pytest.mark.parametrize("case", ["daily", "hourly_tz", "shuffled", "polars_date"])
+def test_time_features_calendar_features(case):
+    series, series_pl, freq, freq_pl = _calendar_series(case)
     features = dtf.available()
     names = [f.name for f in features]
-    transformed_df, future_df = time_features(series, freq="D", features=features, h=2)
+    transformed_df, future_df = time_features(series, freq=freq, features=features, h=2)
     transformed_pl, future_pl = time_features(
-        series_pl, freq="1d", features=features, h=2
+        series_pl, freq=freq_pl, features=features, h=2
     )
     for pd_df, pl_df in [(transformed_df, transformed_pl), (future_df, future_pl)]:
         for feature in features:
@@ -35,6 +61,41 @@ def test_time_features_calendar_features(setup_series):
             )
             np.testing.assert_array_equal(pd_vals, pl_vals, err_msg=feature.name)
     assert future_df.columns.tolist() == ["unique_id", "ds", *names]
+
+
+def test_time_features_mixed_features(setup_series):
+    series, series_pl = setup_series
+
+    def is_weekend(times):
+        return times.dayofweek >= 5
+
+    def month_and_day(times):
+        return [
+            times.dt.month().name.suffix("_month"),
+            times.dt.day().name.suffix("_day"),
+        ]
+
+    _, future = time_features(
+        series, freq="D", features=["month", is_weekend, dtf.week], h=1
+    )
+    assert future.columns.tolist() == [
+        "unique_id",
+        "ds",
+        "month",
+        "is_weekend",
+        "week",
+    ]
+    _, future_pl = time_features(
+        series_pl, freq="1d", features=["month", month_and_day, dtf.week], h=1
+    )
+    assert future_pl.columns == [
+        "unique_id",
+        "ds",
+        "month",
+        "ds_month",
+        "ds_day",
+        "week",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -49,11 +110,12 @@ def test_time_features_duplicate_names_raise(setup_series, features):
             time_features(df, freq=freq, features=features, h=1)
 
 
-@pytest.fixture
-def setup_series():
-    series = generate_series(5, equal_ends=True)
-    series_pl = generate_series(5, equal_ends=True, engine="polars")
-    return series, series_pl
+def test_time_features_named_like_time_col_raise(setup_series):
+    series, series_pl = setup_series
+    for df, freq in [(series, "D"), (series_pl, "1d")]:
+        df = ufp.rename(df, {"ds": "day"})
+        with pytest.raises(ValueError, match="named like the time column"):
+            time_features(df, freq=freq, features=[dtf.day], h=1, time_col="day")
 
 
 def test_fourier_transform(setup_series):

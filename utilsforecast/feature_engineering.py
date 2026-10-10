@@ -13,7 +13,7 @@ import pandas as pd
 import utilsforecast.processing as ufp
 
 from .compat import DataFrame, DFType, pl, pl_DataFrame, pl_Expr
-from .date_features import CalendarFeature
+from .date_features import CalendarFeature, _compute_features
 from .validation import validate_format, validate_freq
 
 _Features = Tuple[List[str], np.ndarray, np.ndarray]
@@ -211,7 +211,11 @@ def _compute_time_feature(
     return feat_name, feat_vals
 
 
-def _validate_unique_names(names: List[str]) -> None:
+def _validate_names(names: List[str], time_col: str) -> None:
+    if time_col in names:
+        raise ValueError(
+            f"Time features can't be named like the time column ({time_col!r})."
+        )
     duplicates = [name for name, count in Counter(names).items() if count > 1]
     if duplicates:
         raise ValueError(f"Found duplicate time feature names: {duplicates}.")
@@ -224,41 +228,46 @@ def _add_time_features(
 ) -> DFType:
     df = ufp.copy_if_pandas(df, deep=False)
     unique_times = df[time_col].unique()
+    calendar = [f for f in features if isinstance(f, CalendarFeature)]
     if isinstance(df, pd.DataFrame):
         times = pd.Index(unique_times)
         time2pos = {time: i for i, time in enumerate(times)}
         restore_idxs = df[time_col].map(time2pos).to_numpy()
+        calendar_vals = iter(_compute_features(times, calendar))
         computed = []
         names: List[str] = []
         name: Union[str, List[str]]
         for feature in features:
             if isinstance(feature, CalendarFeature):
-                name, vals = feature.name, feature.compute(times)
+                name, vals = feature.name, next(calendar_vals)
             else:
                 name, vals = _compute_time_feature(times, feature)
             computed.append((name, vals))
             names.extend(name if isinstance(name, list) else [name])
-        _validate_unique_names(names)
+        _validate_names(names, time_col)
         for name, vals in computed:
             df[name] = vals[restore_idxs]
     elif isinstance(df, pl_DataFrame):
+        calendar_vals = iter(_compute_features(unique_times, calendar))
         exprs: List[Union[pl_Expr, pl.Series]] = []
         for feature in features:
             if isinstance(feature, CalendarFeature):
-                exprs.append(pl.Series(feature.name, feature.compute(unique_times)))
-                continue
-            name, vals = _compute_time_feature(pl.col(time_col), feature)
-            if isinstance(vals, list):
-                exprs.extend(vals)
+                exprs.append(pl.Series(feature.name, next(calendar_vals)))
             else:
-                assert isinstance(vals, pl_Expr)
-                exprs.append(vals.alias(name))
-        _validate_unique_names(
-            [
-                e.name if isinstance(e, pl.Series) else e.meta.output_name()
-                for e in exprs
-            ]
-        )
+                name, vals = _compute_time_feature(pl.col(time_col), feature)
+                if isinstance(vals, list):
+                    exprs.extend(vals)
+                else:
+                    assert isinstance(vals, pl_Expr)
+                    exprs.append(vals.alias(name))
+        # names like suffixes are only known when running the expression
+        known_names = [
+            e.name
+            if isinstance(e, pl.Series)
+            else e.meta.output_name(raise_if_undetermined=False)
+            for e in exprs
+        ]
+        _validate_names([n for n in known_names if n is not None], time_col)
         feats = unique_times.to_frame().with_columns(*exprs)
         df = df.join(feats, on=time_col, how="left")
     return df
