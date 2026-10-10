@@ -110,12 +110,57 @@ def test_time_features_duplicate_names_raise(setup_series, features):
             time_features(df, freq=freq, features=features, h=1)
 
 
-def test_time_features_named_like_time_col_raise(setup_series):
+@pytest.mark.parametrize(
+    "rename", [{"ds": "day"}, {"unique_id": "day"}, {"y": "day"}], ids=str
+)
+def test_time_features_named_like_existing_columns_raise(setup_series, rename):
     series, series_pl = setup_series
+    time_col = rename.get("ds", "ds")
+    id_col = rename.get("unique_id", "unique_id")
     for df, freq in [(series, "D"), (series_pl, "1d")]:
-        df = ufp.rename(df, {"ds": "day"})
-        with pytest.raises(ValueError, match="named like the time column"):
-            time_features(df, freq=freq, features=[dtf.day], h=1, time_col="day")
+        df = ufp.rename(df, rename)
+        with pytest.raises(ValueError, match=r"names of existing columns: \['day'\]"):
+            time_features(
+                df, freq=freq, features=[dtf.day], h=1, id_col=id_col, time_col=time_col
+            )
+
+
+def test_time_features_polars_runtime_names_validated(setup_series):
+    _, series_pl = setup_series
+
+    def renamed_to_ds(times):
+        return [times.dt.day().name.map(lambda _: "ds")]
+
+    with pytest.raises(ValueError, match="existing columns"):
+        time_features(series_pl, freq="1d", features=[renamed_to_ds], h=1)
+
+    def regex_month(_times):
+        return [pl.col("^d.*$").dt.month().name.suffix("_month")]
+
+    def regex_day(_times):
+        return [pl.col("^d.*$").dt.day().name.suffix("_day")]
+
+    _, future = time_features(
+        series_pl, freq="1d", features=[regex_month, regex_day], h=1
+    )
+    assert future.columns == ["unique_id", "ds", "ds_month", "ds_day"]
+
+
+def test_time_features_pyarrow_backed(setup_series):
+    series, _ = setup_series
+    series = series.assign(
+        ds=series["ds"]
+        .dt.tz_localize("America/New_York")
+        .astype("timestamp[ns, tz=America/New_York][pyarrow]")
+    )
+    # make_future_dataframe doesn't support pyarrow dates
+    transformed, _ = time_features(series, freq="D", features=dtf.available())
+    for feature in dtf.available():
+        np.testing.assert_array_equal(
+            transformed[feature.name].to_numpy(),
+            feature.compute(series["ds"]),
+            err_msg=feature.name,
+        )
 
 
 def test_fourier_transform(setup_series):
