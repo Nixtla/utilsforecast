@@ -301,6 +301,9 @@ def time_features(
         tuple[pandas or polars DataFrame, pandas or polars DataFrame]: A tuple
             containing the original DataFrame with the computed features and
             DataFrame with future values.
+
+    Raises:
+        ValueError: If feature names are repeated or match existing columns.
     """
     transformed = _add_time_features(df=df, features=features, time_col=time_col)
     if h == 0:

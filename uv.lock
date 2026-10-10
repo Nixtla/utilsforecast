@@ -2431,7 +2431,7 @@ wheels = [
 
 [[package]]
 name = "utilsforecast"
-version = "0.2.16"
+version = "0.2.17"
 source = { editable = "." }
 dependencies = [
     { name = "narwhals" },
@@ -2480,7 +2480,7 @@ requires-dist = [
     { name = "pandas", extras = ["plot"], marker = "extra == 'plotting'" },
     { name = "plotly", marker = "extra == 'plotting'" },
     { name = "plotly-resampler", marker = "python_full_version < '3.14' and extra == 'plotting'" },
-    { name = "polars", extras = ["numpy"], marker = "extra == 'polars'", specifier = "<=1.31" },
+    { name = "polars", extras = ["numpy"], marker = "extra == 'polars'", specifier = ">=1.0,<=1.31" },
 ]
 provides-extras = ["plotting", "polars"]
 
@@ -2495,7 +2495,7 @@ dev = [
     { name = "pip-licenses" },
     { name = "plotly" },
     { name = "plotly-resampler", marker = "python_full_version < '3.14'" },
-    { name = "polars", extras = ["numpy"] },
+    { name = "polars", extras = ["numpy"], specifier = ">=1.0" },
     { name = "pre-commit" },
     { name = "pyarrow" },
     { name = "pytest" },

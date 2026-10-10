@@ -68,6 +68,8 @@ def test_docs_table_matches_available():
         "pandas_series",
         "pandas_index",
         "numpy",
+        "numpy_seconds",
+        "pandas_array",
         "pandas_arrow",
         "pandas_arrow_date",
         "polars",
@@ -82,6 +84,11 @@ def test_compute_matches_pandas_attributes(dates, container):
         inp = pd.DatetimeIndex(dates)
     elif container == "numpy":
         inp = dates.dt.tz_localize(None).to_numpy()
+    elif container == "numpy_seconds":
+        nanos = dates.dt.tz_localize(None).to_numpy().view(np.int64)
+        inp = (nanos // 10**9).astype("datetime64[s]")
+    elif container == "pandas_array":
+        inp = dates.array
     elif container == "pandas_arrow":
         inp = dates.convert_dtypes(dtype_backend="pyarrow")
     elif container == "pandas_arrow_date":
@@ -116,8 +123,15 @@ def test_null_dates_raise(engine):
         pl.Series([1, 2, 3]),
         pd.Series(pd.date_range("2020-01-01", periods=3).date),
         pd.Series([1, 2, 3], dtype="int64[pyarrow]"),
+        ["2020-01-01", "2020-01-02"],
     ],
-    ids=["pandas_int", "polars_int", "pandas_date_objects", "pandas_arrow_int"],
+    ids=[
+        "pandas_int",
+        "polars_int",
+        "pandas_date_objects",
+        "pandas_arrow_int",
+        "list_of_str",
+    ],
 )
 def test_non_datetime_dates_raise(dates):
     with pytest.raises(ValueError, match="dates must be datetimes"):

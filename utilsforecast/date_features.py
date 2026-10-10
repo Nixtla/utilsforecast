@@ -31,7 +31,7 @@ from typing import Callable, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from .compat import pl
+from .compat import pl, pl_Series
 from .processing import _NANOS_PER_UNIT, _dt_unit, is_none
 from .validation import _is_dt_dtype
 
@@ -74,7 +74,8 @@ class _Dates:
 
     @cached_property
     def seconds_of_day(self) -> np.ndarray:
-        return (self.datetimes.astype("datetime64[s]") - self.days).astype(np.int64)
+        seconds = self.datetimes.astype("datetime64[s]", copy=False)
+        return (seconds - self.days).astype(np.int64)
 
     @cached_property
     def is_month_end(self) -> np.ndarray:
@@ -131,7 +132,7 @@ class CalendarFeature:
 
 
 def _to_datetime64(dates) -> np.ndarray:
-    if isinstance(dates, (pd.Index, np.ndarray)):
+    if not isinstance(dates, (pd.Series, pl_Series)):
         dates = pd.Series(dates)
     if not _is_dt_dtype(dates):
         raise ValueError(
@@ -157,7 +158,7 @@ def _to_datetime64(dates) -> np.ndarray:
         dates = dates.dt.replace_time_zone(None)
     datetimes = dates.to_numpy()
     unit, _ = np.datetime_data(datetimes.dtype)
-    if unit not in _NANOS_PER_UNIT:
+    if unit not in ("ms", "us", "ns"):
         return datetimes
     # numpy's astype overflows when flooring dates close to the minimum int64
     per_second = _NANOS_PER_UNIT["s"] // _NANOS_PER_UNIT[unit]
