@@ -30,10 +30,13 @@ from typing import Callable, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
+from packaging.version import Version
 
 from .compat import pl, pl_Series
 from .processing import _NANOS_PER_UNIT, _dt_unit, is_none
 from .validation import _is_dt_dtype
+
+_PANDAS_GE_2 = Version(pd.__version__) >= Version("2")
 
 
 class _Dates:
@@ -128,6 +131,11 @@ class CalendarFeature:
 def _to_datetime64(dates) -> np.ndarray:
     if not isinstance(dates, (pd.Series, pl_Series)):
         dates = pd.Series(dates)
+    is_arrow_dt = hasattr(dates.dtype, "pyarrow_dtype") and dates.dtype.kind == "M"
+    if is_arrow_dt and not _PANDAS_GE_2:
+        raise ValueError(
+            "Can't compute calendar features, pyarrow backed dates require pandas>=2."
+        )
     if not _is_dt_dtype(dates):
         raise ValueError(
             f"Can't compute calendar features, dates must be datetimes, got {dates.dtype}."

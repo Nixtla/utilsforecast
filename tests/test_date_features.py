@@ -1,14 +1,19 @@
 import copy
 import dataclasses
 import pickle
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import polars as pl
+import pyarrow as pa
 import pytest
+from packaging.version import Version
 
 import utilsforecast.date_features as dtf
+
+PANDAS_GE_2 = Version(pd.__version__) >= Version("2")
 
 
 def _pandas_reference(dates: pd.Series, name: str) -> np.ndarray:
@@ -80,6 +85,8 @@ def test_compute_matches_pandas_attributes(dates, container):
     is_date = dates.dt.tz is None and (dates.dt.normalize() == dates).all()
     if container.endswith("date") and not is_date:
         pytest.skip("dates have a time or time zone")
+    if container.startswith(("pandas_arrow", "numpy_seconds")) and not PANDAS_GE_2:
+        pytest.skip("pandas<2 only supports nanosecond numpy dates")
     if container == "pandas_index":
         inp = pd.DatetimeIndex(dates)
     elif container == "numpy":
@@ -161,3 +168,13 @@ def test_empty_dates(dates):
         vals = feature.compute(dates)
         assert vals.shape == (0,)
         assert vals.dtype == feature.dtype
+
+
+@pytest.mark.skipif(PANDAS_GE_2, reason="pandas>=2 supports pyarrow dates")
+def test_pyarrow_dates_require_pandas_2():
+    dtype = pd.ArrowDtype(pa.timestamp("ns"))
+    dates = pd.Series(
+        pa.array([datetime(2020, 1, 1)], dtype.pyarrow_dtype), dtype=dtype
+    )
+    with pytest.raises(ValueError, match="require pandas>=2"):
+        dtf.month.compute(dates)

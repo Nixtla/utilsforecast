@@ -5,7 +5,7 @@ description: Backend-agnostic calendar features
 
 The `utilsforecast.date_features` module provides calendar features that
 compute the same values with the same dtypes for pandas (including pyarrow
-backed) and polars dates. They can be passed to
+backed, which require pandas>=2) and polars dates. They can be passed to
 `utilsforecast.feature_engineering.time_features`, which only supports
 pyarrow backed dates with `h=0`.
 

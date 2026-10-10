@@ -5,6 +5,7 @@ import pandas as pd
 import polars as pl
 import polars.testing
 import pytest
+from packaging.version import Version
 
 import utilsforecast.date_features as dtf
 import utilsforecast.processing as ufp
@@ -179,6 +180,10 @@ def test_time_features_object_times_with_none_and_nan():
     np.testing.assert_array_equal(transformed["month"], [1, np.nan, 3, np.nan])
 
 
+@pytest.mark.skipif(
+    Version(pd.__version__) < Version("2"),
+    reason="pandas<2 doesn't support pyarrow dates",
+)
 def test_time_features_pyarrow_backed(setup_series):
     series, _ = setup_series
     series = series.assign(
@@ -248,9 +253,7 @@ def test_fourier_transform(setup_series):
         ),
         future_df[["unique_id", "price"]],
     )
-    series_with_prices_pl = pl.from_pandas(
-        series_with_prices.astype({"unique_id": "int64"})
-    )
+    series_with_prices_pl = _to_polars(series_with_prices)
     transformed_pl, future_pl = future_exog_to_historic(
         df=series_with_prices_pl,
         freq="1d",
