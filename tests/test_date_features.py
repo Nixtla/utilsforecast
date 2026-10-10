@@ -119,7 +119,7 @@ def test_null_dates_raise(engine):
     dates = pd.Series(pd.to_datetime(["2020-01-01", None, "2020-03-01"]))
     if engine == "polars":
         dates = pl.from_pandas(dates)
-    with pytest.raises(ValueError, match="found 1 null dates"):
+    with pytest.raises(ValueError, match="found null dates"):
         dtf.month.compute(dates)
 
 

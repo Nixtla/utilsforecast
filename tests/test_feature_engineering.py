@@ -171,6 +171,17 @@ def test_time_features_polars_udfs_not_run_for_names(setup_series):
     assert transformed["first_day_udf"].n_unique() == 1
 
 
+def test_time_features_null_dates_raise(setup_series):
+    series, series_pl = setup_series
+    series = series.assign(ds=series["ds"].where(series.index % 2 == 0))
+    series_pl = series_pl.with_columns(
+        pl.when(pl.int_range(pl.len()) % 2 == 0).then(pl.col("ds")).alias("ds")
+    )
+    for df in (series, series_pl):
+        with pytest.raises(ValueError, match="found null dates"):
+            time_features(df, freq="D", features=[dtf.month])
+
+
 def test_time_features_object_times_with_none_and_nan():
     times = [pd.Timestamp("2020-01-01"), None, pd.Timestamp("2020-03-01"), np.nan]
     df = pd.DataFrame(

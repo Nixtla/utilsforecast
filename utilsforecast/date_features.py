@@ -140,11 +140,8 @@ def _to_datetime64(dates) -> np.ndarray:
         raise ValueError(
             f"Can't compute calendar features, dates must be datetimes, got {dates.dtype}."
         )
-    n_nulls = is_none(dates).sum()
-    if n_nulls:
-        raise ValueError(
-            f"Can't compute calendar features, found {n_nulls} null dates."
-        )
+    if is_none(dates).any():
+        raise ValueError("Can't compute calendar features, found null dates.")
     if isinstance(dates, pd.Series):
         if hasattr(dates.dtype, "pyarrow_dtype"):
             # removing the time zone from pyarrow dates returns UTC times
