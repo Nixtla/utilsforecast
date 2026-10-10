@@ -29,7 +29,9 @@ def test_available_lists_every_exported_feature():
 
 def test_docs_table_matches_available():
     doc = Path(__file__).parents[1] / "docs" / "date_features.html.md"
-    rows = [l for l in doc.read_text().splitlines() if l.startswith("| `")]
+    rows = [
+        l for l in doc.read_text(encoding="utf-8").splitlines() if l.startswith("| `")
+    ]
     assert rows == [
         f"| `{f.name}` | {f.description} | `{np.dtype(f.dtype).name}` |"
         for f in dtf.available()
@@ -65,6 +67,7 @@ def test_docs_table_matches_available():
     [
         "pandas_series",
         "pandas_index",
+        "numpy",
         "pandas_arrow",
         "pandas_arrow_date",
         "polars",
@@ -77,6 +80,8 @@ def test_compute_matches_pandas_attributes(dates, container):
         pytest.skip("dates have a time or time zone")
     if container == "pandas_index":
         inp = pd.DatetimeIndex(dates)
+    elif container == "numpy":
+        inp = dates.dt.tz_localize(None).to_numpy()
     elif container == "pandas_arrow":
         inp = dates.convert_dtypes(dtype_backend="pyarrow")
     elif container == "pandas_arrow_date":

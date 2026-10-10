@@ -146,6 +146,25 @@ def test_time_features_polars_runtime_names_validated(setup_series):
     assert future.columns == ["unique_id", "ds", "ds_month", "ds_day"]
 
 
+@pytest.mark.filterwarnings("ignore")
+def test_time_features_polars_udfs_not_run_for_names(setup_series):
+    _, series_pl = setup_series
+
+    def month_udf(times):
+        return times.map_elements(lambda t: t.month)
+
+    def first_day_udf(times):
+        return times.map_batches(lambda s: pl.repeat(s[0].day, s.len(), eager=True))
+
+    transformed, _ = time_features(
+        series_pl, freq="1d", features=[month_udf, first_day_udf]
+    )
+    np.testing.assert_array_equal(
+        transformed["month_udf"], transformed["ds"].dt.month()
+    )
+    assert transformed["first_day_udf"].n_unique() == 1
+
+
 def test_time_features_pyarrow_backed(setup_series):
     series, _ = setup_series
     series = series.assign(

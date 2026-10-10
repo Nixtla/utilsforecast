@@ -229,8 +229,8 @@ def _add_time_features(
     df = ufp.copy_if_pandas(df, deep=False)
     calendar = [f for f in features if isinstance(f, CalendarFeature)]
     if isinstance(df, pd.DataFrame):
-        restore_idxs, times = pd.factorize(df[time_col], use_na_sentinel=False)
-        times = pd.Index(times)
+        times = pd.Index(df[time_col].unique())
+        restore_idxs = times.get_indexer(df[time_col])
         calendar_vals = iter(_compute_features(times, calendar))
         computed = []
         names: List[str] = []
@@ -261,13 +261,10 @@ def _add_time_features(
                     exprs.append(vals.alias(name))
         feats = unique_times.to_frame()
         # some expressions (e.g. regex or renamed columns) only get their names when run
-        empty = feats.clear()
         names = [
             name
             for e in exprs
-            for name in (
-                [e.name] if isinstance(e, pl.Series) else empty.select(e).columns
-            )
+            for name in feats.lazy().select(e).collect_schema().names()
         ]
         _validate_names(names, df.columns)
         feats = feats.with_columns(*exprs)

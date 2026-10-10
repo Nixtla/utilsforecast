@@ -32,7 +32,7 @@ import numpy as np
 import pandas as pd
 
 from .compat import pl
-from .processing import _NANOS_PER_UNIT
+from .processing import _NANOS_PER_UNIT, _dt_unit, is_none
 from .validation import _is_dt_dtype
 
 
@@ -85,8 +85,8 @@ class _Dates:
 class CalendarFeature:
     """Calendar feature with the same values and dtype for pandas and polars dates.
 
-    The features are listed by `available()`, custom features can be passed to
-    `time_features` as functions.
+    The features are listed by `available()`. Instances shouldn't be created
+    directly, custom features can be passed to `time_features` as functions.
 
     Attributes:
         name (str): Name of the feature, used as the column name.
@@ -105,7 +105,7 @@ class CalendarFeature:
         """Compute the feature values.
 
         Args:
-            dates (pandas or polars Series, or pandas DatetimeIndex): Dates to compute the feature from.
+            dates (pandas or polars Series, pandas DatetimeIndex or numpy datetime64 array): Dates to compute the feature from.
                 Time zone aware dates use their local time.
 
         Returns:
@@ -131,16 +131,13 @@ class CalendarFeature:
 
 
 def _to_datetime64(dates) -> np.ndarray:
-    if isinstance(dates, pd.Index):
+    if isinstance(dates, (pd.Index, np.ndarray)):
         dates = pd.Series(dates)
     if not _is_dt_dtype(dates):
         raise ValueError(
             f"Can't compute calendar features, dates must be datetimes, got {dates.dtype}."
         )
-    if isinstance(dates, pd.Series):
-        n_nulls = dates.isna().sum()
-    else:
-        n_nulls = dates.null_count()
+    n_nulls = is_none(dates).sum()
     if n_nulls:
         raise ValueError(
             f"Can't compute calendar features, found {n_nulls} null dates."
@@ -152,8 +149,8 @@ def _to_datetime64(dates) -> np.ndarray:
             if tz is None:
                 dates = dates.astype(dates.dtype.numpy_dtype)
             else:
-                unit = dates.dtype.pyarrow_dtype.unit
-                dates = dates.astype(pd.DatetimeTZDtype(unit=unit, tz=tz))
+                dtype = pd.DatetimeTZDtype(unit=_dt_unit(dates), tz=tz)
+                dates = dates.astype(dtype)
         if dates.dt.tz is not None:
             dates = dates.dt.tz_localize(None)
     elif dates.dtype == pl.Datetime:
