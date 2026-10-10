@@ -124,12 +124,6 @@ class CalendarFeature:
             )
         return _from_name, (self.name,)
 
-    def __copy__(self):
-        return self
-
-    def __deepcopy__(self, memo):
-        return self
-
 
 def _to_datetime64(dates) -> np.ndarray:
     if not isinstance(dates, (pd.Series, pl_Series)):

@@ -145,7 +145,6 @@ def test_pickling_keeps_identity():
 
 def test_pickling_unlisted_feature_raises():
     fiscal_month = dataclasses.replace(dtf.month, name="fiscal_month")
-    assert copy.deepcopy(fiscal_month) is fiscal_month
     with pytest.raises(pickle.PicklingError, match="'fiscal_month'"):
         pickle.dumps(fiscal_month)
     with pytest.raises(pickle.PicklingError, match="'month'"):
