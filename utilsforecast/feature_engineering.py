@@ -229,8 +229,9 @@ def _add_time_features(
     df = ufp.copy_if_pandas(df, deep=False)
     calendar = [f for f in features if isinstance(f, CalendarFeature)]
     if isinstance(df, pd.DataFrame):
-        times = pd.Index(df[time_col].unique())
-        restore_idxs = times.get_indexer(df[time_col])
+        restore_idxs, uniques = pd.factorize(df[time_col], use_na_sentinel=False)
+        # infers datetimes from object columns
+        times = pd.Index(uniques.array)
         calendar_vals = iter(_compute_features(times, calendar))
         computed = []
         names: List[str] = []
@@ -248,24 +249,22 @@ def _add_time_features(
     elif isinstance(df, pl_DataFrame):
         unique_times = df[time_col].unique()
         calendar_vals = iter(_compute_features(unique_times, calendar))
+        feats = unique_times.to_frame()
         exprs: List[Union[pl_Expr, pl.Series]] = []
+        names = []
         for feature in features:
             if isinstance(feature, CalendarFeature):
                 exprs.append(pl.Series(feature.name, next(calendar_vals)))
+                names.append(feature.name)
             else:
                 name, vals = _compute_time_feature(pl.col(time_col), feature)
-                if isinstance(vals, list):
-                    exprs.extend(vals)
-                else:
+                if not isinstance(vals, list):
                     assert isinstance(vals, pl_Expr)
-                    exprs.append(vals.alias(name))
-        feats = unique_times.to_frame()
-        # some expressions (e.g. regex or renamed columns) only get their names when run
-        names = [
-            name
-            for e in exprs
-            for name in feats.lazy().select(e).collect_schema().names()
-        ]
+                    vals = [vals.alias(name)]
+                for e in vals:
+                    exprs.append(e)
+                    # some expressions (e.g. regex or renamed columns) only get their names when run
+                    names.extend(feats.lazy().select(e).collect_schema().names())
         _validate_names(names, df.columns)
         feats = feats.with_columns(*exprs)
         df = df.join(feats, on=time_col, how="left")

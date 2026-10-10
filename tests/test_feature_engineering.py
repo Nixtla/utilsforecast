@@ -25,18 +25,23 @@ def setup_series():
     return series, series_pl
 
 
+def _to_polars(series):
+    # polars 1.0 can't convert the integer categorical ids
+    return pl.from_pandas(series.astype({"unique_id": "int64"}))
+
+
 def _calendar_series(case):
     if case == "hourly_tz":
         series = generate_series(5, freq="h", equal_ends=True)
         # crosses the daylight saving time change of 2021-03-14
         ds = series["ds"] + (pd.Timestamp("2021-03-01") - pd.Timestamp("2000-01-01"))
         series["ds"] = ds.dt.tz_localize("UTC").dt.tz_convert("America/New_York")
-        return series, pl.from_pandas(series), "h", "1h"
+        return series, _to_polars(series), "h", "1h"
     series = generate_series(5, equal_ends=True)
     if case == "shuffled":
         series = series.sample(frac=1.0, random_state=0).reset_index(drop=True)
         series.index = series.index + 10
-    series_pl = pl.from_pandas(series)
+    series_pl = _to_polars(series)
     if case == "polars_date":
         series_pl = series_pl.with_columns(pl.col("ds").cast(pl.Date))
     return series, series_pl, "D", "1d"
@@ -163,6 +168,15 @@ def test_time_features_polars_udfs_not_run_for_names(setup_series):
         transformed["month_udf"], transformed["ds"].dt.month()
     )
     assert transformed["first_day_udf"].n_unique() == 1
+
+
+def test_time_features_object_times_with_none_and_nan():
+    times = [pd.Timestamp("2020-01-01"), None, pd.Timestamp("2020-03-01"), np.nan]
+    df = pd.DataFrame(
+        {"unique_id": 0, "ds": pd.Series(times, dtype=object), "y": range(4)}
+    )
+    transformed, _ = time_features(df, freq="D", features=["month"])
+    np.testing.assert_array_equal(transformed["month"], [1, np.nan, 3, np.nan])
 
 
 def test_time_features_pyarrow_backed(setup_series):

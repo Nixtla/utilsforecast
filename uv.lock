@@ -2476,7 +2476,7 @@ requires-dist = [
     { name = "narwhals", specifier = ">=2.0" },
     { name = "numpy" },
     { name = "packaging" },
-    { name = "pandas" },
+    { name = "pandas", specifier = ">=1.5" },
     { name = "pandas", extras = ["plot"], marker = "extra == 'plotting'" },
     { name = "plotly", marker = "extra == 'plotting'" },
     { name = "plotly-resampler", marker = "python_full_version < '3.14' and extra == 'plotting'" },

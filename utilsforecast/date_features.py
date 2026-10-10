@@ -281,26 +281,9 @@ is_year_end = CalendarFeature(
 )
 
 _FEATURES: Dict[str, CalendarFeature] = {
-    f.name: f
-    for f in [
-        year,
-        quarter,
-        month,
-        week,
-        day,
-        day_of_week,
-        day_of_year,
-        days_in_month,
-        hour,
-        minute,
-        second,
-        is_month_start,
-        is_month_end,
-        is_quarter_start,
-        is_quarter_end,
-        is_year_start,
-        is_year_end,
-    ]
+    name: globals()[name]
+    for name in __all__
+    if name not in ("CalendarFeature", "available")
 }
 
 

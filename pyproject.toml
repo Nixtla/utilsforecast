@@ -25,7 +25,7 @@ keywords = ["time-series", "analysis", "forecasting"]
 dependencies = [
     "numpy",
     "packaging",
-    "pandas",
+    "pandas>=1.5",
     "narwhals>=2.0",
 ]
 
