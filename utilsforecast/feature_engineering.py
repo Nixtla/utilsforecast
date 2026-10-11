@@ -232,13 +232,13 @@ def _add_time_features(
         restore_idxs, uniques = pd.factorize(df[time_col], use_na_sentinel=False)
         # infers datetimes from object columns
         times = pd.Index(uniques.array)
-        calendar_vals = iter(_compute_features(times, calendar))
+        calendar_vals = dict(zip(calendar, _compute_features(times, calendar)))
         computed = []
         names: List[str] = []
         name: Union[str, List[str]]
         for feature in features:
             if isinstance(feature, CalendarFeature):
-                name, vals = feature.name, next(calendar_vals)
+                name, vals = feature.name, calendar_vals[feature]
             else:
                 name, vals = _compute_time_feature(times, feature)
             computed.append((name, vals))
@@ -248,13 +248,13 @@ def _add_time_features(
             df[name] = vals[restore_idxs]
     elif isinstance(df, pl_DataFrame):
         unique_times = df[time_col].unique()
-        calendar_vals = iter(_compute_features(unique_times, calendar))
+        calendar_vals = dict(zip(calendar, _compute_features(unique_times, calendar)))
         feats = unique_times.to_frame()
         exprs: List[Union[pl_Expr, pl.Series]] = []
         names = []
         for feature in features:
             if isinstance(feature, CalendarFeature):
-                exprs.append(pl.Series(feature.name, next(calendar_vals)))
+                exprs.append(pl.Series(feature.name, calendar_vals[feature]))
                 names.append(feature.name)
             else:
                 name, vals = _compute_time_feature(pl.col(time_col), feature)

@@ -5,7 +5,6 @@ import pandas as pd
 import polars as pl
 import polars.testing
 import pytest
-from packaging.version import Version
 
 import utilsforecast.date_features as dtf
 import utilsforecast.processing as ufp
@@ -192,8 +191,7 @@ def test_time_features_object_times_with_none_and_nan():
 
 
 @pytest.mark.skipif(
-    Version(pd.__version__) < Version("2"),
-    reason="pandas<2 doesn't support pyarrow dates",
+    not dtf._PANDAS_GE_2, reason="pandas<2 doesn't support pyarrow dates"
 )
 def test_time_features_pyarrow_backed(setup_series):
     series, _ = setup_series

@@ -9,11 +9,8 @@ import pandas as pd
 import polars as pl
 import pyarrow as pa
 import pytest
-from packaging.version import Version
 
 import utilsforecast.date_features as dtf
-
-PANDAS_GE_2 = Version(pd.__version__) >= Version("2")
 
 
 def _pandas_reference(dates: pd.Series, name: str) -> np.ndarray:
@@ -85,7 +82,7 @@ def test_compute_matches_pandas_attributes(dates, container):
     is_date = dates.dt.tz is None and (dates.dt.time == time()).all()
     if container.endswith("date") and not is_date:
         pytest.skip("dates have a time or time zone")
-    if container.startswith(("pandas_arrow", "numpy_seconds")) and not PANDAS_GE_2:
+    if container.startswith(("pandas_arrow", "numpy_seconds")) and not dtf._PANDAS_GE_2:
         pytest.skip("pandas<2 only supports nanosecond numpy dates")
     if container == "pandas_index":
         inp = pd.DatetimeIndex(dates)
@@ -154,6 +151,7 @@ def test_pickling_keeps_identity():
 
 def test_pickling_unlisted_feature_raises():
     fiscal_month = dataclasses.replace(dtf.month, name="fiscal_month")
+    assert copy.deepcopy(fiscal_month) is fiscal_month
     with pytest.raises(pickle.PicklingError, match="'fiscal_month'"):
         pickle.dumps(fiscal_month)
     with pytest.raises(pickle.PicklingError, match="'month'"):
@@ -172,7 +170,7 @@ def test_empty_dates(dates):
         assert vals.dtype == feature.dtype
 
 
-@pytest.mark.skipif(PANDAS_GE_2, reason="pandas>=2 supports pyarrow dates")
+@pytest.mark.skipif(dtf._PANDAS_GE_2, reason="pandas>=2 supports pyarrow dates")
 def test_pyarrow_dates_require_pandas_2():
     dtype = pd.ArrowDtype(pa.timestamp("ns"))
     dates = pd.Series(
