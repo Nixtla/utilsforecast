@@ -137,11 +137,14 @@ class CalendarFeature:
 def _to_datetime64(dates) -> np.ndarray:
     if not isinstance(dates, (pd.Series, pl_Series)):
         dates = pd.Series(dates)
-    is_arrow_dt = hasattr(dates.dtype, "pyarrow_dtype") and dates.dtype.kind == "M"
-    if is_arrow_dt and not _PANDAS_GE_2:
-        raise ValueError(
-            "Can't compute calendar features, pyarrow backed dates require pandas>=2."
-        )
+    if not _PANDAS_GE_2 and hasattr(dates.dtype, "pyarrow_dtype"):
+        import pyarrow as pa
+
+        arrow_type = dates.dtype.pyarrow_dtype
+        if pa.types.is_timestamp(arrow_type) or pa.types.is_date(arrow_type):
+            raise ValueError(
+                "Can't compute calendar features, pyarrow backed dates require pandas>=2."
+            )
     if not _is_dt_dtype(dates):
         raise ValueError(
             f"Can't compute calendar features, dates must be datetimes, got {dates.dtype}."

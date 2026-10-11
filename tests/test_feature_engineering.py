@@ -115,29 +115,34 @@ def test_time_features_duplicate_names_raise(setup_series, features):
             time_features(df, freq=freq, features=features, h=1)
 
 
-@pytest.mark.parametrize(
-    "rename", [{"ds": "day"}, {"unique_id": "day"}, {"y": "day"}], ids=str
-)
+@pytest.mark.parametrize("rename", [{"unique_id": "day"}, {"y": "day"}], ids=str)
 def test_time_features_named_like_existing_columns_kept(setup_series, rename):
     series, series_pl = setup_series
-    time_col = rename.get("ds", "ds")
     id_col = rename.get("unique_id", "unique_id")
     for df, freq in [(series, "D"), (series_pl, "1d")]:
         df = ufp.rename(df, rename)
         for day in [dtf.day, "day"]:
-            transformed, _ = time_features(
+            transformed, future = time_features(
                 df,
                 freq=freq,
                 features=[day, dtf.month],
                 h=1,
                 id_col=id_col,
-                time_col=time_col,
             )
             if isinstance(df, pd.DataFrame):
                 pd.testing.assert_frame_equal(transformed[df.columns], df)
             else:
                 polars.testing.assert_frame_equal(transformed.select(df.columns), df)
             assert list(transformed.columns) == [*df.columns, "month"]
+            assert list(future.columns) == [id_col, "ds", "month"]
+
+
+def test_time_features_named_like_time_column_raise(setup_series):
+    series, series_pl = setup_series
+    for df, freq in [(series, "D"), (series_pl, "1d")]:
+        df = ufp.rename(df, {"ds": "day"})
+        with pytest.raises(ValueError, match="name of the time column"):
+            time_features(df, freq=freq, features=[dtf.day], time_col="day")
 
 
 def test_time_features_polars_runtime_names_validated(setup_series):
@@ -146,8 +151,8 @@ def test_time_features_polars_runtime_names_validated(setup_series):
     def renamed_to_ds(times):
         return [times.dt.day().name.map(lambda _: "ds")]
 
-    transformed, _ = time_features(series_pl, freq="1d", features=[renamed_to_ds])
-    polars.testing.assert_frame_equal(transformed, series_pl)
+    with pytest.raises(ValueError, match="name of the time column"):
+        time_features(series_pl, freq="1d", features=[renamed_to_ds], h=1)
 
     def regex_month(_times):
         return [pl.col("^d.*$").dt.month().name.suffix("_month")]

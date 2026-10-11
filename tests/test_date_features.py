@@ -96,7 +96,8 @@ def test_compute_matches_pandas_attributes(dates, container):
     elif container == "pandas_array":
         inp = dates.array
     elif container == "pandas_arrow":
-        inp = dates.convert_dtypes(dtype_backend="pyarrow")
+        tz = None if dates.dt.tz is None else str(dates.dt.tz)
+        inp = dates.astype(pd.ArrowDtype(pa.timestamp(dates.dt.unit, tz=tz)))
     elif container == "pandas_arrow_date":
         inp = dates.astype("date32[pyarrow]")
     elif container == "polars":
@@ -171,8 +172,9 @@ def test_empty_dates(dates):
 
 
 @pytest.mark.skipif(dtf._PANDAS_GE_2, reason="pandas>=2 supports pyarrow dates")
-def test_pyarrow_dates_require_pandas_2():
-    dtype = pd.ArrowDtype(pa.timestamp("ns"))
+@pytest.mark.parametrize("tz", [None, "UTC"])
+def test_pyarrow_dates_require_pandas_2(tz):
+    dtype = pd.ArrowDtype(pa.timestamp("ns", tz=tz))
     dates = pd.Series(
         pa.array([datetime(2020, 1, 1)], dtype.pyarrow_dtype), dtype=dtype
     )
