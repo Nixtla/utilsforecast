@@ -1,7 +1,7 @@
 import copy
 import dataclasses
 import pickle
-from datetime import datetime
+from datetime import datetime, time
 from pathlib import Path
 
 import numpy as np
@@ -82,7 +82,7 @@ def test_docs_table_matches_available():
     ],
 )
 def test_compute_matches_pandas_attributes(dates, container):
-    is_date = dates.dt.tz is None and (dates.dt.normalize() == dates).all()
+    is_date = dates.dt.tz is None and (dates.dt.time == time()).all()
     if container.endswith("date") and not is_date:
         pytest.skip("dates have a time or time zone")
     if container.startswith(("pandas_arrow", "numpy_seconds")) and not PANDAS_GE_2:
@@ -92,8 +92,10 @@ def test_compute_matches_pandas_attributes(dates, container):
     elif container == "numpy":
         inp = dates.dt.tz_localize(None).to_numpy()
     elif container == "numpy_seconds":
-        nanos = dates.dt.tz_localize(None).to_numpy().view(np.int64)
-        inp = (nanos // 10**9).astype("datetime64[s]")
+        times = dates.dt.tz_localize(None).to_numpy()
+        unit, _ = np.datetime_data(times.dtype)
+        per_second = np.timedelta64(1, "s") // np.timedelta64(1, unit)
+        inp = (times.view(np.int64) // per_second).astype("datetime64[s]")
     elif container == "pandas_array":
         inp = dates.array
     elif container == "pandas_arrow":

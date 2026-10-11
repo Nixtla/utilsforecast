@@ -72,7 +72,7 @@ class _Dates:
 
     @cached_property
     def days_in_month(self) -> np.ndarray:
-        next_month = (self.months + 1).astype("datetime64[D]")
+        next_month = (self.months + np.timedelta64(1, "M")).astype("datetime64[D]")
         return (next_month - self.months).astype(np.int64)
 
     @cached_property
