@@ -319,7 +319,9 @@ def time_features(
             DataFrame with future values.
 
     Raises:
-        ValueError: If feature names are repeated or match the time column.
+        ValueError: If feature names are repeated or match the time column, or if
+            calendar features are computed from null dates or times that aren't
+            datetimes.
     """
     existing = set(df.columns)
     transformed = _add_time_features(
