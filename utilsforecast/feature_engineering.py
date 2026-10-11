@@ -210,12 +210,7 @@ def _compute_time_feature(
     return feat_name, feat_vals
 
 
-def _validate_names(names: List[str], columns: List[str]) -> None:
-    existing = [name for name in names if name in columns]
-    if existing:
-        raise ValueError(
-            f"Time features can't have the names of existing columns: {existing}."
-        )
+def _validate_names(names: List[str]) -> None:
     duplicates = [name for name, count in Counter(names).items() if count > 1]
     if duplicates:
         raise ValueError(f"Found duplicate time feature names: {duplicates}.")
@@ -227,25 +222,35 @@ def _add_time_features(
     time_col: str = "ds",
 ) -> DFType:
     df = ufp.copy_if_pandas(df, deep=False)
-    calendar = [f for f in features if isinstance(f, CalendarFeature)]
+    existing = set(df.columns)
+    calendar = [
+        f for f in features if isinstance(f, CalendarFeature) and f.name not in existing
+    ]
     if isinstance(df, pd.DataFrame):
         restore_idxs, uniques = pd.factorize(df[time_col], use_na_sentinel=False)
         # infers datetimes from object columns
         times = pd.Index(uniques.array)
         calendar_vals = dict(zip(calendar, _compute_features(times, calendar)))
-        computed = []
+        columns = {}
         names: List[str] = []
-        name: Union[str, List[str]]
         for feature in features:
             if isinstance(feature, CalendarFeature):
-                name, vals = feature.name, calendar_vals[feature]
+                names.append(feature.name)
+                if feature in calendar_vals:
+                    columns[feature.name] = calendar_vals[feature]
+                continue
+            name, vals = _compute_time_feature(times, feature)
+            if isinstance(name, list):
+                assert isinstance(vals, np.ndarray)
+                names.extend(name)
+                columns.update(zip(name, vals.T))
             else:
-                name, vals = _compute_time_feature(times, feature)
-            computed.append((name, vals))
-            names.extend(name if isinstance(name, list) else [name])
-        _validate_names(names, df.columns.tolist())
-        for name, vals in computed:
-            df[name] = vals[restore_idxs]
+                names.append(name)
+                columns[name] = vals
+        _validate_names(names)
+        for name, vals in columns.items():
+            if name not in existing:
+                df[name] = vals[restore_idxs]
     elif isinstance(df, pl_DataFrame):
         unique_times = df[time_col].unique()
         calendar_vals = dict(zip(calendar, _compute_features(unique_times, calendar)))
@@ -254,19 +259,23 @@ def _add_time_features(
         names = []
         for feature in features:
             if isinstance(feature, CalendarFeature):
-                exprs.append(pl.Series(feature.name, calendar_vals[feature]))
                 names.append(feature.name)
-            else:
-                name, vals = _compute_time_feature(pl.col(time_col), feature)
-                if not isinstance(vals, list):
-                    assert isinstance(vals, pl_Expr)
-                    vals = [vals.alias(name)]
-                for e in vals:
+                if feature in calendar_vals:
+                    exprs.append(pl.Series(feature.name, calendar_vals[feature]))
+                continue
+            name, vals = _compute_time_feature(pl.col(time_col), feature)
+            if not isinstance(vals, list):
+                assert isinstance(vals, pl_Expr)
+                vals = [vals.alias(name)]
+            for e in vals:
+                # some expressions (e.g. regex or renamed columns) only get their names when run
+                expr_names = feats.lazy().select(e).collect_schema().names()
+                names.extend(expr_names)
+                if not existing.issuperset(expr_names):
                     exprs.append(e)
-                    # some expressions (e.g. regex or renamed columns) only get their names when run
-                    names.extend(feats.lazy().select(e).collect_schema().names())
-        _validate_names(names, df.columns)
-        feats = feats.with_columns(*exprs)
+        _validate_names(names)
+        new_names = [name for name in names if name not in existing]
+        feats = feats.with_columns(*exprs).select(time_col, *new_names)
         df = df.join(feats, on=time_col, how="left")
     return df
 
@@ -290,6 +299,8 @@ def time_features(
             Can be calendar features from `utilsforecast.date_features` (listed by
             `utilsforecast.date_features.available()`), string aliases of timestamp
             attributes of the dataframe backend or functions to apply to the times.
+            Features named like existing columns aren't computed, the columns are
+            kept as they are.
         h (int, optional): Forecast horizon. Defaults to 0.
         id_col (str, optional): Column that identifies each serie.
             Defaults to 'unique_id'.
@@ -302,7 +313,7 @@ def time_features(
             DataFrame with future values.
 
     Raises:
-        ValueError: If feature names are repeated or match existing columns.
+        ValueError: If feature names are repeated.
     """
     transformed = _add_time_features(df=df, features=features, time_col=time_col)
     if h == 0:

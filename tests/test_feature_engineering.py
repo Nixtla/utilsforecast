@@ -118,16 +118,26 @@ def test_time_features_duplicate_names_raise(setup_series, features):
 @pytest.mark.parametrize(
     "rename", [{"ds": "day"}, {"unique_id": "day"}, {"y": "day"}], ids=str
 )
-def test_time_features_named_like_existing_columns_raise(setup_series, rename):
+def test_time_features_named_like_existing_columns_kept(setup_series, rename):
     series, series_pl = setup_series
     time_col = rename.get("ds", "ds")
     id_col = rename.get("unique_id", "unique_id")
     for df, freq in [(series, "D"), (series_pl, "1d")]:
         df = ufp.rename(df, rename)
-        with pytest.raises(ValueError, match=r"names of existing columns: \['day'\]"):
-            time_features(
-                df, freq=freq, features=[dtf.day], h=1, id_col=id_col, time_col=time_col
+        for day in [dtf.day, "day"]:
+            transformed, _ = time_features(
+                df,
+                freq=freq,
+                features=[day, dtf.month],
+                h=1,
+                id_col=id_col,
+                time_col=time_col,
             )
+            if isinstance(df, pd.DataFrame):
+                pd.testing.assert_frame_equal(transformed[df.columns], df)
+            else:
+                polars.testing.assert_frame_equal(transformed.select(df.columns), df)
+            assert list(transformed.columns) == [*df.columns, "month"]
 
 
 def test_time_features_polars_runtime_names_validated(setup_series):
@@ -136,8 +146,8 @@ def test_time_features_polars_runtime_names_validated(setup_series):
     def renamed_to_ds(times):
         return [times.dt.day().name.map(lambda _: "ds")]
 
-    with pytest.raises(ValueError, match="existing columns"):
-        time_features(series_pl, freq="1d", features=[renamed_to_ds], h=1)
+    transformed, _ = time_features(series_pl, freq="1d", features=[renamed_to_ds])
+    polars.testing.assert_frame_equal(transformed, series_pl)
 
     def regex_month(_times):
         return [pl.col("^d.*$").dt.month().name.suffix("_month")]
