@@ -47,7 +47,6 @@ from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple, Unio
 
 import numpy as np
 import pandas as pd
-import pyarrow as pa
 from pandas.tseries.offsets import BaseOffset
 
 from utilsforecast.validation import (
@@ -454,6 +453,8 @@ def _offset_times_array_n(
         raise TypeError(f"Expected n to have an integer dtype, got {n.dtype}.")
     # a python int multiplier keeps n's dtype, so narrower ints would overflow
     n = n.astype(np.int64, copy=False)
+    if len(times) == 0:
+        return times
     if isinstance(freq, pd.offsets.Tick):
         # the coarsest resolution that can hold both the times and the offset,
         # which is the one pandas uses with a scalar n
@@ -477,16 +478,12 @@ def _offset_times_array_n(
         runs = [
             dt_index[order[s:e]] + int(k) * freq for k, s, e in zip(ks, starts, ends)
         ]
-    if runs:
-        inv_order = np.empty_like(order)
-        inv_order[order] = np.arange(order.size)
-        out = runs[0].append(runs[1:]).take(inv_order)
-    else:
-        # gives the same resolution as a scalar n
-        out = dt_index + freq
+    inv_order = np.empty_like(order)
+    inv_order[order] = np.arange(order.size)
+    out = runs[0].append(runs[1:]).take(inv_order)
     if isinstance(times.dtype, pd.ArrowDtype):
-        tz = times.dtype.pyarrow_dtype.tz
-        out = out.astype(pd.ArrowDtype(pa.timestamp(_dt_unit(out), tz=tz)))
+        # DatetimeIndex converts arrow times to numpy
+        out = out.astype(times.dtype)
     if isinstance(times, pd.Series):
         out = pd.Series(out, index=times.index, name=times.name)
     else:

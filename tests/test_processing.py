@@ -324,6 +324,16 @@ def test_offset_times_with_array_n_pyarrow(freq):
     assert res.dtype == times.dtype
 
 
+def test_offset_times_with_array_n_pyarrow_date():
+    freq = pd.offsets.MonthBegin()
+    n = np.array([1, 0, 2, 1, 0])
+    times = pd.Series(_ARRAY_N_TIMES).astype("date32[pyarrow]")
+    res = offset_times(times, freq, n)
+    expected = _offset_times_elementwise(pd.Series(_ARRAY_N_TIMES), freq, n)
+    assert list(res) == [t.date() for t in expected]
+    assert res.dtype == times.dtype
+
+
 @pytest.mark.parametrize(
     "n", [np.zeros(5, dtype=np.int64), np.full(5, 3), np.array([2])]
 )
@@ -388,15 +398,23 @@ def test_offset_times_with_array_n_finer_than_times(freq, tz):
 
 
 @pytest.mark.parametrize(
-    "freq", [pd.offsets.Day(), pd.offsets.MonthBegin(), pd.DateOffset(milliseconds=500)]
+    "freq",
+    [
+        pd.offsets.Day(),
+        pd.offsets.MonthBegin(),
+        pd.offsets.BusinessHour(),
+        pd.DateOffset(milliseconds=500),
+    ],
 )
 @pytest.mark.parametrize("times", [_ARRAY_N_TIMES[:0], pd.Series(_ARRAY_N_TIMES[:0])])
 def test_offset_times_with_empty_array_n(freq, times):
     times = times.astype("datetime64[s]")
-    res = offset_times(times, freq, np.array([], dtype=np.int64))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        res = offset_times(times, freq, np.array([], dtype=np.int64))
     assert type(res) is type(times)
     assert len(res) == 0
-    assert res.dtype == offset_times(times, freq, 1).dtype
+    assert res.dtype == times.dtype
 
 
 def test_offset_times_pl():
