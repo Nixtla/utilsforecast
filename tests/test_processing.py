@@ -363,13 +363,10 @@ _PA_TIMES = pd.DatetimeIndex(
     ["2020-01-01", "2020-01-31", "2020-02-29", "2021-03-13", "2021-10-31"]
 )
 _PYARROW_DATES = [
-    (_PA_TIMES, "timestamp[ns][pyarrow]"),
-    (_PA_TIMES.astype("datetime64[s]"), "timestamp[s][pyarrow]"),
-    (
-        _PA_TIMES.tz_localize("America/New_York"),
-        "timestamp[ns, tz=America/New_York][pyarrow]",
-    ),
-    (_PA_TIMES.astype("datetime64[s]"), "date32[pyarrow]"),
+    (None, "ns", "timestamp[ns][pyarrow]"),
+    (None, "s", "timestamp[s][pyarrow]"),
+    ("America/New_York", "ns", "timestamp[ns, tz=America/New_York][pyarrow]"),
+    (None, "s", "date32[pyarrow]"),
 ]
 _skip_pandas_lt_2 = pytest.mark.skipif(
     Version(pd.__version__) < Version("2.0"),
@@ -378,11 +375,12 @@ _skip_pandas_lt_2 = pytest.mark.skipif(
 
 
 @_skip_pandas_lt_2
-@pytest.mark.parametrize("times, dtype", _PYARROW_DATES)
+@pytest.mark.parametrize("tz, unit, dtype", _PYARROW_DATES)
 @pytest.mark.parametrize("freq", ["D", "h", "W", "ME", "MS", "QS"])
 @pytest.mark.parametrize("n", [2, np.array([1, 0, 3, -2, 1])])
 @pytest.mark.parametrize("container", [pd.Series, pd.Index])
-def test_offset_times_pyarrow(times, dtype, freq, n, container):
+def test_offset_times_pyarrow(tz, unit, dtype, freq, n, container):
+    times = _PA_TIMES.tz_localize(tz).as_unit(unit)
     if dtype.startswith("date") and freq == "h":
         pytest.skip("dates can't be offset by a sub-daily frequency")
     times = container(times, name="ds")
@@ -397,9 +395,10 @@ def test_offset_times_pyarrow(times, dtype, freq, n, container):
 
 
 @_skip_pandas_lt_2
-@pytest.mark.parametrize("times, dtype", _PYARROW_DATES)
+@pytest.mark.parametrize("tz, unit, dtype", _PYARROW_DATES)
 @pytest.mark.parametrize("freq", ["D", "h", "W", "ME", "MS", "QS"])
-def test_time_ranges_pyarrow(times, dtype, freq):
+def test_time_ranges_pyarrow(tz, unit, dtype, freq):
+    times = _PA_TIMES.tz_localize(tz).as_unit(unit)
     if dtype.startswith("date") and freq == "h":
         pytest.skip("dates can't be offset by a sub-daily frequency")
     starts = pd.Series(times)
@@ -431,8 +430,9 @@ def test_offset_times_pyarrow_dates_sub_daily(freq, n):
 
 
 @_skip_pandas_lt_2
-@pytest.mark.parametrize("times, dtype", _PYARROW_DATES)
-def test_offset_times_pyarrow_with_nulls(times, dtype):
+@pytest.mark.parametrize("tz, unit, dtype", _PYARROW_DATES)
+def test_offset_times_pyarrow_with_nulls(tz, unit, dtype):
+    times = _PA_TIMES.tz_localize(tz).as_unit(unit)
     times = pd.Series(times).astype(dtype)
     times.iloc[1] = None
     for n in [1, np.array([1, 0, 3, -2, 1])]:
@@ -466,8 +466,9 @@ def test_offset_times_pyarrow_finer_freq(tz):
 
 
 @_skip_pandas_lt_2
-@pytest.mark.parametrize("times, dtype", _PYARROW_DATES)
-def test_make_future_dataframe_pyarrow(times, dtype):
+@pytest.mark.parametrize("tz, unit, dtype", _PYARROW_DATES)
+def test_make_future_dataframe_pyarrow(tz, unit, dtype):
+    times = _PA_TIMES.tz_localize(tz).as_unit(unit)
     ids = pd.Series(np.arange(times.size))
     res = make_future_dataframe(ids, pd.Series(times).astype(dtype), freq="D", h=3)
     expected = make_future_dataframe(ids, pd.Series(times), freq="D", h=3)
@@ -476,8 +477,9 @@ def test_make_future_dataframe_pyarrow(times, dtype):
 
 
 @_skip_pandas_lt_2
-@pytest.mark.parametrize("times, dtype", _PYARROW_DATES)
-def test_backtest_splits_pyarrow(times, dtype):
+@pytest.mark.parametrize("tz, unit, dtype", _PYARROW_DATES)
+def test_backtest_splits_pyarrow(tz, unit, dtype):
+    times = _PA_TIMES.tz_localize(tz).as_unit(unit)
     df = pd.DataFrame(
         {
             "unique_id": np.repeat(np.arange(times.size), 10),

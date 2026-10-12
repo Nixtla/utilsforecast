@@ -450,7 +450,7 @@ def _arrow_dates_to_numpy(
     if unit is None:
         return times.astype("datetime64[s]")
     if arrow_dtype.tz is None:
-        return times.astype(dtype.numpy_dtype)
+        return times.astype(f"datetime64[{unit}]")
     return times.astype(pd.DatetimeTZDtype(unit=unit, tz=arrow_dtype.tz))
 
 
