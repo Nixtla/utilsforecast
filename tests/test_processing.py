@@ -4,6 +4,7 @@ from datetime import datetime as dt
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pytest
 from conftest import assert_raises_with_message
 from packaging.version import Version
@@ -410,14 +411,46 @@ def test_time_ranges_pyarrow(times, dtype, freq):
 
 
 @_skip_pandas_lt_2
-@pytest.mark.parametrize("freq", ["h", "15min", pd.offsets.Hour(25)])
+@pytest.mark.parametrize(
+    "freq",
+    [
+        "h",
+        "15min",
+        pd.offsets.Hour(25),
+        pd.DateOffset(hours=12),
+        pd.offsets.BusinessHour(),
+    ],
+)
 @pytest.mark.parametrize("n", [1, np.array([1, 0, 3, -2, 1])])
 def test_offset_times_pyarrow_dates_sub_daily(freq, n):
     dates = pd.Series(_PA_TIMES).astype("date32[pyarrow]")
-    with pytest.raises(ValueError, match="sub-daily frequency"):
+    with pytest.raises(ValueError, match="aren't at midnight"):
         offset_times(dates, freq, n)
-    with pytest.raises(ValueError, match="sub-daily frequency"):
+    with pytest.raises(ValueError, match="aren't at midnight"):
         time_ranges(dates, freq, 2)
+
+
+@_skip_pandas_lt_2
+def test_offset_times_pyarrow_dates_whole_days():
+    dates = pd.Series(_PA_TIMES).astype("date32[pyarrow]")
+    res = offset_times(dates, "h", 48)
+    expected = offset_times(dates, "2D", 1)
+    pd.testing.assert_series_equal(res, expected)
+
+
+@_skip_pandas_lt_2
+@pytest.mark.parametrize("tz", [None, "America/New_York"])
+def test_offset_times_pyarrow_finer_freq(tz):
+    times = pd.Series(_PA_TIMES.tz_localize(tz).as_unit("ms"))
+    arrow_times = times.astype(pd.ArrowDtype(pa.timestamp("ms", tz=tz)))
+    for n in [1, np.array([1, 0, 3, -2, 1])]:
+        res = offset_times(arrow_times, "us", n)
+        expected = offset_times(times, "us", n)
+        assert res.dtype == pd.ArrowDtype(pa.timestamp("us", tz=tz))
+        pd.testing.assert_series_equal(res, expected.astype(res.dtype))
+    res = time_ranges(arrow_times, "us", 2)
+    expected = time_ranges(times, "us", 2)
+    pd.testing.assert_series_equal(res, expected.astype(arrow_times.dtype))
 
 
 @_skip_pandas_lt_2
