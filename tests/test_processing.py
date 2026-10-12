@@ -415,6 +415,7 @@ def test_time_ranges_pyarrow(tz, unit, dtype, freq):
     [
         "h",
         "15min",
+        "500ms",
         pd.offsets.Hour(25),
         pd.DateOffset(hours=12),
         pd.offsets.BusinessHour(),

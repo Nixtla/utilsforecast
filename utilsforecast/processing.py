@@ -439,6 +439,12 @@ def _dt_unit(times: Union[Series, pd.Index]) -> str:
     return dtype.unit
 
 
+def _is_arrow_date(dtype: "pd.ArrowDtype") -> bool:
+    import pyarrow as pa
+
+    return pa.types.is_date(dtype.pyarrow_dtype)
+
+
 def _arrow_dates_to_numpy(
     times: Union[pd.Series, pd.Index],
 ) -> Union[pd.Series, pd.Index]:
@@ -446,9 +452,9 @@ def _arrow_dates_to_numpy(
     arrow_dtype = getattr(dtype, "pyarrow_dtype", None)
     if arrow_dtype is None:
         return times
-    unit = getattr(arrow_dtype, "unit", None)
-    if unit is None:
+    if _is_arrow_date(dtype):
         return times.astype("datetime64[s]")
+    unit = arrow_dtype.unit
     if arrow_dtype.tz is None:
         return times.astype(f"datetime64[{unit}]")
     return times.astype(pd.DatetimeTZDtype(unit=unit, tz=arrow_dtype.tz))
@@ -459,8 +465,7 @@ def _numpy_dates_to_arrow(
 ) -> Union[pd.Series, pd.Index]:
     import pyarrow as pa
 
-    arrow_dtype = dtype.pyarrow_dtype
-    if getattr(arrow_dtype, "unit", None) is None:
+    if _is_arrow_date(dtype):
         values = times.to_numpy()
         values = values[~np.isnat(values)]
         if (values != values.astype("datetime64[D]")).any():
@@ -469,7 +474,7 @@ def _numpy_dates_to_arrow(
                 "because some of them aren't at midnight."
             )
         return times.astype(dtype)
-    arrow_dtype = pa.timestamp(_dt_unit(times), tz=arrow_dtype.tz)
+    arrow_dtype = pa.timestamp(_dt_unit(times), tz=dtype.pyarrow_dtype.tz)
     return times.astype(pd.ArrowDtype(arrow_dtype))
 
 
@@ -593,9 +598,12 @@ def time_ranges(
                     out.append([starts_np + i * freq])
             out = np.vstack(out).ravel(order="F")
             if starts_np.dtype != starts.dtype:
-                out = _numpy_dates_to_arrow(
-                    pd.Series(out, dtype=starts_np.dtype), starts.dtype
-                )
+                # dates keep the offset's resolution so that sub-daily offsets are caught
+                if _is_arrow_date(starts.dtype):
+                    out = pd.Series(out)
+                else:
+                    out = pd.Series(out, dtype=starts_np.dtype)
+                out = _numpy_dates_to_arrow(out, starts.dtype)
         else:
             raise ValueError(
                 f"`starts` must be integers or timestamps, got '{starts.dtype}'."
