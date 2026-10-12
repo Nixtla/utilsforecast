@@ -215,14 +215,14 @@ def test_time_features_pyarrow_backed(setup_series):
         .dt.tz_localize("America/New_York")
         .astype("timestamp[ns, tz=America/New_York][pyarrow]")
     )
-    # make_future_dataframe doesn't support pyarrow dates
-    transformed, _ = time_features(series, freq="D", features=dtf.available())
-    for feature in dtf.available():
-        np.testing.assert_array_equal(
-            transformed[feature.name].to_numpy(),
-            feature.compute(series["ds"]),
-            err_msg=feature.name,
-        )
+    transformed, future = time_features(series, freq="D", features=dtf.available(), h=2)
+    for df in [transformed, future]:
+        for feature in dtf.available():
+            np.testing.assert_array_equal(
+                df[feature.name].to_numpy(),
+                feature.compute(df["ds"]),
+                err_msg=feature.name,
+            )
 
 
 def test_fourier_transform(setup_series):
