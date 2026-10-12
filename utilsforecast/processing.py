@@ -436,8 +436,30 @@ def _dt_unit(times: Union[Series, pd.Index]) -> str:
     dtype = times.dtype
     if isinstance(dtype, np.dtype):
         return np.datetime_data(dtype)[0]
-    # DatetimeTZDtype holds the unit, pyarrow timestamps keep it in the arrow type
-    return getattr(dtype, "unit", None) or dtype.pyarrow_dtype.unit
+    return dtype.unit
+
+
+def _arrow_dates_to_numpy(
+    times: Union[pd.Series, pd.Index], freq: Optional[BaseOffset] = None
+) -> Union[pd.Series, pd.Index]:
+    dtype = times.dtype
+    arrow_dtype = getattr(dtype, "pyarrow_dtype", None)
+    if arrow_dtype is None:
+        return times
+    unit = getattr(arrow_dtype, "unit", None)
+    if unit is None:
+        if (
+            isinstance(freq, pd.offsets.Tick)
+            and freq.nanos % pd.Timedelta(days=1).value != 0
+        ):
+            raise ValueError(
+                f"Cannot offset dates with data type: '{dtype}' "
+                f"using a sub-daily frequency: '{freq.freqstr}'."
+            )
+        return times.astype("datetime64[s]")
+    if arrow_dtype.tz is None:
+        return times.astype(dtype.numpy_dtype)
+    return times.astype(pd.DatetimeTZDtype(unit=unit, tz=arrow_dtype.tz))
 
 
 def _offset_times_array_n(
@@ -501,12 +523,17 @@ def offset_times(
                 f"Cannot offset times with data type: '{times.dtype}' "
                 f"using a frequency of type: '{type(freq)}'."
             )
+        orig_dtype = times.dtype
+        if dts:
+            times = _arrow_dates_to_numpy(times, freq)
         if dts and np.ndim(n) > 0:
             out = _offset_times_array_n(times, freq, n)
         else:
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
                 out = times + n * freq
+        if times.dtype != orig_dtype:
+            out = out.astype(orig_dtype)
     elif isinstance(times, pl_Series) and isinstance(freq, int):
         out = times + n * freq
     elif isinstance(times, pl_Series) and isinstance(freq, str):
@@ -547,12 +574,12 @@ def time_ranges(
         elif _is_dt_dtype(starts):
             if isinstance(freq, str):
                 freq = pd.tseries.frequencies.to_offset(freq)
+            starts_np = _arrow_dates_to_numpy(starts, freq)
             out = []
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
                 for i in range(periods):
-                    out.append([starts + i * freq])
-            # pyarrow timestamps don't seem to work with offsets yet, keeping np.vstack
+                    out.append([starts_np + i * freq])
             out = np.vstack(out).ravel(order="F")
         else:
             raise ValueError(

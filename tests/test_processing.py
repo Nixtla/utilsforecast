@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from conftest import assert_raises_with_message
+from packaging.version import Version
 from polars import Series as pl_Series
 
 import utilsforecast.processing as ufp
@@ -355,6 +356,101 @@ def test_offset_times_with_float_array_n(freq):
     assert_raises_with_message(
         offset_times, "Expected n to have an integer dtype", _ARRAY_N_TIMES, freq, n
     )
+
+
+_PA_TIMES = pd.DatetimeIndex(
+    ["2020-01-01", "2020-01-31", "2020-02-29", "2021-03-13", "2021-10-31"]
+)
+_PYARROW_DATES = [
+    (_PA_TIMES, "timestamp[ns][pyarrow]"),
+    (_PA_TIMES.astype("datetime64[s]"), "timestamp[s][pyarrow]"),
+    (
+        _PA_TIMES.tz_localize("America/New_York"),
+        "timestamp[ns, tz=America/New_York][pyarrow]",
+    ),
+    (_PA_TIMES.astype("datetime64[s]"), "date32[pyarrow]"),
+]
+_skip_pandas_lt_2 = pytest.mark.skipif(
+    Version(pd.__version__) < Version("2.0"),
+    reason="pyarrow dates are only supported on pandas>=2",
+)
+
+
+@_skip_pandas_lt_2
+@pytest.mark.parametrize("times, dtype", _PYARROW_DATES)
+@pytest.mark.parametrize("freq", ["D", "h", "W", "ME", "MS", "QS"])
+@pytest.mark.parametrize("n", [2, np.array([1, 0, 3, -2, 1])])
+@pytest.mark.parametrize("container", [pd.Series, pd.Index])
+def test_offset_times_pyarrow(times, dtype, freq, n, container):
+    if dtype.startswith("date") and freq == "h":
+        pytest.skip("dates can't be offset by a sub-daily frequency")
+    times = container(times, name="ds")
+    arrow_times = times.astype(dtype)
+    res = offset_times(arrow_times, freq, n)
+    expected = offset_times(times, freq, n).astype(dtype)
+    assert res.dtype == arrow_times.dtype
+    if container is pd.Series:
+        pd.testing.assert_series_equal(res, expected)
+    else:
+        pd.testing.assert_index_equal(res, expected)
+
+
+@_skip_pandas_lt_2
+@pytest.mark.parametrize("times, dtype", _PYARROW_DATES)
+@pytest.mark.parametrize("freq", ["D", "h", "W", "ME", "MS", "QS"])
+def test_time_ranges_pyarrow(times, dtype, freq):
+    if dtype.startswith("date") and freq == "h":
+        pytest.skip("dates can't be offset by a sub-daily frequency")
+    starts = pd.Series(times)
+    arrow_starts = starts.astype(dtype)
+    res = time_ranges(arrow_starts, freq, 3)
+    expected = time_ranges(starts, freq, 3).astype(dtype)
+    assert res.dtype == arrow_starts.dtype
+    pd.testing.assert_series_equal(res, expected)
+
+
+@_skip_pandas_lt_2
+@pytest.mark.parametrize("freq", ["h", "15min", pd.offsets.Hour(25)])
+@pytest.mark.parametrize("n", [1, np.array([1, 0, 3, -2, 1])])
+def test_offset_times_pyarrow_dates_sub_daily(freq, n):
+    dates = pd.Series(_PA_TIMES).astype("date32[pyarrow]")
+    with pytest.raises(ValueError, match="sub-daily frequency"):
+        offset_times(dates, freq, n)
+    with pytest.raises(ValueError, match="sub-daily frequency"):
+        time_ranges(dates, freq, 2)
+
+
+@_skip_pandas_lt_2
+@pytest.mark.parametrize("times, dtype", _PYARROW_DATES)
+def test_make_future_dataframe_pyarrow(times, dtype):
+    ids = pd.Series(np.arange(times.size))
+    res = make_future_dataframe(ids, pd.Series(times).astype(dtype), freq="D", h=3)
+    expected = make_future_dataframe(ids, pd.Series(times), freq="D", h=3)
+    expected["ds"] = expected["ds"].astype(dtype)
+    pd.testing.assert_frame_equal(res, expected)
+
+
+@_skip_pandas_lt_2
+@pytest.mark.parametrize("times, dtype", _PYARROW_DATES)
+def test_backtest_splits_pyarrow(times, dtype):
+    df = pd.DataFrame(
+        {
+            "unique_id": np.repeat(np.arange(times.size), 10),
+            "ds": time_ranges(pd.Series(times), "D", 10),
+            "y": np.arange(10 * times.size, dtype=np.float64),
+        }
+    )
+    arrow_df = df.assign(ds=df["ds"].astype(dtype))
+    kwargs = dict(n_windows=2, h=3, id_col="unique_id", time_col="ds", freq="D")
+    for res, expected in zip(
+        backtest_splits(arrow_df, **kwargs), backtest_splits(df, **kwargs)
+    ):
+        for res_df, expected_df in zip(res, expected):
+            expected_df = expected_df.copy()
+            for col in ("ds", "cutoff"):
+                if col in expected_df:
+                    expected_df[col] = expected_df[col].astype(dtype)
+            pd.testing.assert_frame_equal(res_df, expected_df)
 
 
 def test_offset_times_pl():
