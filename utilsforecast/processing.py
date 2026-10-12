@@ -455,20 +455,20 @@ def _arrow_dates_to_numpy(
 
 
 def _numpy_dates_to_arrow(
-    times: Union[pd.Series, pd.Index], dtype: pd.ArrowDtype
+    times: Union[pd.Series, pd.Index], dtype: "pd.ArrowDtype"
 ) -> Union[pd.Series, pd.Index]:
     import pyarrow as pa
 
     arrow_dtype = dtype.pyarrow_dtype
     if getattr(arrow_dtype, "unit", None) is None:
         values = times.to_numpy()
+        values = values[~np.isnat(values)]
         if (values != values.astype("datetime64[D]")).any():
             raise ValueError(
                 f"Cannot represent the offset times as '{dtype}' "
                 "because some of them aren't at midnight."
             )
         return times.astype(dtype)
-    # the offset can increase the resolution, as it does for numpy-backed times
     arrow_dtype = pa.timestamp(_dt_unit(times), tz=arrow_dtype.tz)
     return times.astype(pd.ArrowDtype(arrow_dtype))
 

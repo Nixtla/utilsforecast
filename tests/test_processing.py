@@ -431,6 +431,18 @@ def test_offset_times_pyarrow_dates_sub_daily(freq, n):
 
 
 @_skip_pandas_lt_2
+@pytest.mark.parametrize("times, dtype", _PYARROW_DATES)
+def test_offset_times_pyarrow_with_nulls(times, dtype):
+    times = pd.Series(times).astype(dtype)
+    times.iloc[1] = None
+    for n in [1, np.array([1, 0, 3, -2, 1])]:
+        res = offset_times(times, "D", n)
+        assert res.isna().tolist() == times.isna().tolist()
+    res = time_ranges(times, "D", 2)
+    assert res.isna().tolist() == [False, False, True, True] + [False] * 6
+
+
+@_skip_pandas_lt_2
 def test_offset_times_pyarrow_dates_whole_days():
     dates = pd.Series(_PA_TIMES).astype("date32[pyarrow]")
     res = offset_times(dates, "h", 48)
