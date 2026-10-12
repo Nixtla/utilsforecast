@@ -371,6 +371,34 @@ def test_offset_times_with_float_array_n(freq):
     )
 
 
+@pytest.mark.parametrize(
+    "freq", [pd.DateOffset(milliseconds=500), pd.DateOffset(microseconds=1)]
+)
+@pytest.mark.parametrize("tz", [None, "Europe/Madrid"])
+def test_offset_times_with_array_n_finer_than_times(freq, tz):
+    n = np.array([1, 0, -2, 3, -1])
+    times = pd.Series(_ARRAY_N_TIMES.astype("datetime64[s]").tz_localize(tz))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        res = offset_times(times, freq, n)
+    expected = pd.concat(
+        [offset_times(times.iloc[[i]], freq, int(k)) for i, k in enumerate(n)]
+    )
+    pd.testing.assert_series_equal(res, expected)
+
+
+@pytest.mark.parametrize(
+    "freq", [pd.offsets.Day(), pd.offsets.MonthBegin(), pd.DateOffset(milliseconds=500)]
+)
+@pytest.mark.parametrize("times", [_ARRAY_N_TIMES[:0], pd.Series(_ARRAY_N_TIMES[:0])])
+def test_offset_times_with_empty_array_n(freq, times):
+    times = times.astype("datetime64[s]")
+    res = offset_times(times, freq, np.array([], dtype=np.int64))
+    assert type(res) is type(times)
+    assert len(res) == 0
+    assert res.dtype == offset_times(times, freq, 1).dtype
+
+
 def test_offset_times_pl():
     pl.testing.assert_series_equal(
         offset_times(
@@ -484,6 +512,31 @@ def test_time_ranges_with_year_end_offset_pd():
             pd.to_datetime(["2000-12-31", "2002-12-31", "2010-12-31", "2012-12-31"])
         ),
     )
+
+
+@pytest.mark.parametrize(
+    "freq", ["D", "h", "MS", "W-MON", "500ms", pd.DateOffset(milliseconds=500)]
+)
+@pytest.mark.parametrize("tz", [None, "America/New_York"])
+def test_time_ranges_matches_offset_times_pd(freq, tz):
+    starts = pd.Series(
+        _ARRAY_N_TIMES.astype("datetime64[s]").tz_localize(tz), name="ds"
+    )
+    periods = 4
+    res = time_ranges(starts, freq, periods)
+    per_period = [offset_times(starts, freq, i) for i in range(periods)]
+    expected = pd.Series(
+        [per_period[i][j] for j in range(len(starts)) for i in range(periods)],
+        dtype=per_period[0].dtype,
+    )
+    pd.testing.assert_series_equal(res, expected)
+
+
+@pytest.mark.parametrize("tz", [None, "America/New_York"])
+def test_time_ranges_zero_periods_pd(tz):
+    starts = _ARRAY_N_TIMES.astype("datetime64[s]").tz_localize(tz)
+    res = time_ranges(starts, "D", 0)
+    pd.testing.assert_series_equal(res, pd.Series([], dtype=starts.dtype))
 
 
 # ints

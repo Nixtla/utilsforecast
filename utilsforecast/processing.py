@@ -47,6 +47,7 @@ from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple, Unio
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 from pandas.tseries.offsets import BaseOffset
 
 from utilsforecast.validation import (
@@ -476,16 +477,20 @@ def _offset_times_array_n(
         runs = [
             dt_index[order[s:e]] + int(k) * freq for k, s, e in zip(ks, starts, ends)
         ]
-    inv_order = np.empty_like(order)
-    inv_order[order] = np.arange(order.size)
-    # the empty slice preserves the dtype in case there are no times
-    out = dt_index[:0].append(runs).take(inv_order)
+    if runs:
+        inv_order = np.empty_like(order)
+        inv_order[order] = np.arange(order.size)
+        out = runs[0].append(runs[1:]).take(inv_order)
+    else:
+        # gives the same resolution as a scalar n
+        out = dt_index + freq
+    if isinstance(times.dtype, pd.ArrowDtype):
+        tz = times.dtype.pyarrow_dtype.tz
+        out = out.astype(pd.ArrowDtype(pa.timestamp(_dt_unit(out), tz=tz)))
     if isinstance(times, pd.Series):
         out = pd.Series(out, index=times.index, name=times.name)
     else:
         out = out.rename(times.name)
-    if out.dtype != times.dtype:
-        out = out.astype(times.dtype)
     return out
 
 
@@ -547,21 +552,20 @@ def time_ranges(
             starts_np = starts.to_numpy(copy=False)  # may be pyarrow
             steps = (np.arange(periods) * freq).astype(starts_np.dtype)
             out = np.repeat(starts_np, periods) + np.tile(steps, starts_np.size)
+            out = pd.Series(out, dtype=starts.dtype)
         elif _is_dt_dtype(starts):
-            if isinstance(freq, str):
-                freq = pd.tseries.frequencies.to_offset(freq)
-            out = []
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
-                for i in range(periods):
-                    out.append([starts + i * freq])
-            # pyarrow timestamps don't seem to work with offsets yet, keeping np.vstack
-            out = np.vstack(out).ravel(order="F")
+            per_period = [offset_times(starts, freq, i) for i in range(periods)]
+            if per_period:
+                series_major = np.arange(starts.size * periods).reshape(periods, -1)
+                out = per_period[0].append(per_period[1:])
+                out = out.take(series_major.ravel(order="F"))
+            else:
+                out = starts[:0]
+            out = pd.Series(out.rename(None))
         else:
             raise ValueError(
                 f"`starts` must be integers or timestamps, got '{starts.dtype}'."
             )
-        out = pd.Series(out, dtype=starts.dtype)
     else:
         try:
             is_int = starts.dtype.is_integer()
