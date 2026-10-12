@@ -456,14 +456,11 @@ def _offset_times_array_n(
     if len(times) == 0:
         return times.copy()
     if isinstance(freq, pd.offsets.Tick):
-        # the coarsest resolution that can hold both the times and the offset,
-        # which is the one pandas uses with a scalar n
-        times_nanos = _NANOS_PER_UNIT[_dt_unit(times)]
-        unit, unit_nanos = next(
-            (u, k)
-            for u, k in _NANOS_PER_UNIT.items()
-            if k <= times_nanos and freq.nanos % k == 0
+        # pandas uses the finer of the times' and the offset's resolutions
+        unit = min(
+            _dt_unit(times), pd.Timedelta(freq).unit, key=_NANOS_PER_UNIT.__getitem__
         )
+        unit_nanos = _NANOS_PER_UNIT[unit]
         deltas = (n * (freq.nanos // unit_nanos)).astype(f"timedelta64[{unit}]")
         return times + deltas
     # pandas only vectorizes non-fixed offsets for a scalar n, so we apply each

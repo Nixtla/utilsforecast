@@ -382,7 +382,14 @@ def test_offset_times_with_float_array_n(freq):
 
 
 @pytest.mark.parametrize(
-    "freq", [pd.DateOffset(milliseconds=500), pd.DateOffset(microseconds=1)]
+    "freq",
+    [
+        pd.DateOffset(milliseconds=500),
+        pd.DateOffset(microseconds=1),
+        pd.offsets.Milli(1000),
+        pd.offsets.Micro(10**6),
+        pd.offsets.Nano(10**9),
+    ],
 )
 @pytest.mark.parametrize("tz", [None, "Europe/Madrid"])
 def test_offset_times_with_array_n_finer_than_times(freq, tz):
