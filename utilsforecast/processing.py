@@ -454,7 +454,7 @@ def _offset_times_array_n(
     # a python int multiplier keeps n's dtype, so narrower ints would overflow
     n = n.astype(np.int64, copy=False)
     if len(times) == 0:
-        return times
+        return times.copy()
     if isinstance(freq, pd.offsets.Tick):
         # the coarsest resolution that can hold both the times and the offset,
         # which is the one pandas uses with a scalar n

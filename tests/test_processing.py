@@ -413,6 +413,7 @@ def test_offset_times_with_empty_array_n(freq, times):
         warnings.simplefilter("error")
         res = offset_times(times, freq, np.array([], dtype=np.int64))
     assert type(res) is type(times)
+    assert res is not times
     assert len(res) == 0
     assert res.dtype == times.dtype
 
