@@ -23,7 +23,7 @@ def _pandas_reference(dates: pd.Series, name: str) -> np.ndarray:
 def test_available_lists_every_exported_feature():
     features = dtf.available()
     assert [f.name for f in features] == [
-        name for name in dtf.__all__ if name not in ("CalendarFeature", "available")
+        name for name in dtf.__all__ if name != "available"
     ]
     for feature in features:
         assert getattr(dtf, feature.name) is feature

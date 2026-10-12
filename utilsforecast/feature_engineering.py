@@ -301,7 +301,7 @@ def time_features(
             for the exogenous regressors.
         freq (str or int): Frequency of the data. Must be a valid pandas or
             polars offset alias, or an integer.
-        features (list of str, callable or CalendarFeature): Features to compute.
+        features (list of str, callable or calendar feature): Features to compute.
             Can be calendar features from `utilsforecast.date_features` (listed by
             `utilsforecast.date_features.available()`), string aliases of timestamp
             attributes of the dataframe backend or functions to apply to the times.

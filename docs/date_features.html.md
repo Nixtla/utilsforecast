@@ -57,13 +57,3 @@ train, future = time_features(
       heading_level: 3
       show_root_heading: true
       show_source: true
-
-::: utilsforecast.date_features.CalendarFeature
-    handler: python
-    options:
-      docstring_style: google
-      members:
-        - compute
-      heading_level: 3
-      show_root_heading: true
-      show_source: true

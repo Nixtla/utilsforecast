@@ -1,7 +1,6 @@
 """Backend-agnostic calendar features"""
 
 __all__ = [
-    "CalendarFeature",
     "available",
     "year",
     "quarter",
@@ -89,8 +88,7 @@ class _Dates:
 class CalendarFeature:
     """Calendar feature with the same values and dtype for pandas and polars dates.
 
-    The features are listed by `available()`. Instances shouldn't be created
-    directly, custom features can be passed to `time_features` as functions.
+    For internal use only, custom features can be passed to `time_features` as functions.
 
     Attributes:
         name (str): Name of the feature, used as the column name.
@@ -295,9 +293,7 @@ is_year_end = CalendarFeature(
 )
 
 _FEATURES: Dict[str, CalendarFeature] = {
-    name: globals()[name]
-    for name in __all__
-    if name not in ("CalendarFeature", "available")
+    name: globals()[name] for name in __all__ if name != "available"
 }
 
 
@@ -309,6 +305,6 @@ def available() -> List[CalendarFeature]:
     """List the available calendar features.
 
     Returns:
-        list of CalendarFeature: Available features.
+        list: Available calendar features.
     """
     return list(_FEATURES.values())
