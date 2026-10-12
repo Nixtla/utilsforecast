@@ -367,6 +367,7 @@ _PYARROW_DATES = [
     (None, "s", "timestamp[s][pyarrow]"),
     ("America/New_York", "ns", "timestamp[ns, tz=America/New_York][pyarrow]"),
     (None, "s", "date32[pyarrow]"),
+    (None, "s", "date64[pyarrow]"),
 ]
 _skip_pandas_lt_2 = pytest.mark.skipif(
     Version(pd.__version__) < Version("2.0"),
@@ -419,11 +420,13 @@ def test_time_ranges_pyarrow(tz, unit, dtype, freq):
         pd.offsets.Hour(25),
         pd.DateOffset(hours=12),
         pd.offsets.BusinessHour(),
+        pd.DateOffset(microseconds=1),
     ],
 )
 @pytest.mark.parametrize("n", [1, np.array([1, 0, 3, -2, 1])])
-def test_offset_times_pyarrow_dates_sub_daily(freq, n):
-    dates = pd.Series(_PA_TIMES).astype("date32[pyarrow]")
+@pytest.mark.parametrize("dtype", ["date32[pyarrow]", "date64[pyarrow]"])
+def test_offset_times_pyarrow_dates_sub_daily(freq, n, dtype):
+    dates = pd.Series(_PA_TIMES).astype(dtype)
     with pytest.raises(ValueError, match="aren't at midnight"):
         offset_times(dates, freq, n)
     with pytest.raises(ValueError, match="aren't at midnight"):

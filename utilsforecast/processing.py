@@ -479,7 +479,10 @@ def _numpy_dates_to_arrow(
 
 
 def _offset_times_array_n(
-    times: Union[pd.Series, pd.Index], freq: BaseOffset, n: np.ndarray
+    times: Union[pd.Series, pd.Index],
+    freq: BaseOffset,
+    n: np.ndarray,
+    keep_resolution: bool = False,
 ) -> Union[pd.Series, pd.Index]:
     n = np.asarray(n)
     if n.shape != (len(times),):
@@ -519,7 +522,7 @@ def _offset_times_array_n(
         out = pd.Series(out, index=times.index, name=times.name)
     else:
         out = out.rename(times.name)
-    if out.dtype != times.dtype:
+    if not keep_resolution and out.dtype != times.dtype:
         out = out.astype(times.dtype)
     return out
 
@@ -543,7 +546,9 @@ def offset_times(
         if dts:
             times = _arrow_dates_to_numpy(times)
         if dts and np.ndim(n) > 0:
-            out = _offset_times_array_n(times, freq, n)
+            # dates must keep the offset's resolution so that sub-daily offsets are caught
+            is_date = times.dtype != orig_dtype and _is_arrow_date(orig_dtype)
+            out = _offset_times_array_n(times, freq, n, keep_resolution=is_date)
         else:
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
