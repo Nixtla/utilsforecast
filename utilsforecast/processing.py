@@ -478,14 +478,15 @@ def _offset_times_array_n(
         ]
     inv_order = np.empty_like(order)
     inv_order[order] = np.arange(order.size)
-    # the empty slice preserves the dtype in case there are no times
-    out = dt_index[:0].append(runs).take(inv_order)
+    out = (runs[0].append(runs[1:]) if runs else dt_index[:0]).take(inv_order)
+    if isinstance(times.dtype, pd.ArrowDtype):
+        import pyarrow as pa
+
+        out = out.astype(pd.ArrowDtype(pa.timestamp(out.unit, tz=out.tz)))
     if isinstance(times, pd.Series):
         out = pd.Series(out, index=times.index, name=times.name)
     else:
         out = out.rename(times.name)
-    if out.dtype != times.dtype:
-        out = out.astype(times.dtype)
     return out
 
 
@@ -494,6 +495,18 @@ def offset_times(
     freq: Union[int, str, BaseOffset],
     n: Union[int, np.ndarray],
 ) -> Union[Series, pd.Index]:
+    """Offset timestamps or integer times by a scalar or per-row step count.
+
+    Args:
+        times: Pandas Series/Index or polars Series containing times.
+        freq: Integer step, frequency string, or pandas date offset.
+        n: Number of steps. For pandas timestamps an integer array must have
+            one entry per timestamp.
+
+    Returns:
+        Shifted times. Pandas timestamp resolution is promoted when needed
+        to preserve subsecond offsets, including for an array of step counts.
+    """
     if isinstance(times, (pd.Series, pd.Index)):
         if isinstance(freq, str):
             freq = pd.tseries.frequencies.to_offset(freq)

@@ -16,6 +16,25 @@ conda install -c conda-forge utilsforecast
 
 ## How to use
 
+### Offset timestamps
+
+Use `offset_times` with an integer array to apply a different number of steps
+to each timestamp. The output keeps subsecond offsets even when the input
+has a coarser datetime resolution.
+
+```python
+import numpy as np
+import pandas as pd
+
+from utilsforecast.processing import offset_times
+
+times = pd.Series(pd.to_datetime(["2020-01-01", "2020-01-02"]))
+times = times.astype("datetime64[s]")
+shifted = offset_times(times, pd.DateOffset(milliseconds=500), np.array([1, 2]))
+assert shifted.iloc[0] == pd.Timestamp("2020-01-01 00:00:00.500")
+assert shifted.iloc[1] == pd.Timestamp("2020-01-02 00:00:01")
+```
+
 ### Generate synthetic data
 
 ```python
