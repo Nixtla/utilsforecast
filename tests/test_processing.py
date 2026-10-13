@@ -414,6 +414,17 @@ def test_offset_times_with_array_n_overflow():
         offset_times(times, freq, n)
 
 
+@pytest.mark.parametrize("freq", [pd.offsets.Second(), pd.offsets.MonthBegin()])
+def test_offset_times_with_uint64_array_n_overflow(freq):
+    times = pd.Series(_ARRAY_N_TIMES)
+    n = np.zeros(times.size, dtype=np.uint64)
+    n[0] = 2**63 + 5
+    with pytest.raises(OverflowError):
+        offset_times(times, freq, int(n[0]))
+    with pytest.raises(OverflowError):
+        offset_times(times, freq, n)
+
+
 @pytest.mark.parametrize(
     "freq",
     [

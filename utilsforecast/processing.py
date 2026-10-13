@@ -451,10 +451,12 @@ def _offset_times_array_n(
         raise ValueError(f"Expected n to have shape ({len(times)},), got {n.shape}.")
     if not np.issubdtype(n.dtype, np.integer):
         raise TypeError(f"Expected n to have an integer dtype, got {n.dtype}.")
-    # a python int multiplier keeps n's dtype, so narrower ints would overflow
-    n = n.astype(np.int64, copy=False)
     if len(times) == 0:
         return times.copy()
+    if n.dtype.kind == "u" and n.max() > np.iinfo(np.int64).max:
+        raise OverflowError("Expected n to fit in int64.")
+    # a python int multiplier keeps n's dtype, so narrower ints would overflow
+    n = n.astype(np.int64, copy=False)
     if isinstance(freq, pd.offsets.Tick):
         # pandas uses the finer of the times' and the offset's resolutions
         unit = min(
