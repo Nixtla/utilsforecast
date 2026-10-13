@@ -404,6 +404,16 @@ def test_offset_times_with_array_n_finer_than_times(freq, tz):
     pd.testing.assert_series_equal(res, expected)
 
 
+def test_offset_times_with_array_n_overflow():
+    times = pd.Series(_ARRAY_N_TIMES)
+    n = np.full(times.size, 2**62 // 10**9 * 4)
+    freq = pd.offsets.Second()
+    with pytest.raises(pd.errors.OutOfBoundsTimedelta):
+        offset_times(times, freq, int(n[0]))
+    with pytest.raises(pd.errors.OutOfBoundsTimedelta):
+        offset_times(times, freq, n)
+
+
 @pytest.mark.parametrize(
     "freq",
     [

@@ -460,8 +460,13 @@ def _offset_times_array_n(
         unit = min(
             _dt_unit(times), pd.Timedelta(freq).unit, key=_NANOS_PER_UNIT.__getitem__
         )
-        unit_nanos = _NANOS_PER_UNIT[unit]
-        deltas = (n * (freq.nanos // unit_nanos)).astype(f"timedelta64[{unit}]")
+        step = freq.nanos // _NANOS_PER_UNIT[unit]
+        bound = np.iinfo(np.int64).max // step
+        if n.max() > bound or n.min() < -bound:
+            raise pd.errors.OutOfBoundsTimedelta(
+                f"{freq} multiplied by n overflows timedelta64[{unit}]."
+            )
+        deltas = (n * step).astype(f"timedelta64[{unit}]")
         return times + deltas
     # pandas only vectorizes non-fixed offsets for a scalar n, so we apply each
     # distinct n to its own run of times and then restore the original order
