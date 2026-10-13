@@ -95,6 +95,20 @@ def test_is_nan():
         is_nan(pl.Series([np.nan, 1.0, None])).to_numpy(),
         np.array([True, False, None]),
     )
+    for series in (
+        pl.Series(["a", None, "b"]),
+        pl.Series([True, None, False]),
+        pl.Series([1, None, 2]),
+        pl.Series(["a", None, "b"], dtype=pl.Categorical),
+    ):
+        np.testing.assert_equal(
+            is_nan(series).to_numpy(),
+            np.array([False, False, False]),
+        )
+        np.testing.assert_equal(
+            is_nan_or_none(series).to_numpy(),
+            np.array([False, True, False]),
+        )
 
 
 def test_is_none():
@@ -312,6 +326,16 @@ def test_offset_times_with_array_n_pyarrow(freq):
     assert res.dtype == times.dtype
 
 
+def test_offset_times_with_array_n_pyarrow_date():
+    freq = pd.offsets.MonthBegin()
+    n = np.array([1, 0, 2, 1, 0])
+    times = pd.Series(_ARRAY_N_TIMES).astype("date32[pyarrow]")
+    res = offset_times(times, freq, n)
+    expected = _offset_times_elementwise(pd.Series(_ARRAY_N_TIMES), freq, n)
+    assert list(res) == [t.date() for t in expected]
+    assert res.dtype == times.dtype
+
+
 @pytest.mark.parametrize(
     "n", [np.zeros(5, dtype=np.int64), np.full(5, 3), np.array([2])]
 )
@@ -357,6 +381,78 @@ def test_offset_times_with_float_array_n(freq):
     assert_raises_with_message(
         offset_times, "Expected n to have an integer dtype", _ARRAY_N_TIMES, freq, n
     )
+
+
+@pytest.mark.parametrize(
+    "freq",
+    [
+        pd.DateOffset(milliseconds=500),
+        pd.DateOffset(microseconds=1),
+        pd.offsets.Milli(1000),
+        pd.offsets.Micro(10**6),
+        pd.offsets.Nano(10**9),
+    ],
+)
+@pytest.mark.parametrize("tz", [None, "Europe/Madrid"])
+def test_offset_times_with_array_n_finer_than_times(freq, tz):
+    n = np.array([1, 0, -2, 3, -1])
+    times = pd.Series(_ARRAY_N_TIMES.astype("datetime64[s]").tz_localize(tz))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        res = offset_times(times, freq, n)
+    expected = pd.concat(
+        [offset_times(times.iloc[[i]], freq, int(k)) for i, k in enumerate(n)]
+    )
+    pd.testing.assert_series_equal(res, expected)
+
+
+@pytest.mark.parametrize("freq", [pd.offsets.Second(), pd.offsets.Second(-1)])
+def test_offset_times_with_array_n_overflow(freq):
+    times = pd.Series(_ARRAY_N_TIMES)
+    n = np.full(times.size, 2**62 // 10**9 * 4)
+    with pytest.raises(pd.errors.OutOfBoundsTimedelta):
+        offset_times(times, freq, int(n[0]))
+    with pytest.raises(pd.errors.OutOfBoundsTimedelta):
+        offset_times(times, freq, n)
+
+
+@pytest.mark.parametrize("freq", [pd.offsets.Second(0), pd.offsets.Second(-1)])
+def test_offset_times_with_array_n_non_positive_tick(freq):
+    times = pd.Series(_ARRAY_N_TIMES)
+    res = offset_times(times, freq, np.full(times.size, 2))
+    pd.testing.assert_series_equal(res, offset_times(times, freq, 2))
+
+
+@pytest.mark.parametrize("freq", [pd.offsets.Second(), pd.offsets.MonthBegin()])
+def test_offset_times_with_uint64_array_n_overflow(freq):
+    times = pd.Series(_ARRAY_N_TIMES)
+    n = np.zeros(times.size, dtype=np.uint64)
+    n[0] = 2**63 + 5
+    with pytest.raises(OverflowError):
+        offset_times(times, freq, int(n[0]))
+    with pytest.raises(OverflowError):
+        offset_times(times, freq, n)
+
+
+@pytest.mark.parametrize(
+    "freq",
+    [
+        pd.offsets.Day(),
+        pd.offsets.MonthBegin(),
+        pd.offsets.BusinessHour(),
+        pd.DateOffset(milliseconds=500),
+    ],
+)
+@pytest.mark.parametrize("times", [_ARRAY_N_TIMES[:0], pd.Series(_ARRAY_N_TIMES[:0])])
+def test_offset_times_with_empty_array_n(freq, times):
+    times = times.astype("datetime64[s]")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        res = offset_times(times, freq, np.array([], dtype=np.int64))
+    assert type(res) is type(times)
+    assert res is not times
+    assert len(res) == 0
+    assert res.dtype == times.dtype
 
 
 _PA_TIMES = pd.DatetimeIndex(
@@ -466,7 +562,8 @@ def test_offset_times_pyarrow_finer_freq(tz):
         pd.testing.assert_series_equal(res, expected.astype(res.dtype))
     res = time_ranges(arrow_times, "us", 2)
     expected = time_ranges(times, "us", 2)
-    pd.testing.assert_series_equal(res, expected.astype(arrow_times.dtype))
+    assert res.dtype == pd.ArrowDtype(pa.timestamp("us", tz=tz))
+    pd.testing.assert_series_equal(res, expected.astype(res.dtype))
 
 
 @_skip_pandas_lt_2
@@ -617,6 +714,31 @@ def test_time_ranges_with_year_end_offset_pd():
             pd.to_datetime(["2000-12-31", "2002-12-31", "2010-12-31", "2012-12-31"])
         ),
     )
+
+
+@pytest.mark.parametrize(
+    "freq", ["D", "h", "MS", "W-MON", "500ms", pd.DateOffset(milliseconds=500)]
+)
+@pytest.mark.parametrize("tz", [None, "America/New_York"])
+def test_time_ranges_matches_offset_times_pd(freq, tz):
+    starts = pd.Series(
+        _ARRAY_N_TIMES.astype("datetime64[s]").tz_localize(tz), name="ds"
+    )
+    periods = 4
+    res = time_ranges(starts, freq, periods)
+    per_period = [offset_times(starts, freq, i) for i in range(periods)]
+    expected = pd.Series(
+        [per_period[i][j] for j in range(len(starts)) for i in range(periods)],
+        dtype=per_period[0].dtype,
+    )
+    pd.testing.assert_series_equal(res, expected)
+
+
+@pytest.mark.parametrize("tz", [None, "America/New_York"])
+def test_time_ranges_zero_periods_pd(tz):
+    starts = _ARRAY_N_TIMES.astype("datetime64[s]").tz_localize(tz)
+    res = time_ranges(starts, "D", 0)
+    pd.testing.assert_series_equal(res, pd.Series([], dtype=starts.dtype))
 
 
 # ints
