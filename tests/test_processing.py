@@ -404,14 +404,21 @@ def test_offset_times_with_array_n_finer_than_times(freq, tz):
     pd.testing.assert_series_equal(res, expected)
 
 
-def test_offset_times_with_array_n_overflow():
+@pytest.mark.parametrize("freq", [pd.offsets.Second(), pd.offsets.Second(-1)])
+def test_offset_times_with_array_n_overflow(freq):
     times = pd.Series(_ARRAY_N_TIMES)
     n = np.full(times.size, 2**62 // 10**9 * 4)
-    freq = pd.offsets.Second()
     with pytest.raises(pd.errors.OutOfBoundsTimedelta):
         offset_times(times, freq, int(n[0]))
     with pytest.raises(pd.errors.OutOfBoundsTimedelta):
         offset_times(times, freq, n)
+
+
+@pytest.mark.parametrize("freq", [pd.offsets.Second(0), pd.offsets.Second(-1)])
+def test_offset_times_with_array_n_non_positive_tick(freq):
+    times = pd.Series(_ARRAY_N_TIMES)
+    res = offset_times(times, freq, np.full(times.size, 2))
+    pd.testing.assert_series_equal(res, offset_times(times, freq, 2))
 
 
 @pytest.mark.parametrize("freq", [pd.offsets.Second(), pd.offsets.MonthBegin()])

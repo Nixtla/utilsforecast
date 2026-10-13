@@ -463,7 +463,7 @@ def _offset_times_array_n(
             _dt_unit(times), pd.Timedelta(freq).unit, key=_NANOS_PER_UNIT.__getitem__
         )
         step = freq.nanos // _NANOS_PER_UNIT[unit]
-        bound = np.iinfo(np.int64).max // step
+        bound = np.iinfo(np.int64).max // max(abs(step), 1)
         if n.max() > bound or n.min() < -bound:
             raise pd.errors.OutOfBoundsTimedelta(
                 f"{freq} multiplied by n overflows timedelta64[{unit}]."
