@@ -439,14 +439,7 @@ def _dt_unit(times: Union[Series, pd.Index]) -> str:
     dtype = times.dtype
     if isinstance(dtype, np.dtype):
         return np.datetime_data(dtype)[0]
-    # DatetimeTZDtype holds the unit, pyarrow timestamps keep it in the arrow type
-    return getattr(dtype, "unit", None) or dtype.pyarrow_dtype.unit
-
-
-def _is_arrow_date(dtype: "pd.ArrowDtype") -> bool:
-    import pyarrow as pa
-
-    return pa.types.is_date(dtype.pyarrow_dtype)
+    return dtype.unit
 
 
 def _arrow_times_to_numpy(
@@ -471,7 +464,7 @@ def _numpy_times_to_arrow(
 ) -> Union[pd.Series, pd.Index]:
     import pyarrow as pa
 
-    if _is_arrow_date(dtype):
+    if pa.types.is_date(dtype.pyarrow_dtype):
         values = times.to_numpy()
         values = values[~np.isnat(values)]
         if (values != values.astype("datetime64[D]")).any():
@@ -526,9 +519,6 @@ def _offset_times_array_n(
     inv_order = np.empty_like(order)
     inv_order[order] = np.arange(order.size)
     out = runs[0].append(runs[1:]).take(inv_order)
-    if isinstance(times.dtype, pd.ArrowDtype):
-        # DatetimeIndex converts arrow times to numpy
-        out = out.astype(times.dtype)
     if isinstance(times, pd.Series):
         out = pd.Series(out, index=times.index, name=times.name)
     else:
