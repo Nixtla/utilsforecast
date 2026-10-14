@@ -543,6 +543,25 @@ def test_offset_times_pyarrow_with_nulls(tz, unit, dtype):
 
 
 @_skip_pandas_lt_2
+@pytest.mark.parametrize("unit", ["s", "ms", "us", "ns"])
+@pytest.mark.parametrize("container", [pd.Series, pd.Index])
+def test_offset_times_pyarrow_tz_aware_around_dst(unit, container):
+    tz = "Europe/Madrid"
+    times = pd.DatetimeIndex(
+        ["2021-03-28 00:30", "2021-03-28 03:30", None, "2021-10-31 01:30"]
+    )
+    times = container(times.tz_localize("UTC").tz_convert(tz).as_unit(unit))
+    arrow_times = times.astype(pd.ArrowDtype(pa.timestamp(unit, tz=tz)))
+    for freq in ["h", "D", "MS"]:
+        res = offset_times(arrow_times, freq, 1)
+        expected = offset_times(times, freq, 1).astype(arrow_times.dtype)
+        if container is pd.Series:
+            pd.testing.assert_series_equal(res, expected)
+        else:
+            pd.testing.assert_index_equal(res, expected)
+
+
+@_skip_pandas_lt_2
 def test_offset_times_pyarrow_date64_not_at_midnight():
     dates = pd.Series(
         pa.array([86_400_000 + 500], pa.date64()), dtype="date64[pyarrow]"

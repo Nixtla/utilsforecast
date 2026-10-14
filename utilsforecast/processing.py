@@ -456,7 +456,11 @@ def _arrow_times_to_numpy(
     unit = arrow_dtype.unit
     if arrow_dtype.tz is None:
         return times.astype(f"datetime64[{unit}]")
-    return times.astype(pd.DatetimeTZDtype(unit=unit, tz=arrow_dtype.tz))
+    # pandas converts tz-aware arrow timestamps elementwise, so we convert the UTC values
+    utc = times.astype(pd.ArrowDtype(pa.timestamp(unit))).astype(f"datetime64[{unit}]")
+    if isinstance(utc, pd.Series):
+        return utc.dt.tz_localize("UTC").dt.tz_convert(arrow_dtype.tz)
+    return utc.tz_localize("UTC").tz_convert(arrow_dtype.tz)
 
 
 def _numpy_times_to_arrow(
