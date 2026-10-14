@@ -582,6 +582,13 @@ def test_time_ranges_pyarrow_zero_periods(tz, unit, dtype):
 
 
 @_skip_pandas_lt_2
+def test_time_ranges_pyarrow_int_freq():
+    starts = pd.Series(_PA_TIMES).astype("date32[pyarrow]")
+    with pytest.raises(ValueError, match=r"data type: 'date32\[day\]\[pyarrow\]'"):
+        time_ranges(starts, 1, 2)
+
+
+@_skip_pandas_lt_2
 def test_offset_times_pyarrow_dates_whole_days():
     dates = pd.Series(_PA_TIMES).astype("date32[pyarrow]")
     res = offset_times(dates, "h", 48)
@@ -1113,23 +1120,12 @@ def test_anti_join(engine):
         result = anti_join(pd.DataFrame(df1), pd.DataFrame(df2), on="x")
         expected = pd.DataFrame({"x": [2]})
         pd.testing.assert_frame_equal(result, expected)
-        assert (
-            anti_join(pd.DataFrame({"x": [1]}), pd.DataFrame({"x": [1]}), on="x").shape[
-                0
-            ]
-            == 0
-        )
+        assert (anti_join(pd.DataFrame({"x": [1]}), pd.DataFrame({"x": [1]}), on="x").shape[0]== 0)
     else:
         result = anti_join(pl.DataFrame(df1), pl.DataFrame(df2), on="x")
         expected = pl.DataFrame({"x": [2]})
         pl.testing.assert_frame_equal(result, expected)
-        assert (
-            anti_join(pl.DataFrame({"x": [1]}), pl.DataFrame({"x": [1]}), on="x").shape[
-                0
-            ]
-            == 0
-        )
-
+        assert (anti_join(pl.DataFrame({"x": [1]}), pl.DataFrame({"x": [1]}), on="x").shape[0]== 0)
 
 def test_cv_times_with_horizon_and_test_sizes():
     horizon = 3
@@ -1149,7 +1145,6 @@ def test_cv_times_with_horizon_and_test_sizes():
         )
         assert len(df_dates) == n_series * horizon * (test_size - horizon + 1)
 
-
 @pytest.fixture
 def static_features():
     return ["static_0", "static_1"]
@@ -1167,15 +1162,11 @@ def test_static_features(static_features, n_static_features):
     scrambled_series_pd = series_pd.sample(frac=1.0)
     dfp = DataFrameProcessor("unique_id", "ds", "y")
     uids, times, data, indptr, _ = dfp.process(scrambled_series_pd)
-    np.testing.assert_array_equal(
-        times, series_pd.groupby("unique_id", observed=True)["ds"].max().values
-    )
+    np.testing.assert_array_equal(times, series_pd.groupby("unique_id", observed=True)["ds"].max().values)
     np.testing.assert_array_equal(uids, np.sort(series_pd["unique_id"].unique()))
     for i in range(n_static_features):
         series_pd[f"static_{i}"] = series_pd[f"static_{i}"].cat.codes
-    np.testing.assert_array_equal(
-        data, series_pd[["y"] + static_features[:n_static_features]].to_numpy()
-    )
+    np.testing.assert_array_equal(data, series_pd[["y"] + static_features[:n_static_features]].to_numpy())
     np.testing.assert_array_equal(
         np.diff(indptr), series_pd.groupby("unique_id", observed=True).size().values
     )
@@ -1183,16 +1174,13 @@ def test_static_features(static_features, n_static_features):
 
 # test process_df with target_col=None
 def test_none_target():
-    series_pd = generate_series(
-        10, n_static_features=2, equal_ends=False, engine="pandas"
-    )
+    series_pd = generate_series(10, n_static_features=2, equal_ends=False, engine="pandas")
     series_pd = series_pd.rename(columns={"y": "exog_0"})
     _, _, data, indptr, _ = process_df(series_pd, "unique_id", "ds", None)
     np.testing.assert_allclose(
         data,
         to_numpy(series_pd.drop(columns=["unique_id", "ds"])),
     )
-
 
 @pytest.mark.parametrize("n_static_features", [0, 2])
 def test_n_static_features(static_features, n_static_features):
@@ -1203,26 +1191,20 @@ def test_n_static_features(static_features, n_static_features):
     dfp = DataFrameProcessor("unique_id", "ds", "y")
     uids, times, data, indptr, _ = dfp.process(scrambled_series_pl)
     grouped = group_by(series_pl, "unique_id")
-    np.testing.assert_array_equal(
-        times, grouped.agg(pl.col("ds").max()).sort("unique_id")["ds"].to_numpy()
-    )
+    np.testing.assert_array_equal(times, grouped.agg(pl.col("ds").max()).sort("unique_id")["ds"].to_numpy())
     np.testing.assert_array_equal(uids, series_pl["unique_id"].unique().sort())
 
     expected_data = (
-        scrambled_series_pl.sort(["unique_id", "ds"])
-        .select(
-            [
+            scrambled_series_pl
+            .sort(["unique_id", "ds"])
+            .select([
                 pl.col(c).map_batches(lambda s: s.to_physical())
                 for c in ["y"] + static_features[:n_static_features]
-            ]
+            ])
+            .to_numpy()
         )
-        .to_numpy()
-    )
     np.testing.assert_array_equal(data, expected_data)
-    np.testing.assert_array_equal(
-        np.diff(indptr), grouped.len().sort("unique_id")["len"].to_numpy()
-    )
-
+    np.testing.assert_array_equal(np.diff(indptr), grouped.len().sort("unique_id")["len"].to_numpy())
 
 def test_short_stories():
     short_series = generate_series(100, max_length=50)
@@ -1465,41 +1447,25 @@ def _test_backtest_splits(df, n_windows, h, step_size, input_size):
     )
 
 
-@pytest.mark.parametrize(
-    "step_size,input_size", [(None, None), (1, None), (2, None), (1, 4), (2, 4)]
-)
+@pytest.mark.parametrize("step_size,input_size", [(None, None), (1, None), (2, None), (1, 4), (2, 4)])
 def test_backtest_splits_pd(step_size, input_size):
     n_series = 20
     min_length = 100
     max_length = 1000
-    series = generate_series(
-        n_series, freq="D", min_length=min_length, max_length=max_length
-    )
-    _test_backtest_splits(
-        series, n_windows=3, h=14, step_size=step_size, input_size=input_size
-    )
+    series = generate_series(n_series, freq="D", min_length=min_length, max_length=max_length)
+    _test_backtest_splits(series, n_windows=3, h=14, step_size=step_size, input_size=input_size)
 
 
 def test_backtest_splits_polars_alignment():
     h = 10
     n_series = 20
-    series_pl = generate_series(
-        n_series, freq="D", min_length=100, max_length=1000, engine="polars"
-    )
-    splits = backtest_splits(
-        series_pl, n_windows=3, h=h, id_col="unique_id", time_col="ds", freq="1d"
-    )
+    series_pl = generate_series(n_series, freq="D", min_length=100, max_length=1000, engine="polars")
+    splits = backtest_splits(series_pl, n_windows=3, h=h, id_col="unique_id", time_col="ds", freq="1d")
 
     for cutoffs, train, valid in splits:
-        train_ends = train.group_by("unique_id", maintain_order=True).agg(
-            pl.col("ds").max()
-        )
-        valid_starts = valid.group_by("unique_id", maintain_order=True).agg(
-            pl.col("ds").min()
-        )
-        valid_ends = valid.group_by("unique_id", maintain_order=True).agg(
-            pl.col("ds").max()
-        )
+        train_ends = train.group_by("unique_id", maintain_order=True).agg(pl.col("ds").max())
+        valid_starts = valid.group_by("unique_id", maintain_order=True).agg(pl.col("ds").min())
+        valid_ends = valid.group_by("unique_id", maintain_order=True).agg(pl.col("ds").max())
 
         expected_valid_starts = offset_times(train_ends["ds"], "1d", 1)
         expected_valid_ends = offset_times(train_ends["ds"], "1d", h)
@@ -1508,14 +1474,10 @@ def test_backtest_splits_polars_alignment():
         pl.testing.assert_series_equal(valid_ends["ds"], expected_valid_ends)
 
 
-@pytest.mark.parametrize(
-    "engine", ["pandas"] + (["polars"] if POLARS_INSTALLED else [])
-)
+@pytest.mark.parametrize("engine", ["pandas"] + (["polars"] if POLARS_INSTALLED else []))
 def test_backtest_splits_sorted_uses_fast_path(monkeypatch, engine):
     """Sorted inputs should use the lower-memory boundary-based splitter."""
-    series = generate_series(
-        20, freq="D", min_length=100, max_length=300, engine=engine
-    )
+    series = generate_series(20, freq="D", min_length=100, max_length=300, engine=engine)
     n_windows = 3
     freq = pd.offsets.Day() if engine == "pandas" else "1d"
     fast_calls = 0
@@ -1551,14 +1513,10 @@ def test_backtest_splits_sorted_uses_fast_path(monkeypatch, engine):
     assert fast_calls == n_windows
 
 
-@pytest.mark.parametrize(
-    "engine", ["pandas"] + (["polars"] if POLARS_INSTALLED else [])
-)
+@pytest.mark.parametrize("engine", ["pandas"] + (["polars"] if POLARS_INSTALLED else []))
 def test_backtest_splits_unsorted_falls_back_to_mask_path(monkeypatch, engine):
     """Unsorted inputs should preserve the original mask-based behavior."""
-    series = generate_series(
-        20, freq="D", min_length=100, max_length=300, engine=engine
-    )
+    series = generate_series(20, freq="D", min_length=100, max_length=300, engine=engine)
     if engine == "pandas":
         permuted = series.sample(frac=1.0, random_state=0)
         freq = pd.offsets.Day()
@@ -1599,9 +1557,7 @@ def test_backtest_splits_unsorted_falls_back_to_mask_path(monkeypatch, engine):
     assert mask_calls == n_windows
 
 
-@pytest.mark.parametrize(
-    "engine", ["pandas"] + (["polars"] if POLARS_INSTALLED else [])
-)
+@pytest.mark.parametrize("engine", ["pandas"] + (["polars"] if POLARS_INSTALLED else []))
 def test_backtest_splits_sorted_matches_original(engine):
     series = generate_series(
         20, freq="D", min_length=100, max_length=300, engine=engine
@@ -1661,9 +1617,7 @@ def test_add_insample_levels_agreement():
 
     for model in models:
         for lvl in levels:
-            assert (
-                with_levels[f"{model}-lo-{lvl}"].lt(with_levels[f"{model}-hi-{lvl}"])
-            ).all()
+            assert (with_levels[f"{model}-lo-{lvl}"].lt(with_levels[f"{model}-hi-{lvl}"])).all()
 
     series_pl = generate_series(100, n_models=2, engine="polars")
     with_levels_pl = add_insample_levels(series_pl, models, levels)

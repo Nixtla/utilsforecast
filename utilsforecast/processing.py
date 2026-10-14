@@ -608,7 +608,12 @@ def time_ranges(
             out = np.repeat(starts_np, periods) + np.tile(steps, starts_np.size)
             out = pd.Series(out, dtype=starts.dtype)
         elif _is_dt_dtype(starts):
-            is_arrow = hasattr(starts.dtype, "pyarrow_dtype")
+            if isinstance(freq, str):
+                freq = pd.tseries.frequencies.to_offset(freq)
+            # other freqs are left for offset_times to reject with the original dtype
+            is_arrow = isinstance(freq, BaseOffset) and hasattr(
+                starts.dtype, "pyarrow_dtype"
+            )
             starts_np = _arrow_times_to_numpy(starts) if is_arrow else starts
             per_period = [offset_times(starts_np, freq, i) for i in range(periods)]
             if per_period:
