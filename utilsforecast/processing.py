@@ -442,12 +442,19 @@ def _dt_unit(times: Union[Series, pd.Index]) -> str:
     return dtype.unit
 
 
+def _has_time_part(times: Union[pd.Series, pd.Index]) -> bool:
+    values = times.to_numpy()
+    values = values[~np.isnat(values)]
+    return bool((values != values.astype("datetime64[D]")).any())
+
+
 def _arrow_times_to_numpy(
     times: Union[pd.Series, pd.Index],
 ) -> Union[pd.Series, pd.Index]:
     import pyarrow as pa
 
     arrow_dtype = times.dtype.pyarrow_dtype
+    is_date64 = pa.types.is_date64(arrow_dtype)
     if pa.types.is_date(arrow_dtype):
         # pandas converts arrow dates to numpy elementwise, but not arrow timestamps
         unit = "s" if pa.types.is_date32(arrow_dtype) else "ms"
@@ -455,7 +462,14 @@ def _arrow_times_to_numpy(
         times = times.astype(pd.ArrowDtype(arrow_dtype))
     unit = arrow_dtype.unit
     if arrow_dtype.tz is None:
-        return times.astype(f"datetime64[{unit}]")
+        times = times.astype(f"datetime64[{unit}]")
+        # date64 stores milliseconds, so it can hold times that aren't at midnight
+        if is_date64 and _has_time_part(times):
+            raise ValueError(
+                "Expected the 'date64' values to be at midnight, "
+                "but some of them have a time part."
+            )
+        return times
     # pandas converts tz-aware arrow timestamps elementwise, so we convert the UTC values
     utc = times.astype(pd.ArrowDtype(pa.timestamp(unit))).astype(f"datetime64[{unit}]")
     if isinstance(utc, pd.Series):
@@ -469,9 +483,7 @@ def _numpy_times_to_arrow(
     import pyarrow as pa
 
     if pa.types.is_date(dtype.pyarrow_dtype):
-        values = times.to_numpy()
-        values = values[~np.isnat(values)]
-        if (values != values.astype("datetime64[D]")).any():
+        if _has_time_part(times):
             raise ValueError(
                 f"Cannot represent the offset times as '{dtype}' "
                 "because some of them aren't at midnight."
@@ -596,13 +608,17 @@ def time_ranges(
             out = np.repeat(starts_np, periods) + np.tile(steps, starts_np.size)
             out = pd.Series(out, dtype=starts.dtype)
         elif _is_dt_dtype(starts):
-            per_period = [offset_times(starts, freq, i) for i in range(periods)]
+            is_arrow = hasattr(starts.dtype, "pyarrow_dtype")
+            starts_np = _arrow_times_to_numpy(starts) if is_arrow else starts
+            per_period = [offset_times(starts_np, freq, i) for i in range(periods)]
             if per_period:
                 series_major = np.arange(starts.size * periods).reshape(periods, -1)
                 out = per_period[0].append(per_period[1:])
                 out = out.take(series_major.ravel(order="F"))
             else:
-                out = starts[:0]
+                out = starts_np[:0]
+            if is_arrow:
+                out = _numpy_times_to_arrow(out, starts.dtype)
             out = pd.Series(out.rename(None))
         else:
             raise ValueError(
