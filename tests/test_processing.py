@@ -543,6 +543,15 @@ def test_offset_times_pyarrow_with_nulls(tz, unit, dtype):
 
 
 @_skip_pandas_lt_2
+def test_offset_times_pyarrow_date64_not_at_midnight():
+    dates = pd.Series(
+        pa.array([86_400_000 + 500], pa.date64()), dtype="date64[pyarrow]"
+    )
+    with pytest.raises(ValueError, match="aren't at midnight"):
+        offset_times(dates, "D", 1)
+
+
+@_skip_pandas_lt_2
 def test_offset_times_pyarrow_dates_whole_days():
     dates = pd.Series(_PA_TIMES).astype("date32[pyarrow]")
     res = offset_times(dates, "h", 48)

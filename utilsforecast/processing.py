@@ -449,22 +449,24 @@ def _is_arrow_date(dtype: "pd.ArrowDtype") -> bool:
     return pa.types.is_date(dtype.pyarrow_dtype)
 
 
-def _arrow_dates_to_numpy(
+def _arrow_times_to_numpy(
     times: Union[pd.Series, pd.Index],
 ) -> Union[pd.Series, pd.Index]:
-    dtype = times.dtype
-    arrow_dtype = getattr(dtype, "pyarrow_dtype", None)
-    if arrow_dtype is None:
-        return times
-    if _is_arrow_date(dtype):
-        return times.astype("datetime64[s]")
+    import pyarrow as pa
+
+    arrow_dtype = times.dtype.pyarrow_dtype
+    if pa.types.is_date(arrow_dtype):
+        # pandas converts arrow dates to numpy elementwise, but not arrow timestamps
+        unit = "s" if pa.types.is_date32(arrow_dtype) else "ms"
+        arrow_dtype = pa.timestamp(unit)
+        times = times.astype(pd.ArrowDtype(arrow_dtype))
     unit = arrow_dtype.unit
     if arrow_dtype.tz is None:
         return times.astype(f"datetime64[{unit}]")
     return times.astype(pd.DatetimeTZDtype(unit=unit, tz=arrow_dtype.tz))
 
 
-def _numpy_dates_to_arrow(
+def _numpy_times_to_arrow(
     times: Union[pd.Series, pd.Index], dtype: "pd.ArrowDtype"
 ) -> Union[pd.Series, pd.Index]:
     import pyarrow as pa
@@ -550,16 +552,17 @@ def offset_times(
                 f"using a frequency of type: '{type(freq)}'."
             )
         orig_dtype = times.dtype
-        if dts:
-            times = _arrow_dates_to_numpy(times)
+        is_arrow = dts and hasattr(orig_dtype, "pyarrow_dtype")
+        if is_arrow:
+            times = _arrow_times_to_numpy(times)
         if dts and np.ndim(n) > 0:
             out = _offset_times_array_n(times, freq, n)
         else:
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
                 out = times + n * freq
-        if times.dtype != orig_dtype:
-            out = _numpy_dates_to_arrow(out, orig_dtype)
+        if is_arrow:
+            out = _numpy_times_to_arrow(out, orig_dtype)
     elif isinstance(times, pl_Series) and isinstance(freq, int):
         out = times + n * freq
     elif isinstance(times, pl_Series) and isinstance(freq, str):
