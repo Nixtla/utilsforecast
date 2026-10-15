@@ -13,7 +13,7 @@ backed, which require pandas>=2) and polars dates. They can be passed to
   saving time after 2037.
 - Dates without a time (e.g. polars `Date`) have their hour, minute and
   second set to 0.
-- Null dates raise an error.
+- Null dates raise an error, also in `time_features` with any kind of feature.
 
 ```python
 from utilsforecast import date_features as dtf

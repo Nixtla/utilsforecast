@@ -315,10 +315,12 @@ def time_features(
             DataFrame with future values.
 
     Raises:
-        ValueError: If feature names are repeated or match existing columns, or
-            if calendar features are computed from null dates or times that
-            aren't datetimes.
+        ValueError: If there are null times, if feature names are repeated or
+            match existing columns, or if calendar features are computed from
+            times that aren't datetimes.
     """
+    if ufp.is_none(df[time_col]).any():
+        raise ValueError("Can't compute time features, found null dates.")
     transformed = _add_time_features(df=df, features=features, time_col=time_col)
     if h == 0:
         return transformed, type(df)({})

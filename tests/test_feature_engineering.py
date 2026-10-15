@@ -208,17 +208,18 @@ def test_time_features_null_dates_raise(setup_series):
         pl.when(pl.int_range(pl.len()) % 2 == 0).then(pl.col("ds")).alias("ds")
     )
     for df in (series, series_pl):
-        with pytest.raises(ValueError, match="found null dates"):
-            time_features(df, freq="D", features=[dtf.month])
+        for feature in [dtf.month, "month", lambda times: times]:
+            with pytest.raises(ValueError, match="found null dates"):
+                time_features(df, freq="D", features=[feature])
 
 
-def test_time_features_object_times_with_none_and_nan():
+def test_time_features_object_times_with_none_and_nan_raise():
     times = [pd.Timestamp("2020-01-01"), None, pd.Timestamp("2020-03-01"), np.nan]
     df = pd.DataFrame(
         {"unique_id": 0, "ds": pd.Series(times, dtype=object), "y": range(4)}
     )
-    transformed, _ = time_features(df, freq="D", features=["month"])
-    np.testing.assert_array_equal(transformed["month"], [1, np.nan, 3, np.nan])
+    with pytest.raises(ValueError, match="found null dates"):
+        time_features(df, freq="D", features=["month"])
 
 
 @pytest.mark.skipif(
