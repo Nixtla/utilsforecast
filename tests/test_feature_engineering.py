@@ -128,6 +128,17 @@ def test_time_features_named_like_existing_columns_raise(setup_series, rename):
                 )
 
 
+def test_time_features_callable_series_ignores_index(setup_series):
+    series, _ = setup_series
+    series = series.set_index(series.index + 10)
+
+    def month(times):
+        return pd.Series(times.month)
+
+    transformed, _ = time_features(series, freq="D", features=[month])
+    np.testing.assert_array_equal(transformed["month"], series["ds"].dt.month)
+
+
 def test_time_features_named_like_time_column_raise(setup_series):
     series, series_pl = setup_series
     for df, freq in [(series, "D"), (series_pl, "1d")]:

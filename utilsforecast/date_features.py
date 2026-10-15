@@ -32,10 +32,18 @@ import pandas as pd
 from packaging.version import Version
 
 from .compat import pl, pl_Series
-from .processing import _NANOS_PER_UNIT, _arrow_times_to_numpy
+from .processing import _arrow_times_to_numpy
 from .validation import _is_dt_dtype
 
 _PANDAS_GE_2 = Version(pd.__version__) >= Version("2")
+_PER_SECOND = {
+    "ms": 10**3,
+    "us": 10**6,
+    "ns": 10**9,
+    "ps": 10**12,
+    "fs": 10**15,
+    "as": 10**18,
+}
 
 
 class _Dates:
@@ -165,11 +173,13 @@ def _to_datetime64(dates) -> np.ndarray:
         datetimes = _native_to_datetime64(dates)
     if np.isnat(datetimes).any():
         raise ValueError("Can't compute calendar features, found null dates.")
-    unit, _ = np.datetime_data(datetimes.dtype)
-    if unit not in ("ms", "us", "ns"):
+    unit, count = np.datetime_data(datetimes.dtype)
+    if count != 1:
+        datetimes = datetimes.astype(f"datetime64[{unit}]")
+    if unit not in _PER_SECOND:
         return datetimes
     # numpy's astype overflows when flooring dates close to the minimum int64
-    per_second = _NANOS_PER_UNIT["s"] // _NANOS_PER_UNIT[unit]
+    per_second = _PER_SECOND[unit]
     return (datetimes.view(np.int64) // per_second).astype("datetime64[s]")
 
 

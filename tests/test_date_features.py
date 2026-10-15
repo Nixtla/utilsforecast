@@ -151,6 +151,16 @@ def test_numpy_dates_outside_nanosecond_range():
     np.testing.assert_array_equal(dtf.day_of_year.compute(dates), [60, 365])
 
 
+@pytest.mark.parametrize("unit", ["10ms", "ps", "as"])
+def test_numpy_dates_with_any_unit(unit):
+    # attoseconds can only hold dates within a few seconds of 1970
+    dates = np.array(
+        ["1969-12-31T23:59:55", "1970-01-01T00:00:05"], dtype=f"datetime64[{unit}]"
+    )
+    np.testing.assert_array_equal(dtf.day.compute(dates), [31, 1])
+    np.testing.assert_array_equal(dtf.second.compute(dates), [55, 5])
+
+
 def test_pickling_keeps_identity():
     assert pickle.loads(pickle.dumps(dtf.month)) is dtf.month
     assert copy.deepcopy(dtf.day_of_week) is dtf.day_of_week

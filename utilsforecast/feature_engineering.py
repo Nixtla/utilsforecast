@@ -239,7 +239,7 @@ def _add_time_features(
         # infers datetimes from object columns
         times = pd.Index(uniques.array)
         calendar_vals = dict(zip(calendar, _compute_features(times, calendar)))
-        columns = {}
+        columns = []
         names: List[str] = []
         for feature in features:
             if isinstance(feature, CalendarFeature):
@@ -247,15 +247,13 @@ def _add_time_features(
             else:
                 name, vals = _compute_time_feature(times, feature)
             if isinstance(name, list):
-                assert isinstance(vals, np.ndarray)
                 names.extend(name)
-                columns.update(zip(name, vals.T))
             else:
                 names.append(name)
-                columns[name] = vals
+            columns.append((name, vals))
         _validate_names(names, set(df.columns), time_col)
-        for name, vals in columns.items():
-            df[name] = vals[restore_idxs]
+        for name, vals in columns:
+            df[name] = np.asarray(vals)[restore_idxs]
     elif isinstance(df, pl_DataFrame):
         unique_times = df[time_col].unique()
         calendar_vals = dict(zip(calendar, _compute_features(unique_times, calendar)))
