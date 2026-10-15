@@ -163,7 +163,9 @@ def test_vertical_concat_pl():
     "s2, expected_cats",
     [
         (
-            pd.Series(pd.Categorical(["a", "b", "c", "d"], categories=["d", "c", "b", "a"])),
+            pd.Series(
+                pd.Categorical(["a", "b", "c", "d"], categories=["d", "c", "b", "a"])
+            ),
             ["d", "c", "a", "b"],
         ),
         (
@@ -182,23 +184,38 @@ def test_match_if_categorical_pd(s2, expected_cats, as_index):
     assert cats1.tolist() == expected_cats
     assert m2.cat.categories.tolist() == expected_cats
     pd.testing.assert_series_equal(m2.astype(object), s2.astype(object))
-    # codes agree, so sorting by them gives the same id order
-    codes = dict(zip(m2.dropna(), m2.cat.codes[m2.notna()]))
-    assert all(codes[v] == expected_cats.index(v) for v in codes)
+
+
+def test_match_if_categorical_pd_keeps_index_and_name():
+    s1 = pd.Series(pd.Categorical(["d", "c"], categories=["d", "c"]))
+    s2 = pd.Series(["c", "d"], index=[7, 3], name="uid")
+    _, m2 = match_if_categorical(s1, s2)
+    assert m2.index.tolist() == [7, 3]
+    assert m2.name == "uid"
 
 
 def test_match_if_categorical_pd_keeps_ordered():
     s1 = pd.Series(pd.Categorical(["d", "c"], categories=["d", "c"], ordered=True))
-    m1, m2 = match_if_categorical(s1, pd.Series(["c", "d"]))
+    m1, m2 = match_if_categorical(s1, pd.Series(["c", "x"]))
     assert m1.cat.ordered and m2.cat.ordered
-    assert m2.cat.categories.tolist() == ["d", "c"]
+    assert m2.cat.categories.tolist() == ["d", "c", "x"]
 
 
-@pytest.mark.parametrize("s2", [pd.Series([1.5, 2.0]), pd.Series(["1", "2"])])
-def test_match_if_categorical_pd_mismatched_values(s2):
+@pytest.mark.parametrize(
+    "s2, bad",
+    [(pd.Series([1.5, 2.0]), r"\[1\.5\]"), (pd.Series(["1", "2"]), r"\['1', '2'\]")],
+)
+def test_match_if_categorical_pd_mismatched_values(s2, bad):
     s1 = pd.Series(pd.Categorical([1, 2]))
-    with pytest.raises(ValueError, match="don't match"):
+    with pytest.raises(ValueError, match=bad):
         match_if_categorical(s1, s2)
+
+
+def test_vertical_concat_pd_mismatched_values():
+    df1 = pd.DataFrame({"uid": pd.Categorical([1, 2])})
+    df2 = pd.DataFrame({"uid": ["1", "2"]})
+    with pytest.raises(ValueError, match=r"object.*int64, e\.g\. \['1', '2'\]"):
+        vertical_concat([df1, df2])
 
 
 def test_concat(engine):

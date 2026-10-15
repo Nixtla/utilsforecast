@@ -278,7 +278,11 @@ def match_if_categorical(
             pd.Categorical(s2, dtype=new_dtype), index=s2.index, name=s2.name
         )
         if new_s2.isna().sum() != s2.isna().sum():
-            raise ValueError("s2 has values that don't match s1's categories.")
+            bad = s2[new_s2.isna() & s2.notna()].unique()[:5]
+            raise ValueError(
+                f"Values with dtype {s2.dtype} don't match the categories with dtype "
+                f"{cat1.dtype}, e.g. {bad.tolist()}."
+            )
         s2 = new_s2
     elif isinstance(s1, pl_Series) and s1.dtype == pl.Categorical:
         with pl.StringCache():
