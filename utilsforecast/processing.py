@@ -264,13 +264,22 @@ def match_if_categorical(
         if isinstance(s2.dtype, pd.CategoricalDtype):
             cat2 = s2.cat.categories
         else:
-            cat2 = s2.unique().astype(cat1.dtype)
+            cat2 = s2.dropna().unique().astype(cat1.dtype)
         missing = set(cat2) - set(cat1)
+        new_dtype = s1.dtype
         if missing:
             # we assume the original is s1, so we extend its categories
-            new_dtype = pd.CategoricalDtype(categories=cat1.tolist() + sorted(missing))
+            new_dtype = pd.CategoricalDtype(
+                categories=cat1.tolist() + sorted(missing), ordered=s1.dtype.ordered
+            )
             s1 = s1.astype(new_dtype)
-            s2 = s2.astype(new_dtype)
+        # rebuild from the values, astype keeps s2's order if only the order differs
+        new_s2 = pd.Series(
+            pd.Categorical(s2, dtype=new_dtype), index=s2.index, name=s2.name
+        )
+        if new_s2.isna().sum() != s2.isna().sum():
+            raise ValueError("s2 has values that don't match s1's categories.")
+        s2 = new_s2
     elif isinstance(s1, pl_Series) and s1.dtype == pl.Categorical:
         with pl.StringCache():
             cat1 = s1.cat.get_categories()

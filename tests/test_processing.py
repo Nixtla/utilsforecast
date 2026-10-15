@@ -33,6 +33,7 @@ from utilsforecast.processing import (
     is_nan_or_none,
     is_none,
     make_future_dataframe,
+    match_if_categorical,
     offset_times,
     process_df,
     repeat,
@@ -155,6 +156,49 @@ def test_vertical_concat_pl():
     assert out.equals(pl.Series("x", ["a", "b", "c", "f", "b", "a"]))
     assert out.to_physical().equals(pl.Series("x", [0, 1, 2, 3, 1, 0]))
     assert out.cat.get_categories().equals(pl.Series("x", ["a", "b", "c", "f"]))
+
+
+@pytest.mark.parametrize("as_index", [False, True])
+@pytest.mark.parametrize(
+    "s2, expected_cats",
+    [
+        (
+            pd.Series(pd.Categorical(["a", "b", "c", "d"], categories=["d", "c", "b", "a"])),
+            ["d", "c", "a", "b"],
+        ),
+        (
+            pd.Series(pd.Categorical(["a", "c", "d"], categories=["a", "c", "d"])),
+            ["d", "c", "a"],
+        ),
+        (pd.Series(["a", "c", "d"]), ["d", "c", "a"]),
+        (pd.Series(["a", np.nan, "d"]), ["d", "c", "a"]),
+    ],
+)
+def test_match_if_categorical_pd(s2, expected_cats, as_index):
+    s1 = pd.Categorical(["d", "c", "a"], categories=["d", "c", "a"])
+    s1 = pd.CategoricalIndex(s1) if as_index else pd.Series(s1)
+    m1, m2 = match_if_categorical(s1, s2)
+    cats1 = m1.categories if as_index else m1.cat.categories
+    assert cats1.tolist() == expected_cats
+    assert m2.cat.categories.tolist() == expected_cats
+    pd.testing.assert_series_equal(m2.astype(object), s2.astype(object))
+    # codes agree, so sorting by them gives the same id order
+    codes = dict(zip(m2.dropna(), m2.cat.codes[m2.notna()]))
+    assert all(codes[v] == expected_cats.index(v) for v in codes)
+
+
+def test_match_if_categorical_pd_keeps_ordered():
+    s1 = pd.Series(pd.Categorical(["d", "c"], categories=["d", "c"], ordered=True))
+    m1, m2 = match_if_categorical(s1, pd.Series(["c", "d"]))
+    assert m1.cat.ordered and m2.cat.ordered
+    assert m2.cat.categories.tolist() == ["d", "c"]
+
+
+@pytest.mark.parametrize("s2", [pd.Series([1.5, 2.0]), pd.Series(["1", "2"])])
+def test_match_if_categorical_pd_mismatched_values(s2):
+    s1 = pd.Series(pd.Categorical([1, 2]))
+    with pytest.raises(ValueError, match="don't match"):
+        match_if_categorical(s1, s2)
 
 
 def test_concat(engine):
