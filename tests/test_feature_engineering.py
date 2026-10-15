@@ -139,6 +139,20 @@ def test_time_features_callable_series_ignores_index(setup_series):
     np.testing.assert_array_equal(transformed["month"], series["ds"].dt.month)
 
 
+def test_time_features_callable_keeps_extension_dtypes(setup_series):
+    series, _ = setup_series
+
+    def nullable_day(times):
+        return pd.Index(pd.array(times.day, dtype="Int64"))
+
+    def day_name(times):
+        return pd.Series(pd.Categorical(times.day_name()))
+
+    transformed, _ = time_features(series, freq="D", features=[nullable_day, day_name])
+    assert transformed["nullable_day"].dtype == "Int64"
+    assert isinstance(transformed["day_name"].dtype, pd.CategoricalDtype)
+
+
 def test_time_features_named_like_time_column_raise(setup_series):
     series, series_pl = setup_series
     for df, freq in [(series, "D"), (series_pl, "1d")]:

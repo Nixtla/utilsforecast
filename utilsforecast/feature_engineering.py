@@ -253,7 +253,10 @@ def _add_time_features(
             columns.append((name, vals))
         _validate_names(names, set(df.columns), time_col)
         for name, vals in columns:
-            df[name] = np.asarray(vals)[restore_idxs]
+            if isinstance(vals, pd.Series):
+                # assigning a series aligns it on the index
+                vals = vals.array
+            df[name] = vals[restore_idxs]
     elif isinstance(df, pl_DataFrame):
         unique_times = df[time_col].unique()
         calendar_vals = dict(zip(calendar, _compute_features(unique_times, calendar)))
