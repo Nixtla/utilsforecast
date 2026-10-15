@@ -241,6 +241,7 @@ def _add_time_features(
         calendar_vals = dict(zip(calendar, _compute_features(times, calendar)))
         columns = []
         names: List[str] = []
+        name: Union[str, List[str]]
         for feature in features:
             if isinstance(feature, CalendarFeature):
                 name, vals = feature.name, calendar_vals[feature]
