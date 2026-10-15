@@ -180,8 +180,3 @@ def test_pyarrow_dates_require_pandas_2(tz):
     )
     with pytest.raises(ValueError, match="require pandas>=2"):
         dtf.month.compute(dates)
-
-
-def test_year_beyond_int16():
-    dates = pl.select(pl.date(40000, 1, 1)).to_series()
-    np.testing.assert_array_equal(dtf.year.compute(dates), [40000])

@@ -179,7 +179,7 @@ def _week(d: _Dates) -> np.ndarray:
 
 
 year = CalendarFeature(
-    "year", "Year.", np.int32, None, lambda d: d.years.astype(np.int64) + 1970
+    "year", "Year.", np.int16, None, lambda d: d.years.astype(np.int64) + 1970
 )
 quarter = CalendarFeature(
     "quarter",

@@ -31,7 +31,7 @@ train, future = time_features(
 
 | Feature | Values | dtype |
 |---------|--------|-------|
-| `year` | Year. | `int32` |
+| `year` | Year. | `int16` |
 | `quarter` | Quarter of the year, from 1 to 4. | `int8` |
 | `month` | Month of the year, from 1 to 12. | `int8` |
 | `week` | ISO week of the year, from 1 to 53. | `int8` |
