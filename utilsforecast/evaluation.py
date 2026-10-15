@@ -61,7 +61,7 @@ def _get_model_cols(
         c
         for c in cols
         if c not in [id_col, time_col, target_col, cutoff_col]
-        and not re.search(r"-(?:lo|hi)-\d+", c)
+        and not re.search(r"-(?:lo|hi)-\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$", c)
     ]
 
 
