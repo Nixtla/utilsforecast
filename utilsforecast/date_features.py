@@ -32,7 +32,7 @@ import pandas as pd
 from packaging.version import Version
 
 from .compat import pl, pl_Series
-from .processing import _NANOS_PER_UNIT, _dt_unit, is_none
+from .processing import _NANOS_PER_UNIT, _arrow_times_to_numpy, is_none
 from .validation import _is_dt_dtype
 
 _PANDAS_GE_2 = Version(pd.__version__) >= Version("2")
@@ -151,13 +151,7 @@ def _to_datetime64(dates) -> np.ndarray:
         raise ValueError("Can't compute calendar features, found null dates.")
     if isinstance(dates, pd.Series):
         if hasattr(dates.dtype, "pyarrow_dtype"):
-            # removing the time zone from pyarrow dates returns UTC times
-            tz = getattr(dates.dtype.pyarrow_dtype, "tz", None)
-            if tz is None:
-                dates = dates.astype(dates.dtype.numpy_dtype)
-            else:
-                dtype = pd.DatetimeTZDtype(unit=_dt_unit(dates), tz=tz)
-                dates = dates.astype(dtype)
+            dates = _arrow_times_to_numpy(dates)
         if dates.dt.tz is not None:
             dates = dates.dt.tz_localize(None)
     elif dates.dtype == pl.Datetime:
@@ -185,7 +179,7 @@ def _week(d: _Dates) -> np.ndarray:
 
 
 year = CalendarFeature(
-    "year", "Year.", np.int16, None, lambda d: d.years.astype(np.int64) + 1970
+    "year", "Year.", np.int32, None, lambda d: d.years.astype(np.int64) + 1970
 )
 quarter = CalendarFeature(
     "quarter",

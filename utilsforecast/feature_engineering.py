@@ -247,6 +247,9 @@ def _add_time_features(
                 if feature in calendar_vals:
                     columns[feature.name] = calendar_vals[feature]
                 continue
+            if isinstance(feature, str) and feature in existing:
+                names.append(feature)
+                continue
             name, vals = _compute_time_feature(times, feature)
             if isinstance(name, list):
                 assert isinstance(vals, np.ndarray)
@@ -275,12 +278,11 @@ def _add_time_features(
             if not isinstance(vals, list):
                 assert isinstance(vals, pl_Expr)
                 vals = [vals.alias(name)]
-            for e in vals:
-                # some expressions (e.g. regex or renamed columns) only get their names when run
-                expr_names = feats.lazy().select(e).collect_schema().names()
-                names.extend(expr_names)
-                if not existing.issuperset(expr_names):
-                    exprs.append(e)
+            # some expressions (e.g. regex or renamed columns) only get their names when run
+            schema = feats.lazy().select(*vals).collect_schema()
+            names.extend(schema.names())
+            if not existing.issuperset(schema.names()):
+                exprs.extend(vals)
         _validate_names(names, time_col)
         new_names = [name for name in names if name not in existing]
         feats = feats.with_columns(*exprs).select(time_col, *new_names)
