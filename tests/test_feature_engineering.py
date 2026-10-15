@@ -241,6 +241,31 @@ def test_time_features_pyarrow_backed(setup_series):
             )
 
 
+@pytest.mark.skipif(
+    not dtf._PANDAS_GE_2, reason="pandas<2 doesn't support pyarrow dates"
+)
+@pytest.mark.parametrize(
+    "arrow_dtype", ["timestamp[ns][pyarrow]", "timestamp[us, tz=UTC][pyarrow]"]
+)
+def test_time_features_pyarrow_backed_strings_and_callables(setup_series, arrow_dtype):
+    series, _ = setup_series
+    if "tz=" in arrow_dtype:
+        series = series.assign(ds=series["ds"].dt.tz_localize("UTC"))
+    arrow_series = series.assign(ds=series["ds"].astype(arrow_dtype))
+
+    def month_end(times):
+        return times.is_month_end
+
+    features = ["month", "dayofweek", "week", month_end, dtf.day]
+    expected, expected_future = time_features(series, freq="D", features=features, h=2)
+    transformed, future = time_features(
+        arrow_series, freq="D", features=features, h=2
+    )
+    names = ["month", "dayofweek", "week", "month_end", "day"]
+    pd.testing.assert_frame_equal(transformed[names], expected[names])
+    pd.testing.assert_frame_equal(future[names], expected_future[names])
+
+
 def test_fourier_transform(setup_series):
     series, series_pl = setup_series
 

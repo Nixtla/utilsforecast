@@ -238,6 +238,8 @@ def _add_time_features(
         restore_idxs, uniques = pd.factorize(df[time_col], use_na_sentinel=False)
         # infers datetimes from object columns
         times = pd.Index(uniques.array)
+        if hasattr(times.dtype, "pyarrow_dtype"):
+            times = ufp._arrow_times_to_numpy(times)
         calendar_vals = dict(zip(calendar, _compute_features(times, calendar)))
         columns = []
         names: List[str] = []
