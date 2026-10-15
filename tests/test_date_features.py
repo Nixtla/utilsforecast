@@ -82,8 +82,8 @@ def test_compute_matches_pandas_attributes(dates, container):
     is_date = dates.dt.tz is None and (dates.dt.time == time()).all()
     if container.endswith("date") and not is_date:
         pytest.skip("dates have a time or time zone")
-    if container.startswith(("pandas_arrow", "numpy_seconds")) and not dtf._PANDAS_GE_2:
-        pytest.skip("pandas<2 only supports nanosecond numpy dates")
+    if container.startswith("pandas_arrow") and not dtf._PANDAS_GE_2:
+        pytest.skip("pandas<2 doesn't support pyarrow dates")
     if container == "pandas_index":
         inp = pd.DatetimeIndex(dates)
     elif container == "numpy":
@@ -143,6 +143,12 @@ def test_null_dates_raise(engine):
 def test_non_datetime_dates_raise(dates):
     with pytest.raises(ValueError, match="dates must be datetimes"):
         dtf.month.compute(dates)
+
+
+def test_numpy_dates_outside_nanosecond_range():
+    dates = np.array(["1000-03-01", "3000-12-31"], dtype="datetime64[s]")
+    np.testing.assert_array_equal(dtf.year.compute(dates), [1000, 3000])
+    np.testing.assert_array_equal(dtf.day_of_year.compute(dates), [60, 365])
 
 
 def test_pickling_keeps_identity():

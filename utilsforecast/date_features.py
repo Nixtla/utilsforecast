@@ -32,7 +32,7 @@ import pandas as pd
 from packaging.version import Version
 
 from .compat import pl, pl_Series
-from .processing import _NANOS_PER_UNIT, _arrow_times_to_numpy, is_none
+from .processing import _NANOS_PER_UNIT, _arrow_times_to_numpy
 from .validation import _is_dt_dtype
 
 _PANDAS_GE_2 = Version(pd.__version__) >= Version("2")
@@ -132,7 +132,7 @@ class CalendarFeature:
         return self
 
 
-def _to_datetime64(dates) -> np.ndarray:
+def _native_to_datetime64(dates) -> np.ndarray:
     if not isinstance(dates, (pd.Series, pl_Series)):
         dates = pd.Series(dates)
     if not _PANDAS_GE_2 and hasattr(dates.dtype, "pyarrow_dtype"):
@@ -147,8 +147,6 @@ def _to_datetime64(dates) -> np.ndarray:
         raise ValueError(
             f"Can't compute calendar features, dates must be datetimes, got {dates.dtype}."
         )
-    if is_none(dates).any():
-        raise ValueError("Can't compute calendar features, found null dates.")
     if isinstance(dates, pd.Series):
         if hasattr(dates.dtype, "pyarrow_dtype"):
             dates = _arrow_times_to_numpy(dates)
@@ -156,7 +154,17 @@ def _to_datetime64(dates) -> np.ndarray:
             dates = dates.dt.tz_localize(None)
     elif dates.dtype == pl.Datetime:
         dates = dates.dt.replace_time_zone(None)
-    datetimes = dates.to_numpy()
+    return dates.to_numpy()
+
+
+def _to_datetime64(dates) -> np.ndarray:
+    if isinstance(dates, np.ndarray) and dates.dtype.kind == "M":
+        # pandas<2 casts the dates to nanoseconds, which can't hold every date
+        datetimes = dates
+    else:
+        datetimes = _native_to_datetime64(dates)
+    if np.isnat(datetimes).any():
+        raise ValueError("Can't compute calendar features, found null dates.")
     unit, _ = np.datetime_data(datetimes.dtype)
     if unit not in ("ms", "us", "ns"):
         return datetimes
