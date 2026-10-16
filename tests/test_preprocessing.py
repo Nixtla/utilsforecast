@@ -525,26 +525,63 @@ class TestFillGapsIncompatibleFrequency:
                     fill_gaps(data, freq_str, start=start, end=end)
 
 
-class TestFillGapsPolarsBoundMismatch:
-    """Test fill_gaps raises errors when start/end don't match the polars time column."""
+def test_fill_gaps_polars_custom_bounds():
+    df_date = pl.DataFrame(
+        {
+            "unique_id": [1, 1],
+            "ds": [date(2020, 1, 2), date(2020, 1, 4)],
+            "y": [1.0, 2.0],
+        }
+    )
+    res_str = fill_gaps(df_date, freq="1d", start="2020-01-01", end="2020-01-05")
+    assert res_str["ds"].to_list() == [
+        date(2020, 1, 1),
+        date(2020, 1, 2),
+        date(2020, 1, 3),
+        date(2020, 1, 4),
+        date(2020, 1, 5),
+    ]
 
-    @pytest.mark.parametrize("arg", ["start", "end"])
-    @pytest.mark.parametrize("bound", ["2019-01-01", datetime(2019, 1, 1), 2019])
-    def test_polars_date_bound_mismatch(self, polars_date_df, arg, bound):
-        """Test that non-date bounds with date data raise ValueError for polars."""
-        with pytest.raises(ValueError, match=f"`{arg}` must be"):
-            fill_gaps(polars_date_df, freq="1y", **{arg: bound})
+    res_dt = fill_gaps(
+        df_date,
+        freq="1d",
+        start=datetime(2020, 1, 1),
+        end=datetime(2020, 1, 5),
+    )
+    assert res_dt["ds"].to_list() == [
+        date(2020, 1, 1),
+        date(2020, 1, 2),
+        date(2020, 1, 3),
+        date(2020, 1, 4),
+        date(2020, 1, 5),
+    ]
 
-    @pytest.mark.parametrize("arg", ["start", "end"])
-    @pytest.mark.parametrize("bound", ["2019-01-01", date(2019, 1, 1), 2019])
-    def test_polars_datetime_bound_mismatch(self, polars_ms_df, arg, bound):
-        """Test that non-datetime bounds with datetime data raise ValueError for polars."""
-        with pytest.raises(ValueError, match=f"`{arg}` must be"):
-            fill_gaps(polars_ms_df, freq="1y", **{arg: bound})
+    df_datetime = pl.DataFrame(
+        {
+            "unique_id": [1, 1],
+            "ds": [datetime(2020, 1, 2), datetime(2020, 1, 4)],
+            "y": [1.0, 2.0],
+        }
+    )
+    res_dt_str = fill_gaps(df_datetime, freq="1d", start="2020-01-01", end="2020-01-05")
+    assert res_dt_str["ds"].to_list() == [
+        datetime(2020, 1, 1),
+        datetime(2020, 1, 2),
+        datetime(2020, 1, 3),
+        datetime(2020, 1, 4),
+        datetime(2020, 1, 5),
+    ]
 
-    @pytest.mark.parametrize("arg", ["start", "end"])
-    @pytest.mark.parametrize("bound", ["2019", date(2019, 1, 1), datetime(2019, 1, 1)])
-    def test_polars_int_bound_mismatch(self, polars_int_df, arg, bound):
-        """Test that non-integer bounds with int data raise ValueError for polars."""
-        with pytest.raises(ValueError, match=f"`{arg}` must be"):
-            fill_gaps(polars_int_df, freq=1, **{arg: bound})
+    res_dt_date = fill_gaps(
+        df_datetime,
+        freq="1d",
+        start=date(2020, 1, 1),
+        end=date(2020, 1, 5),
+    )
+    assert res_dt_date["ds"].to_list() == [
+        datetime(2020, 1, 1),
+        datetime(2020, 1, 2),
+        datetime(2020, 1, 3),
+        datetime(2020, 1, 4),
+        datetime(2020, 1, 5),
+    ]

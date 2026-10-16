@@ -39,43 +39,27 @@ def _determine_bound(bound, freq, times_by_id, agg) -> np.ndarray:
     return out
 
 
-def _validate_bound_pl(
-    bound: Union[str, int, date, datetime],
-    name: str,
-    times: pl_Series,
-) -> None:
-    if isinstance(bound, str) and bound in ("per_serie", "global"):
-        return
-    if times.dtype == pl.Date:
-        expected = "date"
-        valid = isinstance(bound, date) and not isinstance(bound, datetime)
-    elif times.dtype == pl.Datetime:
-        expected = "datetime"
-        valid = isinstance(bound, datetime)
-    else:
-        expected = "integer"
-        valid = isinstance(bound, (int, np.integer))
-    if not valid:
-        raise ValueError(
-            f"Time column has type {times.dtype} but `{name}` is {bound!r}. "
-            f"When using polars dataframes `{name}` must be 'per_serie', 'global' "
-            f"or a {expected} matching the time column."
-        )
-
-
 def _determine_bound_pl(
     bound: Union[str, int, date, datetime],
     times_by_id: pl_DataFrame,
     agg: str,
 ) -> pl_Series:
+    target_dtype = times_by_id[agg].dtype
     if bound == "per_serie":
         out = times_by_id[agg]
     else:
         if bound == "global":
             val = getattr(times_by_id[agg], agg)()
+            val_s = pl_Series([val], dtype=target_dtype)
         else:
-            val = bound
-        out = repeat(pl_Series([val]), times_by_id.shape[0])
+            if isinstance(bound, str):
+                if target_dtype == pl.Date:
+                    val_s = pl_Series([bound]).str.to_date()
+                else:
+                    val_s = pl_Series([bound]).str.to_datetime().cast(target_dtype)
+            else:
+                val_s = pl_Series([bound]).cast(target_dtype)
+        out = repeat(val_s, times_by_id.shape[0])
     return out
 
 
@@ -109,8 +93,6 @@ def id_time_grid(
         pandas or polars DataFrame: Dataframe with expected ids and times.
     """
     if isinstance(df, pl_DataFrame):
-        _validate_bound_pl(start, "start", df[time_col])
-        _validate_bound_pl(end, "end", df[time_col])
         times_by_id = (
             group_by(df, id_col)
             .agg(
