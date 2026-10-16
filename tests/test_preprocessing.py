@@ -523,3 +523,65 @@ class TestFillGapsIncompatibleFrequency:
                 data = create_error_test_data(dates_int, N_PERIODS, include_start, include_end, "polars")
                 with pytest.raises(ValueError):
                     fill_gaps(data, freq_str, start=start, end=end)
+
+
+def test_fill_gaps_polars_custom_bounds():
+    df_date = pl.DataFrame(
+        {
+            "unique_id": [1, 1],
+            "ds": [date(2020, 1, 2), date(2020, 1, 4)],
+            "y": [1.0, 2.0],
+        }
+    )
+    res_str = fill_gaps(df_date, freq="1d", start="2020-01-01", end="2020-01-05")
+    assert res_str["ds"].to_list() == [
+        date(2020, 1, 1),
+        date(2020, 1, 2),
+        date(2020, 1, 3),
+        date(2020, 1, 4),
+        date(2020, 1, 5),
+    ]
+
+    res_dt = fill_gaps(
+        df_date,
+        freq="1d",
+        start=datetime(2020, 1, 1),
+        end=datetime(2020, 1, 5),
+    )
+    assert res_dt["ds"].to_list() == [
+        date(2020, 1, 1),
+        date(2020, 1, 2),
+        date(2020, 1, 3),
+        date(2020, 1, 4),
+        date(2020, 1, 5),
+    ]
+
+    df_datetime = pl.DataFrame(
+        {
+            "unique_id": [1, 1],
+            "ds": [datetime(2020, 1, 2), datetime(2020, 1, 4)],
+            "y": [1.0, 2.0],
+        }
+    )
+    res_dt_str = fill_gaps(df_datetime, freq="1d", start="2020-01-01", end="2020-01-05")
+    assert res_dt_str["ds"].to_list() == [
+        datetime(2020, 1, 1),
+        datetime(2020, 1, 2),
+        datetime(2020, 1, 3),
+        datetime(2020, 1, 4),
+        datetime(2020, 1, 5),
+    ]
+
+    res_dt_date = fill_gaps(
+        df_datetime,
+        freq="1d",
+        start=date(2020, 1, 1),
+        end=date(2020, 1, 5),
+    )
+    assert res_dt_date["ds"].to_list() == [
+        datetime(2020, 1, 1),
+        datetime(2020, 1, 2),
+        datetime(2020, 1, 3),
+        datetime(2020, 1, 4),
+        datetime(2020, 1, 5),
+    ]

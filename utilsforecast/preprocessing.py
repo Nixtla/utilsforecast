@@ -44,14 +44,22 @@ def _determine_bound_pl(
     times_by_id: pl_DataFrame,
     agg: str,
 ) -> pl_Series:
+    target_dtype = times_by_id[agg].dtype
     if bound == "per_serie":
         out = times_by_id[agg]
     else:
         if bound == "global":
             val = getattr(times_by_id[agg], agg)()
+            val_s = pl_Series([val], dtype=target_dtype)
         else:
-            val = bound
-        out = repeat(pl_Series([val]), times_by_id.shape[0])
+            if isinstance(bound, str):
+                if target_dtype == pl.Date:
+                    val_s = pl_Series([bound]).str.to_date()
+                else:
+                    val_s = pl_Series([bound]).str.to_datetime().cast(target_dtype)
+            else:
+                val_s = pl_Series([bound]).cast(target_dtype)
+        out = repeat(val_s, times_by_id.shape[0])
     return out
 
 
