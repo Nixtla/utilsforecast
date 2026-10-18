@@ -1206,7 +1206,11 @@ def tweedie_deviance(
         raise ValueError(
             f"Power {power} requires all target values to be strictly positive."
         )
-    if any((df[m] <= 0).any() for m in models):
+    if 1 <= power < 2 and (df[target_col] < 0).any():
+        raise ValueError(
+            f"Power {power} requires all target values to be non-negative."
+        )
+    if power > 0 and any((df[m] <= 0).any() for m in models):
         raise ValueError(
             "All predictions must be strictly positive for Tweedie deviance."
         )
