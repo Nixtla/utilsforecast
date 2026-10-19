@@ -1009,6 +1009,9 @@ def test_repeat_objects_pl():
         repeat(pl.Series([2, 4]), 2), pl.Series([2, 2, 4, 4])
     )
     pl.testing.assert_series_equal(
+        repeat(pl.Series([2, 4]), np.int64(2)), pl.Series([2, 2, 4, 4])
+    )
+    pl.testing.assert_series_equal(
         repeat(pl.Series([1, 2]), np.array([2, 3])),
         pl.Series([1, 1, 2, 2, 2]),
     )

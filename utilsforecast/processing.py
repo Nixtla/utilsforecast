@@ -53,7 +53,6 @@ from typing import (
     Optional,
     Tuple,
     Type,
-    TypeVar,
     Union,
     overload,
 )
@@ -70,8 +69,6 @@ from utilsforecast.validation import (
 )
 
 from .compat import DataFrame, Series, pl, pl_DataFrame, pl_Series
-
-_PdSeriesOrIndex = TypeVar("_PdSeriesOrIndex", pd.Series, pd.Index)
 
 
 def _polars_categorical_to_numerical(serie: pl_Series) -> pl_Series:
@@ -737,11 +734,11 @@ def repeat(
 ) -> Union[Series, pd.Index, np.ndarray]:
     out: Union[Series, pd.Index, np.ndarray]
     if isinstance(s, pl_Series):
-        if not isinstance(n, (int, pl_Series)):
+        if isinstance(n, np.ndarray):
             n = pl_Series(n)
         out = (
             pl.DataFrame(s.alias("x"))
-            .select(pl.col("x").repeat_by(n))["x"]
+            .select(pl.col("x").repeat_by(n))["x"]  # type: ignore[arg-type]
             .explode()
             .alias(s.name)
         )
