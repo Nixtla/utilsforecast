@@ -5,8 +5,7 @@ __all__ = ["id_time_grid", "fill_gaps"]
 
 import warnings
 from datetime import date, datetime
-from functools import partial
-from typing import Union
+from typing import Union, cast
 
 import numpy as np
 import pandas as pd
@@ -51,7 +50,7 @@ def _determine_bound_pl(
             val = getattr(times_by_id[agg], agg)()
         else:
             val = bound
-        out = repeat(pl_Series([val]), times_by_id.shape[0])
+        out = cast(pl_Series, repeat(pl_Series([val]), times_by_id.shape[0]))
     return out
 
 
@@ -103,21 +102,18 @@ def id_time_grid(
                 )
             )
         else:
+            interval = cast(str, freq)
             if starts.dtype == pl.Date:
-                ranges_fn = pl.date_ranges
+                ranges = pl.date_ranges(starts, ends, interval=interval, eager=True)
             else:
-                ranges_fn = partial(
-                    pl.datetime_ranges,
-                    time_unit=df.schema[time_col].time_unit,
-                )
-            grid = grid.with_columns(
-                ranges_fn(
+                ranges = pl.datetime_ranges(
                     starts,
                     ends,
-                    interval=freq,
+                    interval=interval,
+                    time_unit=cast(pl.Datetime, df.schema[time_col]).time_unit,
                     eager=True,
-                ).alias(time_col)
-            )
+                )
+            grid = grid.with_columns(ranges.alias(time_col))
         return grid.explode(time_col)
     if isinstance(freq, str):
         offset = pd.tseries.frequencies.to_offset(freq)
@@ -152,7 +148,7 @@ def id_time_grid(
         if n > 1:
             freq = freq.replace(str(n), "")
         try:
-            pd.Timedelta(offset)
+            pd.Timedelta(offset)  # type: ignore[arg-type]
         except ValueError:
             # irregular freq, try using first letter of abbreviation
             # such as MS = 'Month Start' -> 'M', YS = 'Year Start' -> 'Y'
@@ -167,7 +163,7 @@ def id_time_grid(
     starts = _determine_bound(start, freq, times_by_id, "min")
     ends = _determine_bound(end, freq, times_by_id, "max") + delta
     sizes = ((ends - starts) / delta).astype(np.int64)
-    times = np.hstack(
+    times: Union[np.ndarray, pd.Index] = np.hstack(
         [np.arange(start, end, delta) for start, end in zip(starts, ends)]
     )
     uids = np.repeat(times_by_id.index, sizes)
