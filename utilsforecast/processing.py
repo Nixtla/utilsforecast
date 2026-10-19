@@ -42,8 +42,21 @@ __all__ = [
 
 import re
 import reprlib
+import typing
 import warnings
-from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import numpy as np
 import pandas as pd
@@ -57,6 +70,8 @@ from utilsforecast.validation import (
 )
 
 from .compat import DataFrame, Series, pl, pl_DataFrame, pl_Series
+
+_PdSeriesOrIndex = TypeVar("_PdSeriesOrIndex", pd.Series, pd.Index)
 
 
 def _polars_categorical_to_numerical(serie: pl_Series) -> pl_Series:
@@ -77,24 +92,27 @@ def to_numpy(df: DataFrame) -> np.ndarray:
             df = ensure_shallow_copy(df)
             for col in cat_cols:
                 df[col] = df[col].cat.codes
-        df = df.to_numpy()
+        out = df.to_numpy()
     else:
         expr = pl.all().map_batches(_polars_categorical_to_numerical)
-        df = df.select(expr).to_numpy(order="c")
-    return df
+        out = df.select(expr).to_numpy(order="c")
+    return out
 
 
 def counts_by_id(df: DataFrame, id_col: str) -> DataFrame:
+    id_counts: DataFrame
     if isinstance(df, pd.DataFrame):
-        id_counts = df[id_col].value_counts(sort=False, dropna=True)
-        ids = id_counts.index
-        if isinstance(ids.dtype, pd.CategoricalDtype):
+        counts = df[id_col].value_counts(sort=False, dropna=True)
+        ids = counts.index
+        if isinstance(ids, pd.CategoricalIndex):
             # there's no observed argument in value_counts
             # so this can return unseen categories
-            id_counts = id_counts[id_counts > 0]
-            ids = id_counts.index.codes
-        sort_idxs = ids.argsort()
-        id_counts = id_counts.iloc[sort_idxs].reset_index()
+            observed = (counts > 0).to_numpy()
+            counts = counts[observed]
+            sort_idxs = ids.codes[observed].argsort()
+        else:
+            sort_idxs = ids.argsort()
+        id_counts = counts.iloc[sort_idxs].reset_index()
     else:
         id_counts = df[id_col].value_counts().sort(id_col)
     id_counts.columns = [id_col, "counts"]
@@ -112,15 +130,19 @@ def maybe_compute_sort_indices(
     Returns:
         numpy array or None: Array with indices to sort the dataframe or None if it's already sorted.
     """
-    ids = df[id_col]
-    times = df[time_col]
+    ids: Union[pl_Series, np.ndarray]
+    times: Union[pl_Series, np.ndarray]
     if isinstance(df, pd.DataFrame):
-        if isinstance(ids.dtype, pd.CategoricalDtype):
+        pd_ids = df[id_col]
+        if isinstance(pd_ids.dtype, pd.CategoricalDtype):
             # we sort categoricals by their codes, this is also done in counts_by_id
-            ids = ids.cat.codes
+            pd_ids = pd_ids.cat.codes
         # pandas series alignment makes this slow, cast to numpy
-        ids = ids.to_numpy()
-        times = times.to_numpy()
+        ids = pd_ids.to_numpy()
+        times = df[time_col].to_numpy()
+    else:
+        ids = df[id_col]
+        times = df[time_col]
     ids_are_sorted = (ids[:-1] <= ids[1:]).all()
     if ids_are_sorted:
         times_are_sorted = (
@@ -145,17 +167,21 @@ def maybe_compute_sort_indices(
 
 
 def _is_sorted(df: DataFrame, id_col: str, time_col: str) -> bool:
-    ids = df[id_col]
-    times = df[time_col]
+    ids: Union[pl_Series, np.ndarray]
+    times: Union[pl_Series, np.ndarray]
     if isinstance(df, pd.DataFrame):
-        if ids.hasnans:
+        pd_ids = df[id_col]
+        if pd_ids.hasnans:
             return False
-        if isinstance(ids.dtype, pd.CategoricalDtype):
-            ids = ids.cat.codes
-        ids = ids.to_numpy()
-        times = times.to_numpy()
-    elif ids.has_nulls():
-        return False
+        if isinstance(pd_ids.dtype, pd.CategoricalDtype):
+            pd_ids = pd_ids.cat.codes
+        ids = pd_ids.to_numpy()
+        times = df[time_col].to_numpy()
+    else:
+        ids = df[id_col]
+        if ids.has_nulls():
+            return False
+        times = df[time_col]
     try:
         ids_are_sorted = (ids[:-1] <= ids[1:]).all()
     except TypeError:
@@ -172,14 +198,14 @@ def _is_sorted(df: DataFrame, id_col: str, time_col: str) -> bool:
 def assign_columns(
     df: DataFrame,
     names: Union[str, List[str]],
-    values: Union[np.ndarray, pd.Series, pl_Series, List[float]],
+    values: Union[np.ndarray, pd.Series, pl_Series, List[float], str, float],
 ) -> DataFrame:
     if isinstance(values, list) and (
         len(values) != df.shape[0] or not isinstance(names, str)
     ):
         raise ValueError("Only single column assignment is supported for lists.")
     if isinstance(df, pd.DataFrame):
-        df[names] = values
+        df[names] = values  # type: ignore[index, assignment]
     else:
         is_scalar = isinstance(values, str) or not hasattr(values, "__len__")
         if is_scalar:
@@ -213,7 +239,7 @@ def take_rows(df: Union[DataFrame, Series, np.ndarray], idxs: np.ndarray) -> Dat
         df = df.iloc[idxs]
     else:
         df = df[idxs]
-    return df
+    return df  # type: ignore[return-value]
 
 
 def filter_with_mask(
@@ -221,13 +247,14 @@ def filter_with_mask(
     mask: Union[np.ndarray, pd.Series, pl_Series],
 ) -> DataFrame:
     if isinstance(df, (pd.DataFrame, pd.Series, pd.Index, np.ndarray)):
-        out = df[mask]
+        out = df[mask]  # type: ignore[index]
     else:
         out = df.filter(mask)  # type: ignore
-    return out
+    return out  # type: ignore[return-value]
 
 
 def is_nan(s: Series) -> Series:
+    out: Series
     if isinstance(s, pd.Series):
         out = s.isna()
     elif s.dtype.is_float():
@@ -250,48 +277,67 @@ def is_nan_or_none(s: Series) -> Series:
     return is_nan(s) | is_none(s)
 
 
+def _match_pd_categoricals(
+    s1: Union[pd.Series, pd.Index], s2: pd.Series
+) -> Tuple[Union[pd.Series, pd.Index], pd.Series]:
+    s1_dtype = s1.dtype
+    assert isinstance(s1_dtype, pd.CategoricalDtype)
+    cat1 = s1_dtype.categories
+    s2_dtype = s2.dtype
+    if isinstance(s2_dtype, pd.CategoricalDtype):
+        cat2 = set(s2_dtype.categories)
+    else:
+        cat2 = set(s2.dropna().unique().astype(cat1.dtype))
+    missing = cat2 - set(cat1)
+    new_dtype = s1_dtype
+    if missing:
+        # we assume the original is s1, so we extend its categories
+        new_dtype = pd.CategoricalDtype(
+            categories=cat1.tolist() + sorted(missing), ordered=s1_dtype.ordered
+        )
+        s1 = s1.astype(new_dtype)
+    # rebuild from the values, astype keeps s2's order if only the order differs
+    new_s2 = pd.Series(
+        pd.Categorical(s2, dtype=new_dtype), index=s2.index, name=s2.name
+    )
+    if new_s2.isna().sum() != s2.isna().sum():
+        bad = s2[new_s2.isna() & s2.notna()].unique()[:5]
+        raise ValueError(
+            f"Values with dtype {s2.dtype} don't match the categories with dtype "
+            f"{cat1.dtype}, e.g. {bad.tolist()}."
+        )
+    return s1, new_s2
+
+
+def _match_pl_categoricals(s1: pl_Series, s2: pl_Series) -> Tuple[pl_Series, pl_Series]:
+    with pl.StringCache():
+        cat1 = s1.cat.get_categories()
+        if s2.dtype == pl.Categorical:
+            cat2 = s2.cat.get_categories()
+        else:
+            cat2 = s2.unique().sort().cast(cat1.dtype)
+        # populate cache, keep original categories first
+        pl.concat([cat1, cat2]).cast(pl.Categorical)
+        s1 = s1.cast(pl.Utf8).cast(pl.Categorical)
+        s2 = s2.cast(pl.Utf8).cast(pl.Categorical)
+    return s1, s2
+
+
+@overload
+def match_if_categorical(s1: pd.Index, s2: Series) -> Tuple[pd.Index, Series]: ...
+@overload
+def match_if_categorical(s1: Series, s2: Series) -> Tuple[Series, Series]: ...
 def match_if_categorical(
     s1: Union[Series, pd.Index], s2: Series
-) -> Tuple[Series, Series]:
-    if isinstance(s1.dtype, pd.CategoricalDtype):
-        if isinstance(s1, pd.Index):
-            cat1 = s1.categories
-        else:
-            cat1 = s1.cat.categories
-        if isinstance(s2.dtype, pd.CategoricalDtype):
-            cat2 = s2.cat.categories
-        else:
-            cat2 = s2.dropna().unique().astype(cat1.dtype)
-        missing = set(cat2) - set(cat1)
-        new_dtype = s1.dtype
-        if missing:
-            # we assume the original is s1, so we extend its categories
-            new_dtype = pd.CategoricalDtype(
-                categories=cat1.tolist() + sorted(missing), ordered=s1.dtype.ordered
-            )
-            s1 = s1.astype(new_dtype)
-        # rebuild from the values, astype keeps s2's order if only the order differs
-        new_s2 = pd.Series(
-            pd.Categorical(s2, dtype=new_dtype), index=s2.index, name=s2.name
-        )
-        if new_s2.isna().sum() != s2.isna().sum():
-            bad = s2[new_s2.isna() & s2.notna()].unique()[:5]
-            raise ValueError(
-                f"Values with dtype {s2.dtype} don't match the categories with dtype "
-                f"{cat1.dtype}, e.g. {bad.tolist()}."
-            )
-        s2 = new_s2
-    elif isinstance(s1, pl_Series) and s1.dtype == pl.Categorical:
-        with pl.StringCache():
-            cat1 = s1.cat.get_categories()
-            if s2.dtype == pl.Categorical:
-                cat2 = s2.cat.get_categories()
-            else:
-                cat2 = s2.unique().sort().cast(cat1.dtype)
-            # populate cache, keep original categories first
-            pl.concat([cat1, cat2]).cast(pl.Categorical)
-            s1 = s1.cast(pl.Utf8).cast(pl.Categorical)
-            s2 = s2.cast(pl.Utf8).cast(pl.Categorical)
+) -> Tuple[Union[Series, pd.Index], Series]:
+    if isinstance(s1, (pd.Series, pd.Index)) and isinstance(
+        s1.dtype, pd.CategoricalDtype
+    ):
+        assert isinstance(s2, pd.Series)
+        return _match_pd_categoricals(s1, s2)
+    if isinstance(s1, pl_Series) and s1.dtype == pl.Categorical:
+        assert isinstance(s2, pl_Series)
+        return _match_pl_categoricals(s1, s2)
     return s1, s2
 
 
@@ -300,61 +346,65 @@ def vertical_concat(
 ) -> Union[DataFrame, Series]:
     if not dfs:
         raise ValueError("Can't concatenate empty list.")
+    out: Union[DataFrame, Series]
     if isinstance(dfs[0], pd.Series):
-        out = pd.concat(dfs).reset_index(drop=True)
+        out = pd.concat(typing.cast(List[pd.Series], dfs)).reset_index(drop=True)
     elif isinstance(dfs[0], pl_Series):
-        out = pl.concat(dfs)
+        out = pl.concat(typing.cast(List[pl_Series], dfs))
     elif isinstance(dfs[0], pd.DataFrame):
+        pd_dfs = typing.cast(List[pd.DataFrame], dfs)
         cat_cols = [
             c
-            for c, dtype in dfs[0].dtypes.items()
+            for c, dtype in pd_dfs[0].dtypes.items()
             if isinstance(dtype, pd.CategoricalDtype)
         ]
         if match_categories and cat_cols:
-            if len(dfs) > 2:
+            if len(pd_dfs) > 2:
                 raise NotImplementedError(
                     "Categorical replacement for more than two dataframes"
                 )
-            assert len(dfs) == 2
-            df1, df2 = dfs
+            assert len(pd_dfs) == 2
+            df1, df2 = pd_dfs
             df1 = df1.copy(deep=False)
             df2 = df2.copy(deep=False)
             for col in cat_cols:
-                s1, s2 = match_if_categorical(df1[col], df2[col])
+                s1, s2 = _match_pd_categoricals(df1[col], df2[col])
                 df1[col] = s1
                 df2[col] = s2
-            dfs = [df1, df2]
-        out = pd.concat(dfs).reset_index(drop=True)
+            pd_dfs = [df1, df2]
+        out = pd.concat(pd_dfs).reset_index(drop=True)
     else:
-        all_cols = dfs[0].columns
-        cat_cols = [
+        pl_dfs = typing.cast(List[pl_DataFrame], dfs)
+        all_cols = pl_dfs[0].columns
+        pl_cat_cols = [
             all_cols[i]
-            for i, dtype in enumerate(dfs[0].dtypes)
+            for i, dtype in enumerate(pl_dfs[0].dtypes)
             if dtype == pl.Categorical
         ]
-        if match_categories and cat_cols:
-            if len(dfs) > 2:
+        if match_categories and pl_cat_cols:
+            if len(pl_dfs) > 2:
                 raise NotImplementedError(
                     "Categorical replacement for more than two dataframes"
                 )
-            assert len(dfs) == 2
-            df1, df2 = dfs
-            for col in cat_cols:
-                s1, s2 = match_if_categorical(df1[col], df2[col])
-                df1 = df1.with_columns(s1)
-                df2 = df2.with_columns(s2)
-            dfs = [df1, df2]
-        out = pl.concat(dfs)
+            assert len(pl_dfs) == 2
+            pl_df1, pl_df2 = pl_dfs
+            for col in pl_cat_cols:
+                pl_s1, pl_s2 = _match_pl_categoricals(pl_df1[col], pl_df2[col])
+                pl_df1 = pl_df1.with_columns(pl_s1)
+                pl_df2 = pl_df2.with_columns(pl_s2)
+            pl_dfs = [pl_df1, pl_df2]
+        out = pl.concat(pl_dfs)
     return out
 
 
 def horizontal_concat(dfs: List[DataFrame]) -> DataFrame:
     if not dfs:
         raise ValueError("Can't concatenate empty list.")
+    out: DataFrame
     if isinstance(dfs[0], pd.DataFrame):
-        out = pd.concat(dfs, axis=1)
+        out = pd.concat(typing.cast(List[pd.DataFrame], dfs), axis=1)
     elif isinstance(dfs[0], pl_DataFrame):
-        out = pl.concat(dfs, how="horizontal")
+        out = pl.concat(typing.cast(List[pl_DataFrame], dfs), how="horizontal")
     else:
         raise ValueError(f"Got list of unexpected types: {type(dfs[0])}.")
     return out
@@ -379,7 +429,7 @@ def join(
     if isinstance(df2, (pd.Series, pl_Series)):
         df2 = df2.to_frame()
     if isinstance(df1, pd.DataFrame):
-        out = df1.merge(df2, on=on, how=how)
+        out = df1.merge(df2, on=on, how=how)  # type: ignore[arg-type]
     else:
         out = df1.join(df2, on=on, how=how)  # type: ignore
     return out
@@ -400,8 +450,9 @@ def rename(df: DataFrame, mapping: Dict[str, str]) -> DataFrame:
 
 
 def sort(df: DataFrame, by: Optional[Union[str, List[str]]] = None) -> DataFrame:
+    out: Union[DataFrame, Series, pd.Index]
     if isinstance(df, pd.DataFrame):
-        out = df.sort_values(by).reset_index(drop=True)
+        out = df.sort_values(by).reset_index(drop=True)  # type: ignore[arg-type]
     elif isinstance(df, (pd.Series, pd.Index)):
         out = df.sort_values()
         if isinstance(out, pd.Series):
@@ -410,17 +461,19 @@ def sort(df: DataFrame, by: Optional[Union[str, List[str]]] = None) -> DataFrame
         out = df.sort(by)
     else:
         out = df.sort()
-    return out
+    return out  # type: ignore[return-value]
 
 
-def _multiply_pl_freq(freq: str, n: Union[int, Series]) -> str:
+def _multiply_pl_freq(
+    freq: str, n: Union[int, np.ndarray, Series]
+) -> Union[str, pl_Series]:
     freq_n, freq_offset = re.findall(r"(\d+)(\w+)", freq)[0]
     freq_n = int(freq_n)
     if isinstance(n, int):
         total_n = freq_n * n
-        out = f"{total_n}{freq_offset}"
+        out: Union[str, pl_Series] = f"{total_n}{freq_offset}"
     else:
-        if not n.dtype.is_integer():
+        if not isinstance(n, pl_Series) or not n.dtype.is_integer():
             raise ValueError("`n` must be an integer or a polars series of integers.")
         out = (n * freq_n).cast(pl.Utf8) + freq_offset
     return out
@@ -441,11 +494,11 @@ def _ensure_month_ends(
 _NANOS_PER_UNIT = {"s": 1_000_000_000, "ms": 1_000_000, "us": 1_000, "ns": 1}
 
 
-def _dt_unit(times: Union[Series, pd.Index]) -> str:
+def _dt_unit(times: Union[pd.Series, pd.Index]) -> str:
     dtype = times.dtype
-    if isinstance(dtype, np.dtype):
-        return np.datetime_data(dtype)[0]
-    return dtype.unit
+    if isinstance(dtype, pd.DatetimeTZDtype):
+        return dtype.unit
+    return np.datetime_data(dtype)[0]  # type: ignore[arg-type]
 
 
 def _has_time_part(times: Union[pd.Series, pd.Index]) -> bool:
@@ -454,12 +507,18 @@ def _has_time_part(times: Union[pd.Series, pd.Index]) -> bool:
     return bool((values != values.astype("datetime64[D]")).any())
 
 
+@overload
+def _arrow_times_to_numpy(times: pd.Series) -> pd.Series: ...
+@overload
+def _arrow_times_to_numpy(times: pd.Index) -> pd.Index: ...
 def _arrow_times_to_numpy(
     times: Union[pd.Series, pd.Index],
 ) -> Union[pd.Series, pd.Index]:
     import pyarrow as pa
 
-    arrow_dtype = times.dtype.pyarrow_dtype
+    dtype = times.dtype
+    assert isinstance(dtype, pd.ArrowDtype)
+    arrow_dtype = dtype.pyarrow_dtype
     is_date64 = pa.types.is_date64(arrow_dtype)
     if pa.types.is_date(arrow_dtype):
         # pandas converts arrow dates to numpy elementwise, but not arrow timestamps
@@ -467,8 +526,9 @@ def _arrow_times_to_numpy(
         arrow_dtype = pa.timestamp(unit)
         times = times.astype(pd.ArrowDtype(arrow_dtype))
     unit = arrow_dtype.unit
+    numpy_dtype = np.dtype(f"datetime64[{unit}]")
     if arrow_dtype.tz is None:
-        times = times.astype(f"datetime64[{unit}]")
+        times = times.astype(numpy_dtype)
         # date64 stores milliseconds, so it can hold times that aren't at midnight
         if is_date64 and _has_time_part(times):
             raise ValueError(
@@ -477,12 +537,16 @@ def _arrow_times_to_numpy(
             )
         return times
     # pandas converts tz-aware arrow timestamps elementwise, so we convert the UTC values
-    utc = times.astype(pd.ArrowDtype(pa.timestamp(unit))).astype(f"datetime64[{unit}]")
+    utc = times.astype(pd.ArrowDtype(pa.timestamp(unit))).astype(numpy_dtype)
     if isinstance(utc, pd.Series):
         return utc.dt.tz_localize("UTC").dt.tz_convert(arrow_dtype.tz)
-    return utc.tz_localize("UTC").tz_convert(arrow_dtype.tz)
+    return pd.DatetimeIndex(utc).tz_localize("UTC").tz_convert(arrow_dtype.tz)
 
 
+@overload
+def _numpy_times_to_arrow(times: pd.Series, dtype: "pd.ArrowDtype") -> pd.Series: ...
+@overload
+def _numpy_times_to_arrow(times: pd.Index, dtype: "pd.ArrowDtype") -> pd.Index: ...
 def _numpy_times_to_arrow(
     times: Union[pd.Series, pd.Index], dtype: "pd.ArrowDtype"
 ) -> Union[pd.Series, pd.Index]:
@@ -516,7 +580,9 @@ def _offset_times_array_n(
     if isinstance(freq, pd.offsets.Tick):
         # pandas uses the finer of the times' and the offset's resolutions
         unit = min(
-            _dt_unit(times), pd.Timedelta(freq).unit, key=_NANOS_PER_UNIT.__getitem__
+            _dt_unit(times),
+            pd.Timedelta(freq).unit,  # type: ignore[arg-type]
+            key=_NANOS_PER_UNIT.__getitem__,
         )
         step = freq.nanos // _NANOS_PER_UNIT[unit]
         bound = np.iinfo(np.int64).max // max(abs(step), 1)
@@ -542,17 +608,16 @@ def _offset_times_array_n(
     inv_order[order] = np.arange(order.size)
     out = runs[0].append(runs[1:]).take(inv_order)
     if isinstance(times, pd.Series):
-        out = pd.Series(out, index=times.index, name=times.name)
-    else:
-        out = out.rename(times.name)
-    return out
+        return pd.Series(out, index=times.index, name=times.name)
+    return out.rename(times.name)
 
 
 def offset_times(
     times: Union[Series, pd.Index],
     freq: Union[int, str, BaseOffset],
-    n: Union[int, np.ndarray],
+    n: Union[int, np.ndarray, Series],
 ) -> Union[Series, pd.Index]:
+    out: Union[Series, pd.Index]
     if isinstance(times, (pd.Series, pd.Index)):
         if isinstance(freq, str):
             freq = pd.tseries.frequencies.to_offset(freq)
@@ -564,17 +629,21 @@ def offset_times(
                 f"using a frequency of type: '{type(freq)}'."
             )
         orig_dtype = times.dtype
-        is_arrow = dts and hasattr(orig_dtype, "pyarrow_dtype")
-        if is_arrow:
+        arrow_dtype = (
+            orig_dtype if dts and isinstance(orig_dtype, pd.ArrowDtype) else None
+        )
+        if arrow_dtype is not None:
             times = _arrow_times_to_numpy(times)
         if dts and np.ndim(n) > 0:
-            out = _offset_times_array_n(times, freq, n)
+            out = _offset_times_array_n(
+                times, typing.cast(BaseOffset, freq), np.asarray(n)
+            )
         else:
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
                 out = times + n * freq
-        if is_arrow:
-            out = _numpy_times_to_arrow(out, orig_dtype)
+        if arrow_dtype is not None:
+            out = _numpy_times_to_arrow(out, arrow_dtype)
     elif isinstance(times, pl_Series) and isinstance(freq, int):
         out = times + n * freq
     elif isinstance(times, pl_Series) and isinstance(freq, str):
@@ -605,48 +674,60 @@ def time_ranges(
     freq: Union[int, str, BaseOffset],
     periods: int,
 ) -> Series:
+    out: Series
     if isinstance(starts, pd.Series):
         starts = pd.Index(starts)
     if isinstance(starts, pd.Index):
         if _is_int_dtype(starts):
             starts_np = starts.to_numpy(copy=False)  # may be pyarrow
-            steps = (np.arange(periods) * freq).astype(starts_np.dtype)
-            out = np.repeat(starts_np, periods) + np.tile(steps, starts_np.size)
-            out = pd.Series(out, dtype=starts.dtype)
+            steps = (np.arange(periods) * typing.cast(int, freq)).astype(
+                starts_np.dtype
+            )
+            values = np.repeat(starts_np, periods) + np.tile(steps, starts_np.size)
+            out = pd.Series(values, dtype=starts.dtype)
         elif _is_dt_dtype(starts):
             if isinstance(freq, str):
                 freq = pd.tseries.frequencies.to_offset(freq)
             # other freqs are left for offset_times to reject with the original dtype
-            is_arrow = isinstance(freq, BaseOffset) and hasattr(
-                starts.dtype, "pyarrow_dtype"
+            starts_dtype = starts.dtype
+            arrow_dtype = (
+                starts_dtype
+                if isinstance(freq, BaseOffset)
+                and isinstance(starts_dtype, pd.ArrowDtype)
+                else None
             )
-            starts_np = _arrow_times_to_numpy(starts) if is_arrow else starts
-            per_period = [offset_times(starts_np, freq, i) for i in range(periods)]
+            dt_starts = starts if arrow_dtype is None else _arrow_times_to_numpy(starts)
+            per_period = [
+                typing.cast(pd.Index, offset_times(dt_starts, freq, i))
+                for i in range(periods)
+            ]
             if per_period:
                 series_major = np.arange(starts.size * periods).reshape(periods, -1)
-                out = per_period[0].append(per_period[1:])
-                out = out.take(series_major.ravel(order="F"))
+                times = per_period[0].append(per_period[1:])
+                times = times.take(series_major.ravel(order="F"))
             else:
-                out = starts_np[:0]
-            if is_arrow:
-                out = _numpy_times_to_arrow(out, starts.dtype)
-            out = pd.Series(out.rename(None))
+                times = dt_starts[:0]
+            if arrow_dtype is not None:
+                times = _numpy_times_to_arrow(times, arrow_dtype)
+            out = pd.Series(times.rename(None))
         else:
             raise ValueError(
                 f"`starts` must be integers or timestamps, got '{starts.dtype}'."
             )
     else:
+        assert isinstance(starts, pl_Series)
         if starts.dtype.is_integer():
-            ends = starts + freq * periods
-            out = pl.int_ranges(starts, ends, freq, eager=True).explode()
+            step = typing.cast(int, freq)
+            ends = starts + step * periods
+            out = pl.int_ranges(starts, ends, step, eager=True).explode()
         else:
-            ends = offset_times(starts, freq, periods - 1)
+            interval = typing.cast(str, freq)
+            ends = typing.cast(pl_Series, offset_times(starts, interval, periods - 1))
             if starts.dtype == pl.Date:
-                ranges_fn = pl.date_ranges
+                ranges = pl.date_ranges(starts, ends, interval=interval, eager=True)
             else:
-                ranges_fn = pl.datetime_ranges
-            out = ranges_fn(starts, ends, interval=freq, eager=True).explode()
-            out = _ensure_month_ends(out, starts, freq)
+                ranges = pl.datetime_ranges(starts, ends, interval=interval, eager=True)
+            out = _ensure_month_ends(ranges.explode(), starts, interval)
         out = out.alias(starts.name)
     return out
 
@@ -654,8 +735,9 @@ def time_ranges(
 def repeat(
     s: Union[Series, pd.Index, np.ndarray], n: Union[int, np.ndarray, Series]
 ) -> Union[Series, pd.Index, np.ndarray]:
+    out: Union[Series, pd.Index, np.ndarray]
     if isinstance(s, pl_Series):
-        if isinstance(n, np.ndarray):
+        if not isinstance(n, (int, pl_Series)):
             n = pl_Series(n)
         out = (
             pl.DataFrame(s.alias("x"))
@@ -686,6 +768,7 @@ def cv_times(
     if resid != 0:
         raise ValueError("`test_size - h` should be a multiple `step_size`")
     n_windows = n + 1
+    df_constructor: Union[Type[pd.DataFrame], Type[pl_DataFrame]]
     if isinstance(uids, pl_Series):
         df_constructor = pl_DataFrame
     else:
@@ -693,7 +776,7 @@ def cv_times(
     sizes = np.diff(indptr)
     out_times = []
     out_cutoffs = []
-    out_ids = []
+    out_ids: List[Union[DataFrame, Series]] = []
     for i in range(n_windows):
         offset = test_size - i * step_size + 1
         use_series = sizes >= offset
@@ -703,9 +786,11 @@ def cv_times(
         )
         out_times.append(times[valid_idxs])
         out_cutoffs.append(np.repeat(times[cutoff_idxs], h))
+        mask: Union[np.ndarray, pl_Series] = use_series
         if isinstance(uids, pl_Series):
-            use_series = pl_Series(use_series)
-        out_ids.append(repeat(filter_with_mask(uids, use_series), h))
+            mask = pl_Series(use_series)
+        window_uids = typing.cast(Series, filter_with_mask(uids, mask))
+        out_ids.append(typing.cast(Series, repeat(window_uids, h)))
     return df_constructor(
         {
             id_col: vertical_concat(out_ids),
@@ -717,12 +802,10 @@ def cv_times(
 
 def group_by(df: Union[Series, DataFrame], by, maintain_order=False):
     if isinstance(df, (pd.Series, pd.DataFrame)):
-        out = df.groupby(by, observed=True, sort=not maintain_order)
-    else:
-        if isinstance(df, pl_Series):
-            df = df.to_frame()
-        out = df.group_by(by, maintain_order=maintain_order)
-    return out
+        return df.groupby(by, observed=True, sort=not maintain_order)
+    if isinstance(df, pl_Series):
+        df = df.to_frame()
+    return df.group_by(by, maintain_order=maintain_order)
 
 
 def group_by_agg(df: DataFrame, by, aggs, maintain_order=False) -> DataFrame:
@@ -736,6 +819,7 @@ def group_by_agg(df: DataFrame, by, aggs, maintain_order=False) -> DataFrame:
 
 
 def is_in(s: Series, collection) -> Series:
+    out: Series
     if isinstance(s, pl_Series):
         out = s.is_in(collection)
     else:
@@ -744,14 +828,16 @@ def is_in(s: Series, collection) -> Series:
 
 
 def between(s: Series, lower: Series, upper: Series) -> Series:
+    out: Series
     if isinstance(s, pd.Series):
-        out = s.between(lower, upper)
+        out = s.between(lower, upper)  # type: ignore[arg-type]
     else:
-        out = s.is_between(lower, upper)
+        out = s.is_between(lower, upper)  # type: ignore[arg-type]
     return out
 
 
 def fill_null(df: DataFrame, mapping: Dict[str, Any]) -> DataFrame:
+    out: DataFrame
     if isinstance(df, pd.DataFrame):
         out = df.fillna(mapping)
     else:
@@ -791,6 +877,7 @@ def make_future_dataframe(
     time_col: str = "ds",
 ) -> DataFrame:
     starts = offset_times(last_times, freq, 1)
+    df_constructor: Union[Type[pd.DataFrame], Type[pl_DataFrame]]
     if isinstance(uids, pl_Series):
         df_constructor = pl_DataFrame
     else:
@@ -804,6 +891,7 @@ def make_future_dataframe(
 
 
 def anti_join(df1: DataFrame, df2: DataFrame, on: Union[str, List[str]]) -> DataFrame:
+    out: DataFrame
     if isinstance(df1, pd.DataFrame) and isinstance(df2, pd.DataFrame):
         out = df1.merge(df2, on=on, how="left", indicator=True)
         out = out[out["_merge"] == "left_only"].drop(columns="_merge")
@@ -965,10 +1053,11 @@ def _single_split_sorted(
         )
         valid_stops = valid_stops.copy()
         valid_stops[zeros_mask] = train_stops[zeros_mask]
+    cutoffs: DataFrame
     if isinstance(df, pd.DataFrame):
         cutoffs = pd.DataFrame(
             {
-                id_col: uids.reset_index(drop=True),
+                id_col: typing.cast(pd.Series, uids).reset_index(drop=True),
                 "cutoff": pd.Series(train_ends).reset_index(drop=True),
             }
         )
@@ -999,18 +1088,24 @@ def _single_split(
     else:
         test_size = h + step_size * (n_windows - 1)
     offset = test_size - i_window * step_size
+    ids = df[id_col]
+    times = df[time_col]
     train_ends = offset_times(max_dates, freq, -offset)
     valid_ends = offset_times(train_ends, freq, h)
-    train_mask = df[time_col].le(train_ends)
-    valid_mask = df[time_col].gt(train_ends) & df[time_col].le(valid_ends)
+    train_mask = times <= train_ends
+    valid_mask = (times > train_ends) & (times <= valid_ends)
     if input_size is not None:
         train_starts = offset_times(train_ends, freq, -input_size)
-        train_mask &= df[time_col].gt(train_starts)
+        train_mask &= times > train_starts
+    train_sizes: DataFrame
     if isinstance(train_mask, pd.Series):
-        train_sizes = train_mask.groupby(df[id_col], observed=True, sort=False).sum()
-        train_sizes = train_sizes.reset_index()
+        train_sizes = (
+            train_mask.groupby(typing.cast(pd.Series, ids), observed=True, sort=False)
+            .sum()
+            .reset_index()
+        )
     else:
-        tmp_df = pl.DataFrame({id_col: df[id_col], time_col: train_mask})
+        tmp_df = pl.DataFrame({id_col: ids, time_col: train_mask})
         train_sizes = group_by_agg(
             tmp_df, id_col, {time_col: "sum"}, maintain_order=True
         )
@@ -1022,23 +1117,24 @@ def _single_split(
             "Please reduce `n_windows` or `h`."
         )
     elif zeros_mask.any():
-        ids = filter_with_mask(train_sizes[id_col], zeros_mask)
+        short_ids = filter_with_mask(train_sizes[id_col], zeros_mask)
         warnings.warn(
             "The following series are too short for the window "
-            f"and will be dropped: {reprlib.repr(list(ids))}"
+            f"and will be dropped: {reprlib.repr(list(short_ids))}"
         )
-        dropped_ids = is_in(df[id_col], ids)
+        dropped_ids = is_in(ids, short_ids)
         valid_mask &= ~dropped_ids
+    cutoffs: DataFrame
     if isinstance(train_ends, pd.Series):
-        cutoffs: DataFrame = (
-            train_ends.set_axis(df[id_col])
+        cutoffs = (
+            train_ends.set_axis(typing.cast(pd.Series, ids))
             .groupby(id_col, observed=True)
             .head(1)
             .rename("cutoff")
             .reset_index()
         )
     else:
-        cutoffs = train_ends.to_frame().with_columns(df[id_col])
+        cutoffs = typing.cast(pl_Series, train_ends).to_frame().with_columns(ids)
         cutoffs = (
             group_by(cutoffs, id_col)
             .agg(pl.col(time_col).head(1))
@@ -1065,7 +1161,7 @@ def backtest_splits(
         sizes = id_counts["counts"].to_numpy()
         indptr = np.append(0, sizes.cumsum()).astype(np.int64)
         times = df[time_col].to_numpy()
-        last_times = take_rows(df[time_col], indptr[1:] - 1)
+        last_times = typing.cast(Series, take_rows(df[time_col], indptr[1:] - 1))
         for i in range(n_windows):
             cutoffs, train_idxs, valid_idxs = _single_split_sorted(
                 df=df,
@@ -1086,6 +1182,7 @@ def backtest_splits(
             valid = take_rows(df, valid_idxs)
             yield cutoffs, train, valid
         return
+    max_dates: Series
     if isinstance(df, pd.DataFrame):
         max_dates = df.groupby(id_col, observed=True)[time_col].transform("max")
     else:
@@ -1122,13 +1219,14 @@ def add_insample_levels(
 
     df = copy_if_pandas(df, deep=False)
     cuts = norm.ppf(0.5 + np.asarray(level) / 200).reshape(1, -1)
+    stds_df: DataFrame
     if isinstance(df, pd.DataFrame):
         errors = df[models].sub(df[target_col], axis=0)
-        stds = errors.groupby(df[id_col], observed=True).transform("std")
+        stds_df = errors.groupby(df[id_col], observed=True).transform("std")
     else:
         exprs = (pl.col(m).sub(pl.col(target_col)).std().over(id_col) for m in models)
-        stds = df.select(exprs)
-    stds = to_numpy(stds)
+        stds_df = df.select(exprs)
+    stds = to_numpy(stds_df)
     preds = to_numpy(df[models])
     vals = np.empty_like(preds, shape=(preds.shape[0], len(models) * 2 * len(level)))
     cols = []
