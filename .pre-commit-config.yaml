@@ -13,3 +13,7 @@ repos:
       - id: mypy
         args: [--ignore-missing-imports]
         files: utilsforecast
+        additional_dependencies:
+          - numpy==2.4.1
+          - pandas-stubs==2.3.3.260113
+          - polars==1.31.0

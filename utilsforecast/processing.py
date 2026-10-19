@@ -79,10 +79,7 @@ def to_numpy(df: DataFrame) -> np.ndarray:
                 df[col] = df[col].cat.codes
         df = df.to_numpy()
     else:
-        try:
-            expr = pl.all().map_batches(_polars_categorical_to_numerical)
-        except AttributeError:
-            expr = pl.all().map(_polars_categorical_to_numerical)
+        expr = pl.all().map_batches(_polars_categorical_to_numerical)
         df = df.select(expr).to_numpy(order="c")
     return df
 
@@ -423,11 +420,7 @@ def _multiply_pl_freq(freq: str, n: Union[int, Series]) -> str:
         total_n = freq_n * n
         out = f"{total_n}{freq_offset}"
     else:
-        try:
-            is_int = n.dtype.is_integer()
-        except AttributeError:
-            is_int = n.is_integer()
-        if not is_int:
+        if not n.dtype.is_integer():
             raise ValueError("`n` must be an integer or a polars series of integers.")
         out = (n * freq_n).cast(pl.Utf8) + freq_offset
     return out
@@ -643,11 +636,7 @@ def time_ranges(
                 f"`starts` must be integers or timestamps, got '{starts.dtype}'."
             )
     else:
-        try:
-            is_int = starts.dtype.is_integer()
-        except AttributeError:
-            is_int = starts.is_integer()
-        if is_int:
+        if starts.dtype.is_integer():
             ends = starts + freq * periods
             out = pl.int_ranges(starts, ends, freq, eager=True).explode()
         else:
@@ -732,10 +721,7 @@ def group_by(df: Union[Series, DataFrame], by, maintain_order=False):
     else:
         if isinstance(df, pl_Series):
             df = df.to_frame()
-        try:
-            out = df.group_by(by, maintain_order=maintain_order)
-        except AttributeError:
-            out = df.groupby(by, maintain_order=maintain_order)
+        out = df.group_by(by, maintain_order=maintain_order)
     return out
 
 

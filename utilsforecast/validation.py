@@ -20,10 +20,7 @@ def _is_int_dtype(s: Union[pd.Index, Series]) -> bool:
     if isinstance(s, (pd.Index, pd.Series)):
         out = pd.api.types.is_integer_dtype(s.dtype)
     else:
-        try:
-            out = s.dtype.is_integer()
-        except AttributeError:
-            out = s.is_integer()
+        out = s.dtype.is_integer()
     return out
 
 
@@ -120,10 +117,7 @@ def validate_format(
     if isinstance(target, pd.Series):
         is_numeric = pd.api.types.is_numeric_dtype(target.dtype)
     else:
-        try:
-            is_numeric = target.dtype.is_numeric()
-        except AttributeError:
-            is_numeric = target.is_numeric()
+        is_numeric = target.dtype.is_numeric()
     if not is_numeric:
         raise ValueError(
             f"The target column ('{target_col}') should have a numeric data type, got '{target.dtype}')"
