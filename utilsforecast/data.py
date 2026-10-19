@@ -3,7 +3,7 @@
 __all__ = ["generate_series"]
 
 
-from typing import List, Literal, Optional, Tuple, Union, overload
+from typing import Dict, List, Literal, Optional, Tuple, Union, overload
 
 import numpy as np
 import pandas as pd
@@ -43,7 +43,8 @@ def generate_series(
     static_as_categorical: bool = True,
     n_models: int = 0,
     level: Optional[List[float]] = None,
-    engine: Literal["polars"] = "polars",
+    *,
+    engine: Literal["polars"],
     seed: int = 0,
     n_hist_exog: int = 0,
     n_futr_exog: Literal[0] = 0,
@@ -83,7 +84,8 @@ def generate_series(
     static_as_categorical: bool = True,
     n_models: int = 0,
     level: Optional[List[float]] = None,
-    engine: Literal["polars"] = "polars",
+    *,
+    engine: Literal["polars"],
     seed: int = 0,
     n_hist_exog: int = 0,
     n_futr_exog: int = 0,
@@ -162,22 +164,24 @@ def generate_series(
         raise ValueError("n_futr_exog must be non-negative")
     if n_futr_exog and h < 1:
         raise ValueError("h must be at least 1 when n_futr_exog is greater than 0")
-    seasonalities = {
+    seasonalities: Dict[pd.offsets.BaseOffset, int] = {
         pd.offsets.Hour(): 24,
         pd.offsets.Day(): 7,
         pd.offsets.MonthBegin(): 12,
         pd.offsets.MonthEnd(): 12,
     }
-    freq = pd.tseries.frequencies.to_offset(freq)
-    season = seasonalities.get(freq, 1)
+    offset = pd.tseries.frequencies.to_offset(freq)
+    season = seasonalities.get(offset, 1)
 
     rng = np.random.RandomState(seed)
     series_lengths = rng.randint(min_length, max_length + 1, n_series)
     total_length = series_lengths.sum()
 
-    vals_dict = {"unique_id": np.repeat(np.arange(n_series), series_lengths)}
+    vals_dict: Dict[str, np.ndarray] = {
+        "unique_id": np.repeat(np.arange(n_series), series_lengths)
+    }
 
-    dates = pd.date_range("2000-01-01", periods=max_length, freq=freq).values
+    dates = pd.date_range("2000-01-01", periods=max_length, freq=offset).values
     if equal_ends:
         series_dates = [dates[-length:] for length in series_lengths]
     else:
@@ -216,6 +220,7 @@ def generate_series(
 
     cat_cols = [col for col in vals_dict.keys() if "static" in col]
     cat_cols.append("unique_id")
+    df: DataFrame
     if engine == "pandas":
         df = pd.DataFrame(vals_dict)
         if static_as_categorical:
@@ -235,13 +240,14 @@ def generate_series(
         "unique_id": np.repeat(np.arange(n_series), h),
         "ds": np.concatenate(
             [
-                pd.date_range(start=series_date[-1], periods=h + 1, freq=freq)[1:]
+                pd.date_range(start=series_date[-1], periods=h + 1, freq=offset)[1:]
                 for series_date in series_dates
             ]
         ),
     }
     futr_vals.update(futr_exog_vals)
-    if engine == "pandas":
+    futr_df: DataFrame
+    if isinstance(df, pd.DataFrame):
         futr_df = pd.DataFrame(futr_vals)
         if static_as_categorical:
             futr_df["unique_id"] = futr_df["unique_id"].astype(df["unique_id"].dtype)

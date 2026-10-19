@@ -5,14 +5,14 @@ __all__ = ["fourier", "trend", "time_features", "future_exog_to_historic", "pipe
 
 from collections import Counter
 from functools import partial
-from typing import Callable, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, List, Optional, Set, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
 
 import utilsforecast.processing as ufp
 
-from .compat import DataFrame, DFType, pl, pl_DataFrame, pl_Expr
+from .compat import DFType, Series, pl, pl_DataFrame, pl_Expr
 from .date_features import CalendarFeature, _compute_features
 from .validation import validate_format, validate_freq
 
@@ -43,29 +43,32 @@ def _add_features(
 
     # assign back to df
     sort_idxs = ufp.maybe_compute_sort_indices(df, id_col, time_col)
-    times = df[time_col]
+    times: Series = df[time_col]
     if sort_idxs is not None:
         restore_idxs = np.empty_like(sort_idxs)
         restore_idxs[sort_idxs] = np.arange(sort_idxs.size)
         vals = vals[restore_idxs]
-        times = ufp.take_rows(times, sort_idxs)
-    last_times = ufp.take_rows(times, sizes.cumsum() - 1)
-    df = ufp.copy_if_pandas(df, deep=False)
-    transformed = ufp.assign_columns(df, cols, vals)
+        times = cast(Series, ufp.take_rows(times, sort_idxs))
+    last_times = cast(Series, ufp.take_rows(times, sizes.cumsum() - 1))
+    df = cast(DFType, ufp.copy_if_pandas(df, deep=False))
+    transformed = cast(DFType, ufp.assign_columns(df, cols, vals))
 
     if h == 0:
         return transformed, type(df)({})
 
     # future vals
-    future_df = ufp.make_future_dataframe(
-        uids=uids,
-        last_times=last_times,
-        freq=freq,
-        h=h,
-        id_col=id_col,
-        time_col=time_col,
+    future_df = cast(
+        DFType,
+        ufp.make_future_dataframe(
+            uids=uids,
+            last_times=last_times,
+            freq=freq,
+            h=h,
+            id_col=id_col,
+            time_col=time_col,
+        ),
     )
-    future_df = ufp.assign_columns(future_df, cols, future_vals)
+    future_df = cast(DFType, ufp.assign_columns(future_df, cols, future_vals))
     return transformed, future_df
 
 
@@ -192,6 +195,7 @@ def _compute_time_feature(
     Union[str, List[str]],
     Union[pd.DataFrame, pl_Expr, List[pl_Expr], pd.Index, np.ndarray],
 ]:
+    feat_name: Union[str, List[str]]
     if callable(feature):
         feat_vals = feature(times)
         if isinstance(feat_vals, pd.DataFrame):
@@ -204,11 +208,11 @@ def _compute_time_feature(
         if feature == "weekofyear":
             feature = "week"
         if isinstance(times, pd.DatetimeIndex):
-            if feature == "week":
-                times = times.isocalendar()
-            feat_vals = getattr(times, feature).to_numpy()
+            attrs = times.isocalendar() if feature == "week" else times
+            feat_vals = getattr(attrs, feature).to_numpy()
         else:
-            feat_vals = getattr(times.dt, feature)()
+            # non-datetime pandas times fail here with an AttributeError
+            feat_vals = getattr(times.dt, feature)()  # type: ignore[union-attr]
     return feat_name, feat_vals
 
 
@@ -232,7 +236,7 @@ def _add_time_features(
     features: List[Union[str, Callable, CalendarFeature]],
     time_col: str = "ds",
 ) -> DFType:
-    df = ufp.copy_if_pandas(df, deep=False)
+    df = cast(DFType, ufp.copy_if_pandas(df, deep=False))
     calendar = [f for f in features if isinstance(f, CalendarFeature)]
     if isinstance(df, pd.DataFrame):
         restore_idxs, uniques = pd.factorize(df[time_col], use_na_sentinel=False)
@@ -244,6 +248,7 @@ def _add_time_features(
         columns = []
         names: List[str] = []
         name: Union[str, List[str]]
+        vals: Any
         for feature in features:
             if isinstance(feature, CalendarFeature):
                 name, vals = feature.name, calendar_vals[feature]
@@ -273,7 +278,7 @@ def _add_time_features(
                 continue
             name, vals = _compute_time_feature(pl.col(time_col), feature)
             if not isinstance(vals, list):
-                assert isinstance(vals, pl_Expr)
+                assert isinstance(vals, pl_Expr) and isinstance(name, str)
                 vals = [vals.alias(name)]
             # some expressions (e.g. regex or renamed columns) only get their names when run
             names.extend(feats.lazy().select(*vals).collect_schema().names())
@@ -326,13 +331,16 @@ def time_features(
         return transformed, type(df)({})
     times_by_id = ufp.group_by_agg(df, id_col, {time_col: "max"}, maintain_order=True)
     times_by_id = ufp.sort(times_by_id, id_col)
-    future = ufp.make_future_dataframe(
-        uids=times_by_id[id_col],
-        last_times=times_by_id[time_col],
-        freq=freq,
-        h=h,
-        id_col=id_col,
-        time_col=time_col,
+    future = cast(
+        DFType,
+        ufp.make_future_dataframe(
+            uids=times_by_id[id_col],
+            last_times=times_by_id[time_col],
+            freq=freq,
+            h=h,
+            id_col=id_col,
+            time_col=time_col,
+        ),
     )
     future = _add_time_features(df=future, features=features, time_col=time_col)
     return transformed, future
@@ -371,10 +379,10 @@ def future_exog_to_historic(
     new_feats = ufp.assign_columns(
         new_feats,
         time_col,
-        ufp.offset_times(new_feats[time_col], freq=freq, n=h),
+        cast(Series, ufp.offset_times(new_feats[time_col], freq=freq, n=h)),
     )
-    df = ufp.drop_columns(df, features)
-    df = ufp.join(df, new_feats, on=[id_col, time_col], how="left")
+    df = cast(DFType, ufp.drop_columns(df, features))
+    df = cast(DFType, ufp.join(df, new_feats, on=[id_col, time_col], how="left"))
     times_by_id = ufp.group_by_agg(df, id_col, {time_col: "max"}, maintain_order=True)
     times_by_id = ufp.sort(times_by_id, id_col)
     future = ufp.make_future_dataframe(
@@ -385,7 +393,9 @@ def future_exog_to_historic(
         id_col=id_col,
         time_col=time_col,
     )
-    future = ufp.join(future, new_feats, on=[id_col, time_col], how="left")
+    future = cast(
+        DFType, ufp.join(future, new_feats, on=[id_col, time_col], how="left")
+    )
     return df, future
 
 
@@ -417,21 +427,25 @@ def pipeline(
             containing the original DataFrame with the computed features and
             DataFrame with future values.
     """
-    transformed: Optional[DataFrame] = None
-    future: Optional[DataFrame] = None
+    transformed: Optional[DFType] = None
+    future: Optional[DFType] = None
     for f in features:
         f_transformed, f_future = f(
             df=df, freq=freq, h=h, id_col=id_col, time_col=time_col
         )
-        if transformed is None:
+        if transformed is None or future is None:
             transformed = f_transformed
             future = f_future
         elif h == 0:
             # the future dataframe is empty, so the features are the new columns
             feat_cols = [c for c in f_transformed.columns if c not in df.columns]
-            transformed = ufp.horizontal_concat([transformed, f_transformed[feat_cols]])
+            transformed = cast(
+                DFType, ufp.horizontal_concat([transformed, f_transformed[feat_cols]])
+            )
         else:
             feat_cols = [c for c in f_future.columns if c not in (id_col, time_col)]
-            transformed = ufp.horizontal_concat([transformed, f_transformed[feat_cols]])
-            future = ufp.horizontal_concat([future, f_future[feat_cols]])
-    return transformed, future
+            transformed = cast(
+                DFType, ufp.horizontal_concat([transformed, f_transformed[feat_cols]])
+            )
+            future = cast(DFType, ufp.horizontal_concat([future, f_future[feat_cols]]))
+    return cast(DFType, transformed), cast(DFType, future)

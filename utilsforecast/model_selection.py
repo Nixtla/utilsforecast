@@ -84,10 +84,7 @@ class ParetoFrontier:
                 df = df.filter(mask)
                 actual_metrics = df["metric"].to_numpy()
 
-            data = []
-            for m in models:
-                data.append(df[m].to_numpy())
-            data = np.array(data)
+            data = np.array([df[m].to_numpy() for m in models])
 
             directions = np.ones(len(actual_metrics))
             if maximization:
@@ -107,10 +104,7 @@ class ParetoFrontier:
             if not metrics:
                 return performance_df
 
-            data = []
-            for m in metrics:
-                data.append(df[m].to_numpy())
-            data = np.column_stack(data)
+            data = np.column_stack([df[m].to_numpy() for m in metrics])
 
             directions = np.ones(len(metrics))
             if maximization:

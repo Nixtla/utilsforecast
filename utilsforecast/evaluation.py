@@ -6,7 +6,17 @@ __all__ = ["evaluate"]
 import inspect
 import re
 import reprlib
-from typing import Callable, Dict, List, Optional, Union, get_origin
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Union,
+    cast,
+    get_origin,
+)
 
 import narwhals.stable.v2 as nw
 import numpy as np
@@ -51,7 +61,7 @@ def _models_from_levels(model_name: str, level: List[int]) -> List[str]:
 
 
 def _get_model_cols(
-    cols: List[str],
+    cols: Iterable[str],
     id_col: str,
     time_col: str,
     target_col: str,
@@ -449,7 +459,7 @@ def evaluate(
                 f"The following metrics require y_train: {y_train_metrics}. "
                 "Please provide `train_df`."
             )
-        train_df = ufp.sort(train_df, by=[id_col, time_col])
+        train_df = cast(AnyDFType, ufp.sort(train_df, by=[id_col, time_col]))
         missing_series = set(df[id_col].unique()) - set(train_df[id_col].unique())
         if missing_series:
             raise ValueError(
@@ -459,7 +469,9 @@ def evaluate(
     results_per_metric = []
     for metric in metrics:
         metric_name = _function_name(metric)
-        kwargs = dict(df=df, models=model_cols, id_col=id_col, target_col=target_col)
+        kwargs: Dict[str, Any] = dict(
+            df=df, models=model_cols, id_col=id_col, target_col=target_col
+        )
         if metric_requires_y_train[metric_name]:
             kwargs["train_df"] = train_df
             kwargs["cutoff_col"] = cutoff_col
@@ -531,10 +543,13 @@ def evaluate(
             )
         else:
             group_cols = id_cols[1:]  # exclude id_col
-            df = ufp.group_by_agg(
-                df,
-                by=group_cols,
-                aggs={m: agg_fn for m in model_cols},
-                maintain_order=True,
+            df = cast(
+                AnyDFType,
+                ufp.group_by_agg(
+                    df,
+                    by=group_cols,
+                    aggs={m: agg_fn for m in model_cols},
+                    maintain_order=True,
+                ),
             )
     return df
