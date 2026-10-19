@@ -211,7 +211,6 @@ def _compute_time_feature(
             attrs = times.isocalendar() if feature == "week" else times
             feat_vals = getattr(attrs, feature).to_numpy()
         else:
-            # non-datetime pandas times fail here with an AttributeError
             feat_vals = getattr(times.dt, feature)()  # type: ignore[union-attr]
     return feat_name, feat_vals
 
