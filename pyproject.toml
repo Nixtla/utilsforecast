@@ -82,7 +82,7 @@ module = 'utilsforecast.compat'
 ignore_errors = true
 
 [tool.ruff.lint]
-select = ["F", "ARG", "I"]
+select = ["F", "ARG", "I", "W605"]
 
 [tool.ruff.format]
 quote-style = "double"
