@@ -4,7 +4,7 @@ __all__ = ["plot_series"]
 
 
 import re
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Union, cast
 
 try:
     import matplotlib as mpl
@@ -29,7 +29,14 @@ from .compat import DFType, pl, pl_Series
 from .validation import validate_format
 
 
-def _filter_series(df, id_col, time_col, uids, models=None, max_insample_length=None):
+def _filter_series(
+    df: DFType,
+    id_col: str,
+    time_col: str,
+    uids,
+    models: Optional[List[str]] = None,
+    max_insample_length: Optional[int] = None,
+) -> DFType:
     out_cols = [id_col, time_col]
     if models is not None:
         models_pat = r"|".join(models).replace(r"(", r"\(").replace(r")", r"\)")
@@ -38,9 +45,9 @@ def _filter_series(df, id_col, time_col, uids, models=None, max_insample_length=
         ]
         out_cols.extend(models + interval_cols)
     mask = ufp.is_in(df[id_col], uids)
-    df = ufp.filter_with_mask(df, mask)
+    df = cast(DFType, ufp.filter_with_mask(df, mask))
     df = df[out_cols]
-    df = ufp.sort(df, time_col)
+    df = cast(DFType, ufp.sort(df, time_col))
     if max_insample_length is not None:
         df = ufp.group_by(df, id_col, maintain_order=True).tail(max_insample_length)
     return df
@@ -218,6 +225,7 @@ def plot_series(
                 df = pd.concat([df, forecasts_df])
             else:
                 df = pl.concat([df, forecasts_df], how="align")
+    assert df is not None
 
     xlabel = f"Time [{time_col}]"
     ylabel = f"Target [{target_col}]"
