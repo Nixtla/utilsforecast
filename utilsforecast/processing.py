@@ -104,6 +104,25 @@ def counts_by_id(df: DataFrame, id_col: str) -> DataFrame:
     return id_counts
 
 
+def _polars_run_sort_indices(ids: pl_Series, times: pl_Series) -> Optional[np.ndarray]:
+    if ids.null_count() or times.null_count():
+        return None
+    id_changed = (ids[1:] != ids[:-1]).to_numpy()
+    t = times.to_physical().to_numpy()
+    if not ((t[1:] > t[:-1]) | id_changed).all():
+        return None
+    is_start = np.append(True, id_changed)
+    run_ids = ids.filter(pl_Series(is_start))
+    if run_ids.n_unique() != run_ids.len():
+        return None
+    order = run_ids.arg_sort().to_numpy()
+    starts = np.flatnonzero(is_start)
+    sizes = np.diff(np.append(starts, ids.len()))[order]
+    offsets = starts[order] - np.cumsum(sizes) + sizes
+    sort_idxs = np.repeat(offsets, sizes) + np.arange(ids.len())
+    return sort_idxs.astype(order.dtype)
+
+
 def maybe_compute_sort_indices(
     df: DataFrame, id_col: str, time_col: str
 ) -> Optional[np.ndarray]:
@@ -141,9 +160,11 @@ def maybe_compute_sort_indices(
         else:
             sort_idxs = np.lexsort((times, ids))
     else:
-        sort_idxs = (
-            df.select(pl.arg_sort_by([id_col, time_col])).to_series(0).to_numpy()
-        )
+        sort_idxs = _polars_run_sort_indices(ids, times)
+        if sort_idxs is None:
+            sort_idxs = (
+                df.select(pl.arg_sort_by([id_col, time_col])).to_series(0).to_numpy()
+            )
     return sort_idxs
 
 
