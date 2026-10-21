@@ -108,17 +108,16 @@ def _polars_run_sort_indices(ids: pl_Series, times: pl_Series) -> Optional[np.nd
     if ids.null_count() or times.null_count():
         return None
     id_changed = (ids[1:] != ids[:-1]).to_numpy()
+    starts = np.flatnonzero(np.append(True, id_changed))
+    if 2 * starts.size > ids.len():
+        return None
     t = times.to_physical().to_numpy()
     if not ((t[1:] > t[:-1]) | id_changed).all():
         return None
-    is_start = np.append(True, id_changed)
-    if 2 * is_start.sum() > ids.len():
-        return None
-    run_ids = ids.filter(pl_Series(is_start))
+    run_ids = ids.gather(starts)
     if run_ids.n_unique() != run_ids.len():
         return None
     order = run_ids.arg_sort().to_numpy()
-    starts = np.flatnonzero(is_start)
     sizes = np.diff(np.append(starts, ids.len()))[order]
     offsets = starts[order] - np.cumsum(sizes) + sizes
     sort_idxs = np.repeat(offsets, sizes) + np.arange(ids.len())
