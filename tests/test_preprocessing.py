@@ -585,3 +585,47 @@ def test_fill_gaps_polars_custom_bounds():
         datetime(2020, 1, 4),
         datetime(2020, 1, 5),
     ]
+
+    res_date_dt_str = fill_gaps(df_date, freq="1d", start="2020-01-01 00:00:00")
+    assert res_date_dt_str["ds"].to_list()[0] == date(2020, 1, 1)
+
+
+@pytest.mark.parametrize(
+    "start", ["2020-01-01", datetime(2020, 1, 1), date(2020, 1, 1)]
+)
+def test_fill_gaps_polars_naive_bound_tz_aware_column(start):
+    df = pl.DataFrame(
+        {
+            "unique_id": [1, 1],
+            "ds": [datetime(2020, 1, 2), datetime(2020, 1, 4)],
+            "y": [1.0, 2.0],
+        }
+    ).with_columns(pl.col("ds").dt.replace_time_zone("America/New_York"))
+    res = fill_gaps(df, freq="1d", start=start)
+    expected = pl.datetime_range(
+        datetime(2020, 1, 1),
+        datetime(2020, 1, 4),
+        "1d",
+        time_unit="us",
+        time_zone="America/New_York",
+        eager=True,
+    )
+    assert res["ds"].to_list() == expected.to_list()
+    assert res["y"].drop_nulls().to_list() == [1.0, 2.0]
+
+
+@pytest.mark.parametrize(
+    "ds, start",
+    [
+        ([2, 4], date(2020, 1, 1)),
+        ([2, 4], "2020-01-01"),
+        ([date(2020, 1, 2), date(2020, 1, 4)], 5),
+        ([datetime(2020, 1, 2), datetime(2020, 1, 4)], 5),
+        ([datetime(2020, 1, 2), datetime(2020, 1, 4)], "2020-01-01T00:00:00+02:00"),
+    ],
+)
+def test_fill_gaps_polars_mismatched_bound(ds, start):
+    df = pl.DataFrame({"unique_id": [1, 1], "ds": ds, "y": [1.0, 2.0]})
+    freq = 1 if isinstance(ds[0], int) else "1d"
+    with pytest.raises(ValueError):
+        fill_gaps(df, freq=freq, start=start)
