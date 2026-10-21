@@ -1700,6 +1700,7 @@ _SORT_LAYOUTS = {
         [_grouped_rows(range(12))[i] for i in np.random.default_rng(0).permutation(36)],
         False,
     ),
+    "interleaved": ([(i, t) for t in range(3) for i in range(12)], False),
     "split_run": ([(1, 0), (1, 1), (0, 0), (1, 2), (2, 0)], False),
     "duplicated": ([(1, 0), (1, 1), (1, 1), (0, 0), (0, 1)], False),
     "descending": ([(1, 1), (1, 0), (0, 0), (0, 1)], False),

@@ -112,6 +112,8 @@ def _polars_run_sort_indices(ids: pl_Series, times: pl_Series) -> Optional[np.nd
     if not ((t[1:] > t[:-1]) | id_changed).all():
         return None
     is_start = np.append(True, id_changed)
+    if 2 * is_start.sum() > ids.len():
+        return None
     run_ids = ids.filter(pl_Series(is_start))
     if run_ids.n_unique() != run_ids.len():
         return None
