@@ -104,24 +104,55 @@ def counts_by_id(df: DataFrame, id_col: str) -> DataFrame:
     return id_counts
 
 
+def _sorted_run_starts(
+    id_changed: np.ndarray, times: np.ndarray
+) -> Optional[np.ndarray]:
+    starts = np.flatnonzero(np.append(True, id_changed))
+    if 2 * starts.size > times.size:
+        return None
+    if not ((times[1:] > times[:-1]) | id_changed).all():
+        return None
+    return starts
+
+
+def _runs_to_sort_indices(starts: np.ndarray, order: np.ndarray, n: int) -> np.ndarray:
+    sizes = np.diff(np.append(starts, n))[order]
+    offsets = starts[order] - np.cumsum(sizes) + sizes
+    return np.repeat(offsets, sizes) + np.arange(n)
+
+
+def _pandas_run_sort_indices(
+    ids: np.ndarray, times: np.ndarray
+) -> Optional[np.ndarray]:
+    # object arrays (e.g. pyarrow dates) with nulls raise on comparison
+    if times.dtype == object and pd.isna(times).any():
+        return None
+    # comparing object arrays is slow, so reject shuffled frames on a prefix first
+    head_ids, head_times = ids[:1000], times[:1000]
+    if _sorted_run_starts(head_ids[1:] != head_ids[:-1], head_times) is None:
+        return None
+    starts = _sorted_run_starts(ids[1:] != ids[:-1], times)
+    if starts is None:
+        return None
+    run_ids = pd.Index(ids[starts])
+    if run_ids.hasnans or not run_ids.is_unique:
+        return None
+    return _runs_to_sort_indices(starts, run_ids.argsort(), ids.size)
+
+
 def _polars_run_sort_indices(ids: pl_Series, times: pl_Series) -> Optional[np.ndarray]:
     if ids.null_count() or times.null_count():
         return None
-    id_changed = (ids[1:] != ids[:-1]).to_numpy()
-    starts = np.flatnonzero(np.append(True, id_changed))
-    if 2 * starts.size > ids.len():
-        return None
-    t = times.to_physical().to_numpy()
-    if not ((t[1:] > t[:-1]) | id_changed).all():
+    starts = _sorted_run_starts(
+        (ids[1:] != ids[:-1]).to_numpy(), times.to_physical().to_numpy()
+    )
+    if starts is None:
         return None
     run_ids = ids.gather(starts)
     if run_ids.n_unique() != run_ids.len():
         return None
     order = run_ids.arg_sort().to_numpy()
-    sizes = np.diff(np.append(starts, ids.len()))[order]
-    offsets = starts[order] - np.cumsum(sizes) + sizes
-    sort_idxs = np.repeat(offsets, sizes) + np.arange(ids.len())
-    return sort_idxs.astype(order.dtype)
+    return _runs_to_sort_indices(starts, order, ids.len()).astype(order.dtype)
 
 
 def maybe_compute_sort_indices(
@@ -155,17 +186,21 @@ def maybe_compute_sort_indices(
         if times_are_sorted:
             return None
     if isinstance(df, pd.DataFrame):
+        sort_idxs = _pandas_run_sort_indices(ids, times)
+    else:
+        sort_idxs = _polars_run_sort_indices(ids, times)
+    if sort_idxs is not None:
+        return sort_idxs
+    if isinstance(df, pd.DataFrame):
         if pd.api.types.is_string_dtype(df.dtypes[id_col]):
             # MultiIndex.argsort is faster than lexsort for strings
             sort_idxs = pd.MultiIndex.from_frame(df[[id_col, time_col]]).argsort()
         else:
             sort_idxs = np.lexsort((times, ids))
     else:
-        sort_idxs = _polars_run_sort_indices(ids, times)
-        if sort_idxs is None:
-            sort_idxs = (
-                df.select(pl.arg_sort_by([id_col, time_col])).to_series(0).to_numpy()
-            )
+        sort_idxs = (
+            df.select(pl.arg_sort_by([id_col, time_col])).to_series(0).to_numpy()
+        )
     return sort_idxs
 
 

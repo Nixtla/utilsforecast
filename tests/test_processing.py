@@ -1748,3 +1748,64 @@ def test_maybe_compute_sort_indices_polars(layout, id_dtype, time_dtype):
         pl.testing.assert_series_equal(processed.uids, expected_processed.uids)
         for got, exp in zip(processed[1:-1], expected_processed[1:-1]):
             np.testing.assert_array_equal(got, exp)
+
+
+@pytest.mark.parametrize("layout", _SORT_LAYOUTS)
+@pytest.mark.parametrize("id_dtype", ["str", "pyarrow_str", "cat", "int"])
+@pytest.mark.parametrize("time_dtype", ["int", "datetime", "pyarrow_date"])
+def test_maybe_compute_sort_indices_pandas(monkeypatch, layout, id_dtype, time_dtype):
+    rows, grouped = _SORT_LAYOUTS[layout]
+    if layout == "null_id" and id_dtype in ("str", "pyarrow_str"):
+        pytest.skip("null string ids already fail in the sortedness check")
+    if id_dtype == "int":
+        ids = pd.Series(
+            [i for i, _ in rows], dtype="float64" if layout == "null_id" else "int64"
+        )
+    else:
+        str_ids = [None if i is None else f"id_{i}" for i, _ in rows]
+        dtype = {
+            "str": object,
+            "pyarrow_str": "string[pyarrow]",
+            "cat": pd.CategoricalDtype([f"id_{i}" for i in range(12)][::-1]),
+        }[id_dtype]
+        ids = pd.Series(str_ids, dtype=dtype)
+    times = pd.Series([t for _, t in rows], dtype="int64")
+    if time_dtype != "int":
+        times = pd.Timestamp("2000-01-01") + pd.to_timedelta(times, unit="D")
+    if time_dtype == "pyarrow_date":
+        times = times.astype("date32[pyarrow]")
+    df = pd.DataFrame(
+        {"unique_id": ids, "ds": times, "y": np.arange(len(rows), dtype=float)}
+    )
+
+    res = ufp.maybe_compute_sort_indices(df, "unique_id", "ds")
+    if ufp._is_sorted(df, "unique_id", "ds"):
+        assert res is None
+        return
+    np_ids = df["unique_id"].cat.codes if id_dtype == "cat" else df["unique_id"]
+    fast = ufp._pandas_run_sort_indices(np_ids.to_numpy(), df["ds"].to_numpy())
+    assert (fast is not None) == grouped
+    monkeypatch.setattr(ufp, "_pandas_run_sort_indices", lambda *_: None)
+    expected = ufp.maybe_compute_sort_indices(df, "unique_id", "ds")
+    assert res.dtype == expected.dtype
+    np.testing.assert_array_equal(res, expected)
+
+
+def test_maybe_compute_sort_indices_pandas_null_pyarrow_date():
+    df = pd.DataFrame(
+        {
+            "unique_id": ["b", "b", "a", "a"],
+            "ds": pd.Series(
+                [
+                    datetime.date(2000, 1, 1),
+                    None,
+                    datetime.date(2000, 1, 1),
+                    datetime.date(2000, 1, 2),
+                ],
+                dtype="date32[pyarrow]",
+            ),
+        }
+    )
+    np.testing.assert_array_equal(
+        ufp.maybe_compute_sort_indices(df, "unique_id", "ds"), [2, 3, 0, 1]
+    )
