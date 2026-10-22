@@ -124,9 +124,6 @@ def _runs_to_sort_indices(starts: np.ndarray, order: np.ndarray, n: int) -> np.n
 def _pandas_run_sort_indices(
     ids: np.ndarray, times: np.ndarray
 ) -> Optional[np.ndarray]:
-    # object arrays (e.g. pyarrow dates) with nulls raise on comparison
-    if times.dtype == object and pd.isna(times).any():
-        return None
     # comparing object arrays is slow, so reject shuffled frames on a prefix first
     head_ids, head_times = ids[:1000], times[:1000]
     if _sorted_run_starts(head_ids[1:] != head_ids[:-1], head_times) is None:
@@ -135,14 +132,12 @@ def _pandas_run_sort_indices(
     if starts is None:
         return None
     run_ids = pd.Index(ids[starts])
-    if run_ids.hasnans or not run_ids.is_unique:
+    if not run_ids.is_unique:
         return None
     return _runs_to_sort_indices(starts, run_ids.argsort(), ids.size)
 
 
 def _polars_run_sort_indices(ids: pl_Series, times: pl_Series) -> Optional[np.ndarray]:
-    if ids.null_count() or times.null_count():
-        return None
     starts = _sorted_run_starts(
         (ids[1:] != ids[:-1]).to_numpy(), times.to_physical().to_numpy()
     )
