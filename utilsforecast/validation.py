@@ -39,6 +39,12 @@ def _is_dt_or_int(s: Series) -> bool:
     return _is_dt_dtype(s) or _is_int_dtype(s)
 
 
+def _has_nulls(s: Series) -> bool:
+    if isinstance(s, pd.Series):
+        return s.hasnans
+    return s.null_count() > 0
+
+
 def ensure_shallow_copy(df: pd.DataFrame) -> pd.DataFrame:
     from packaging.version import Version
 
@@ -112,6 +118,12 @@ def validate_format(
         raise ValueError(
             f"The time column ('{time_col}') should have either timestamps or integers, got '{times_dtype}'."
         )
+
+    # nulls
+    if _has_nulls(df[id_col]):
+        raise ValueError(f"The id column ('{id_col}') contains null values.")
+    if _has_nulls(df[time_col]):
+        raise ValueError(f"The time column ('{time_col}') contains null values.")
 
     # target col
     if target_col is None:
