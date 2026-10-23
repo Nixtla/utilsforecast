@@ -112,18 +112,18 @@ def validate_format(
     if missing_cols:
         raise ValueError(f"The following columns are missing: {missing_cols}")
 
+    # nulls
+    if _has_nulls(df[id_col]):
+        raise ValueError(f"The id column ('{id_col}') contains null values.")
+    if _has_nulls(df[time_col]):
+        raise ValueError(f"The time column ('{time_col}') contains null values.")
+
     # time col
     if not _is_dt_or_int(df[time_col]):
         times_dtype = df[time_col].dtype
         raise ValueError(
             f"The time column ('{time_col}') should have either timestamps or integers, got '{times_dtype}'."
         )
-
-    # nulls
-    if _has_nulls(df[id_col]):
-        raise ValueError(f"The id column ('{id_col}') contains null values.")
-    if _has_nulls(df[time_col]):
-        raise ValueError(f"The time column ('{time_col}') contains null values.")
 
     # target col
     if target_col is None:

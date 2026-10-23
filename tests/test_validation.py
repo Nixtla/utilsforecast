@@ -101,6 +101,7 @@ def test_validate_format_null_ids(ids, target_col):
         pd.Series(pd.to_datetime(["2000-01-01", None])),
         pd.Series([datetime.date(2000, 1, 1), None], dtype="date32[pyarrow]"),
         pd.Series([1, None], dtype="Int64"),
+        pd.Series([1, None]),
         pl.Series([datetime.datetime(2000, 1, 1), None]),
         pl.Series([datetime.date(2000, 1, 1), None]),
         pl.Series([1, None]),
