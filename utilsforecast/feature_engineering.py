@@ -100,9 +100,9 @@ def _fourier(
     keep_sin = 2 * orders != season_length
     terms = np.hstack([np.sin(x[:, keep_sin]), np.cos(x)])
     cols = [
-        f"{op}{i + 1}_{season_length}" 
-        for op in ("sin", "cos") 
-        for i in range(k) 
+        f"{op}{i + 1}_{season_length}"
+        for op in ("sin", "cos")
+        for i in range(k)
         if not (2 * (i + 1) == season_length and op == "sin")
     ]
     vals, future_vals = _assign_slices(sizes=sizes, feats=terms, h=h)
