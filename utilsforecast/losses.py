@@ -26,6 +26,8 @@ __all__ = [
     "scaled_crps",
     "tweedie_deviance",
     "linex",
+    "excess_volatility",
+    "forecast_percentage_change",
 ]
 
 from typing import Callable, Dict, List, Union
@@ -1280,3 +1282,217 @@ def linex(
         gen_expr=gen_expr,
         cutoff_col=cutoff_col,
     )
+
+
+def _consecutive_forecast_pairs(
+    df: IntoDataFrameT,
+    models: List[str],
+    id_col: str,
+    time_col: str,
+    target_col: str,
+    cutoff_col: str,
+) -> tuple[nw.DataFrame, nw.DataFrame]:
+    """Pair each forecast with its revision from the next cutoff for the same target date.
+
+    For every model column `m`, the pairs hold `m` (the forecast issued at one cutoff)
+    and `m_update` (the forecast issued at the next cutoff of the same serie), joined on
+    `id_col` and `time_col`, with `cutoff_col` set to the cutoff of the revision. Dates
+    covered by only one cutoff are dropped. Also returns every (id, cutoff) in `df`.
+    """
+    df = nw.from_native(df)
+    if cutoff_col not in df.columns:
+        raise ValueError(
+            f"Forecast volatility compares forecasts across cutoffs, but `df` has no "
+            f"'{cutoff_col}' column. Pass cross-validation output."
+        )
+    cutoffs = (
+        df.select(id_col, cutoff_col)
+        .unique()
+        .with_columns(
+            _fcd=nw.col(cutoff_col).rank(method="dense").over(id_col).cast(nw.Int64)
+        )
+    )
+    df = df.join(cutoffs, on=[id_col, cutoff_col])
+    before = df.select(id_col, time_col, "_fcd", target_col, *models)
+    update = df.select(
+        id_col,
+        time_col,
+        cutoff_col,
+        (nw.col("_fcd") - 1).alias("_fcd"),
+        *[nw.col(m).alias(f"{m}_update") for m in models],
+    )
+    pairs = before.join(update, on=[id_col, time_col, "_fcd"])
+    if pairs.shape[0] == 0:
+        raise ValueError(
+            "No target date is forecasted from two consecutive cutoffs, so forecast "
+            "volatility is undefined. Run cross-validation with more than one window "
+            "and a `step_size` smaller than the horizon."
+        )
+    return pairs, cutoffs.select(cutoff_col, id_col)
+
+
+def _with_all_cutoffs(
+    res: nw.DataFrame, cutoffs: nw.DataFrame, id_col: str, cutoff_col: str
+) -> IntoDataFrameT:
+    """Give every (id, cutoff) a row, leaving the first cutoff of each serie empty."""
+    return (
+        cutoffs.join(res, on=[cutoff_col, id_col], how="left")
+        .sort(cutoff_col, id_col)
+        .to_native()
+    )
+
+
+def _pinball_expr(target: nw.Expr, pred: nw.Expr, q: float) -> nw.Expr:
+    error = target - pred
+    return nw.max_horizontal(q * error, (q - 1) * error)
+
+
+def excess_volatility(
+    df: IntoDataFrameT,
+    models: Dict[str, List[str]],
+    quantiles: np.ndarray,
+    id_col: str = "unique_id",
+    time_col: str = "ds",
+    target_col: str = "y",
+    cutoff_col: str = "cutoff",
+) -> IntoDataFrameT:
+    """Scaled Excess Volatility (sEV)
+
+    Measures harmful forecast volatility across consecutive cutoffs. When forecast
+    windows overlap, the same target date is forecasted from several cutoffs. Each
+    revision is charged for how far it moves the forecast (revision cost) and credited
+    for the accuracy it buys, so only revisions that move away from the truth, or
+    overshoot it, are penalized.
+
+    For a forecast $\\hat{y}_1$ and its revision $\\hat{y}_2$ from the next cutoff:
+    $EV = QL(\\hat{y}_2, \\hat{y}_1) - (QL(y, \\hat{y}_1) - QL(y, \\hat{y}_2))$,
+    averaged over `quantiles`. Values above 0 mean the revisions cost more than the
+    accuracy they bought.
+
+    Each row sums the EV of the pairs revised at one cutoff and divides it by a
+    scale shared by all cutoffs of the serie: the sum of $|y|$ over all of its pairs
+    divided by the number of cutoffs that have pairs. Averaging a serie's rows over
+    cutoffs therefore gives its sEV over the whole cross-validation,
+    $\sum EV / \sum |y|$. Because the scale uses every window, adding or removing a
+    cutoff changes the values of the other cutoffs of that serie.
+
+    Args:
+        df (pandas or polars DataFrame): Cross-validation output with id, times, cutoffs, actuals and predictions.
+        models (dict from str to list of str): Mapping from model name to the model predictions for each quantile.
+        quantiles (numpy array): Quantiles to compare against.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        time_col (str, optional): Column that identifies each timestep. Defaults to 'ds'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'.
+
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and cutoff and one column per model.
+            A row scores the revisions made at that cutoff, so the first cutoff of each serie is null.
+
+    References:
+        [1] https://openreview.net/forum?id=dXdycy7WCX
+    """
+    quantiles = np.asarray(quantiles)
+    cols = [c for forecasts in models.values() for c in forecasts]
+    pairs, cutoffs = _consecutive_forecast_pairs(
+        df=df,
+        models=cols,
+        id_col=id_col,
+        time_col=time_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
+    )
+    y = nw.col(target_col)
+    exprs = []
+    for model, forecasts in models.items():
+        ev = sum(
+            _pinball_expr(nw.col(f"{c}_update"), nw.col(c), q)
+            - _pinball_expr(y, nw.col(c), q)
+            + _pinball_expr(y, nw.col(f"{c}_update"), q)
+            for c, q in zip(forecasts, quantiles)
+        ) / len(quantiles)
+        exprs.append(ev.alias(model))
+        # only scale by the dates where this model's pair is complete
+        exprs.append(nw.when(~ev.is_null()).then(y.abs()).alias(f"_{model}_norm"))
+        exprs.append(nw.when(~ev.is_null()).then(1).alias(f"_{model}_pairs"))
+    eps = np.finfo(np.float64).eps
+    res = (
+        pairs.select(cutoff_col, id_col, *exprs)
+        .group_by(cutoff_col, id_col)
+        .agg(nw.all().sum())
+    )
+
+    def scaled(model):
+        # sum of |y| over the serie's pairs, split evenly across its scored cutoffs
+        scored = nw.col(f"_{model}_pairs") > 0
+        n_scored = scored.cast(nw.Int64).sum().over(id_col)
+        scale = nw.col(f"_{model}_norm").sum().over(id_col) / n_scored
+        return nw.when(scored).then(nw.col(model) / (scale + eps)).alias(model)
+
+    res = res.select(cutoff_col, id_col, *[scaled(m) for m in models.keys()])
+    return _with_all_cutoffs(res, cutoffs, id_col, cutoff_col)
+
+
+def forecast_percentage_change(
+    df: IntoDataFrameT,
+    models: List[str],
+    id_col: str = "unique_id",
+    time_col: str = "ds",
+    target_col: str = "y",
+    cutoff_col: str = "cutoff",
+) -> IntoDataFrameT:
+    """Symmetric Forecast Percentage Change (sFPC)
+
+    Measures the relative change of the forecasts across consecutive cutoffs. When
+    forecast windows overlap, the same target date is forecasted from several
+    cutoffs. For a forecast $\\hat{y}_1$ and its revision $\\hat{y}_2$ from the next
+    cutoff, sFPC averages $200 |\\hat{y}_2 - \\hat{y}_1| / (|\\hat{y}_1| + |\\hat{y}_2|)$
+    over the pairs revised at each cutoff. Unlike `excess_volatility`, every revision is penalized,
+    even the ones that improve accuracy, so the two are best read together.
+
+    To evaluate a probabilistic forecast pass the median column, since the outer
+    quantiles are expected to shift inward as the uncertainty shrinks.
+
+    Args:
+        df (pandas or polars DataFrame): Cross-validation output with id, times, cutoffs, actuals and predictions.
+        models (list of str): Columns that identify the models predictions.
+        id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
+        time_col (str, optional): Column that identifies each timestep. Defaults to 'ds'.
+        target_col (str, optional): Column that contains the target. Defaults to 'y'.
+        cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'.
+
+    Returns:
+        pandas or polars DataFrame: dataframe with one row per id and cutoff and one column per model.
+            A row scores the revisions made at that cutoff, so the first cutoff of each serie is null.
+
+    References:
+        [1] https://openreview.net/forum?id=dXdycy7WCX
+    """
+    pairs, cutoffs = _consecutive_forecast_pairs(
+        df=df,
+        models=models,
+        id_col=id_col,
+        time_col=time_col,
+        target_col=target_col,
+        cutoff_col=cutoff_col,
+    )
+
+    def gen_expr(model):
+        before = nw.col(model)
+        update = nw.col(f"{model}_update")
+        denominator = update.abs() + before.abs()
+        return (
+            nw.when(denominator == 0)
+            .then(0.0)
+            .otherwise(200 * (update - before).abs() / denominator)
+            .alias(model)
+        )
+
+    res = _nw_agg_expr(
+        df=pairs,
+        models=models,
+        id_col=id_col,
+        gen_expr=gen_expr,
+        cutoff_col=cutoff_col,
+    )
+    return _with_all_cutoffs(nw.from_native(res), cutoffs, id_col, cutoff_col)

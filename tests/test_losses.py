@@ -732,3 +732,216 @@ def test_tweedie_deviance_vs_sklearn(power):
         ufl.tweedie_deviance(df, ["model"], power=power)["model"].iloc[0],
         sklearn_metrics.mean_tweedie_deviance(y, pred, power=power),
     )
+
+
+def volatility_df(engine, forecasts, h, step_size=1, y=None):
+    """Cross-validation output for one serie, with `forecasts[t]` issued at cutoff t."""
+    rows = []
+    for t, fcst in enumerate(forecasts):
+        cutoff = t * step_size
+        for k in range(h):
+            ds = cutoff + k + 1
+            rows.append(
+                {
+                    "unique_id": "id0",
+                    "ds": ds,
+                    "cutoff": cutoff,
+                    "y": float(ds) if y is None else y,
+                    "model": float(fcst[k]),
+                }
+            )
+    df = pd.DataFrame(rows)
+    if engine == "polars":
+        import polars as pl
+
+        df = pl.from_pandas(df)
+    return df
+
+
+def volatility_to_pandas(res, engine):
+    return res if engine == "pandas" else res.to_pandas()
+
+
+def revised(res, engine, model="model"):
+    """Scores of the revisions, after checking each serie's first cutoff is empty."""
+    res = volatility_to_pandas(res, engine)
+    first = res.groupby("unique_id")["cutoff"].transform("min") == res["cutoff"]
+    assert res.loc[first, model].isna().all()
+    return res.loc[~first, model]
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_volatility_is_zero_for_stable_forecasts(engine):
+    # a rolling forecast that never revises a date, and a constant one
+    pattern = np.arange(1, 11, dtype=float)
+    rolling = [pattern[t : t + 5] for t in range(5)]
+    constant = [np.ones(5)] * 5
+    for forecasts in [rolling, constant]:
+        df = volatility_df(engine, forecasts, h=5)
+        ev = ufl.excess_volatility(df, {"model": ["model"]}, quantiles=np.array([0.5]))
+        fpc = ufl.forecast_percentage_change(df, ["model"])
+        assert (revised(ev, engine) == 0.0).all()
+        assert (revised(fpc, engine) == 0.0).all()
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_forecast_percentage_change_hand_computed(engine):
+    # one revised date, from 10 to 20 -> 200 * 10 / 30
+    df = volatility_df(engine, [[10.0, 10.0], [20.0, 20.0]], h=2)
+    res = ufl.forecast_percentage_change(df, ["model"])
+    assert revised(res, engine).item() == pytest.approx(200 / 3)
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+@pytest.mark.parametrize(
+    "y, expected",
+    [
+        (10.0, 10.0),  # the old forecast was right, the revision was pure cost
+        (20.0, 0.0),  # the revision moved exactly onto the truth
+        (15.0, 5.0),  # the revision helped halfway, so half of its cost is excess
+        (12.0, 8.0),  # the revision overshot the truth
+    ],
+)
+def test_excess_volatility_hand_computed(engine, y, expected):
+    # one revised date, from 10 to 20, scaled by |y| of that date
+    df = volatility_df(engine, [[10.0, 10.0], [20.0, 20.0]], h=2, y=y)
+    res = ufl.excess_volatility(df, {"model": ["model"]}, quantiles=np.array([0.5]))
+    assert revised(res, engine).item() == pytest.approx(expected / y)
+
+
+def test_excess_volatility_is_never_negative():
+    # the pinball loss is subadditive, so a revision never buys more than it costs
+    rng = np.random.default_rng(0)
+    quantiles = np.array([0.1, 0.5, 0.9])
+    for _ in range(20):
+        rows = []
+        for uid in range(2):
+            for t in range(4):
+                for k in range(3):
+                    fcst = np.sort(rng.normal(0, 5, 3))
+                    rows.append(
+                        {
+                            "unique_id": uid,
+                            "ds": t + k + 1,
+                            "cutoff": t,
+                            "y": rng.normal(0, 5),
+                            "q10": fcst[0],
+                            "q50": fcst[1],
+                            "q90": fcst[2],
+                        }
+                    )
+        df = pd.DataFrame(rows)
+        # y must be the same across cutoffs for a given date
+        df["y"] = df.groupby(["unique_id", "ds"])["y"].transform("first")
+        res = ufl.excess_volatility(df, {"model": ["q10", "q50", "q90"]}, quantiles)
+        assert (revised(res, "pandas") >= 0).all()
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_volatility_pairs_dates_across_step_sizes(engine):
+    # with step_size=2 and h=3 only the last date of a window is revised
+    df = volatility_df(engine, [[1.0, 1.0, 10.0], [20.0, 1.0, 1.0]], h=3, step_size=2)
+    res = ufl.forecast_percentage_change(df, ["model"])
+    assert revised(res, engine).item() == pytest.approx(200 * 10 / 30)
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_volatility_engines(engine):
+    series = generate_series(3, n_models=1, level=[80], engine="pandas")
+    folds = []
+    for cutoff in pd.to_datetime(["2000-02-01", "2000-02-02", "2000-02-03"]):
+        fold = series[series["ds"] > cutoff].groupby("unique_id", observed=True).head(4)
+        folds.append(fold.assign(cutoff=cutoff))
+    df = pd.concat(folds, ignore_index=True)
+    models = {"model0": ["model0-lo-80", "model0", "model0-hi-80"]}
+    quantiles = np.array([0.1, 0.5, 0.9])
+    pd_ev = ufl.excess_volatility(df, models, quantiles)
+    pd_fpc = ufl.forecast_percentage_change(df, ["model0"])
+    if engine == "polars":
+        import polars as pl
+
+        pl_df = pl.from_pandas(df)
+        pd_vs_pl(pd_ev, ufl.excess_volatility(pl_df, models, quantiles), ["model0"])
+        pd_vs_pl(
+            pd_fpc, ufl.forecast_percentage_change(pl_df, ["model0"]), ["model0"]
+        )
+    assert pd_ev.shape[0] == pd_fpc.shape[0] == 9
+    revised(pd_ev, "pandas", "model0")
+    revised(pd_fpc, "pandas", "model0")
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_volatility_scores_each_cutoff(engine):
+    # c1 -> c2 revises d2 from 10 to 20, c2 -> c3 leaves d3 at 10
+    forecasts = [[10.0, 10.0], [20.0, 10.0], [10.0, 10.0]]
+    df = volatility_df(engine, forecasts, h=2, y=10.0)
+    res = ufl.forecast_percentage_change(df, ["model"])
+    mae = volatility_to_pandas(ufl.mae(df, ["model"]), engine)
+    res = volatility_to_pandas(res, engine)
+    # same layout as the per-cutoff metrics
+    assert res.columns.tolist() == mae.columns.tolist()
+    assert res["cutoff"].tolist() == mae["cutoff"].tolist() == [0, 1, 2]
+    np.testing.assert_allclose(res["model"], [np.nan, 200 / 3, 0.0])
+    ev = ufl.excess_volatility(df, {"model": ["model"]}, quantiles=np.array([0.5]))
+    ev = volatility_to_pandas(ev, engine)
+    np.testing.assert_allclose(ev["model"], [np.nan, 1.0, 0.0])
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_excess_volatility_cutoffs_average_to_pooled(engine):
+    # windows with very different scales, so per-cutoff scaling would not average back
+    rng = np.random.default_rng(0)
+    rows = []
+    for uid in range(2):
+        for t in range(5):
+            for k in range(4):
+                ds = t + k + 1
+                rows.append(
+                    {
+                        "unique_id": uid,
+                        "ds": ds,
+                        "cutoff": t,
+                        "y": 10.0**ds,
+                        "q50": 10.0**ds * rng.uniform(0.5, 1.5),
+                    }
+                )
+    pd_df = pd.DataFrame(rows)
+    df = pd_df
+    if engine == "polars":
+        import polars as pl
+
+        df = pl.from_pandas(pd_df)
+    res = ufl.excess_volatility(df, {"model": ["q50"]}, quantiles=np.array([0.5]))
+    res = volatility_to_pandas(res, engine)
+    # pooled sEV per serie: sum of EV over all pairs over the sum of |y| of those pairs
+    nxt = pd_df.assign(cutoff=pd_df["cutoff"] - 1)
+    pairs = pd_df.merge(nxt, on=["unique_id", "ds", "cutoff"], suffixes=("", "_up"))
+    ev = 0.5 * (pairs["q50_up"] - pairs["q50"]).abs() - (
+        0.5 * (pairs["y"] - pairs["q50"]).abs()
+        - 0.5 * (pairs["y"] - pairs["q50_up"]).abs()
+    )
+    pooled = ev.groupby(pairs["unique_id"]).sum() / pairs["y"].abs().groupby(
+        pairs["unique_id"]
+    ).sum()
+    np.testing.assert_allclose(res.groupby("unique_id")["model"].mean(), pooled)
+
+
+@pytest.mark.parametrize(
+    "forecasts, step_size, match",
+    [
+        ([[1.0, 2.0]], 1, "No target date"),  # a single window
+        ([[1.0, 2.0], [3.0, 4.0]], 2, "No target date"),  # step_size == h
+    ],
+)
+def test_volatility_requires_overlapping_windows(forecasts, step_size, match):
+    df = volatility_df("pandas", forecasts, h=2, step_size=step_size)
+    with pytest.raises(ValueError, match=match):
+        ufl.excess_volatility(df, {"model": ["model"]}, quantiles=np.array([0.5]))
+    with pytest.raises(ValueError, match=match):
+        ufl.forecast_percentage_change(df, ["model"])
+
+
+def test_volatility_requires_cutoff_column():
+    df = volatility_df("pandas", [[1.0, 2.0], [3.0, 4.0]], h=2).drop(columns="cutoff")
+    with pytest.raises(ValueError, match="cutoff"):
+        ufl.forecast_percentage_change(df, ["model"])

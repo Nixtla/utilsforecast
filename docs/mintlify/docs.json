@@ -20,7 +20,8 @@
         "group": "Tutorials",
         "pages": [
           "docs/tutorials/multi_objective_model_selection.html",
-          "docs/tutorials/rectify_strategy.html"
+          "docs/tutorials/rectify_strategy.html",
+          "docs/tutorials/forecast_volatility.html"
         ]
       },
       {
