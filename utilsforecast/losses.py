@@ -30,6 +30,7 @@ __all__ = [
     "forecast_percentage_change",
 ]
 
+import warnings
 from typing import Callable, Dict, List, Union
 
 import narwhals.stable.v2 as nw
@@ -1292,7 +1293,7 @@ def _consecutive_forecast_pairs(
     target_col: str,
     cutoff_col: str,
 ) -> tuple[nw.DataFrame, nw.DataFrame]:
-    """Pair each forecast with its revision from the next cutoff for the same target date.
+    """Pair each forecast with its revision from the next cutoff, for the same date.
 
     For every model column `m`, the pairs hold `m` (the forecast issued at one cutoff)
     and `m_update` (the forecast issued at the next cutoff of the same serie), joined on
@@ -1312,6 +1313,7 @@ def _consecutive_forecast_pairs(
             _fcd=nw.col(cutoff_col).rank(method="dense").over(id_col).cast(nw.Int64)
         )
     )
+    _warn_uneven_cutoffs(cutoffs, id_col=id_col, cutoff_col=cutoff_col)
     df = df.join(cutoffs, on=[id_col, cutoff_col])
     before = df.select(id_col, time_col, "_fcd", target_col, *models)
     update = df.select(
@@ -1329,6 +1331,32 @@ def _consecutive_forecast_pairs(
             "and a `step_size` smaller than the horizon."
         )
     return pairs, cutoffs.select(cutoff_col, id_col)
+
+
+def _warn_uneven_cutoffs(cutoffs: nw.DataFrame, id_col: str, cutoff_col: str) -> None:
+    """Warn about series whose cutoffs are unevenly spaced, e.g. a missing window."""
+    previous = cutoffs.select(
+        id_col,
+        (nw.col("_fcd") + 1).alias("_fcd"),
+        nw.col(cutoff_col).alias("_previous_cutoff"),
+    )
+    gaps = (
+        cutoffs.join(previous, on=[id_col, "_fcd"])
+        .select(id_col, (nw.col(cutoff_col) - nw.col("_previous_cutoff")).alias("_gap"))
+        .group_by(id_col)
+        .agg(nw.col("_gap").n_unique())
+        .filter(nw.col("_gap") > 1)
+        .sort(id_col)
+    )
+    if gaps.shape[0] > 0:
+        uneven = gaps[id_col].to_list()
+        warnings.warn(
+            f"Cutoffs are not evenly spaced for {len(uneven)} series (e.g. "
+            f"{uneven[:3]}), so some revisions span more than one step. Each forecast "
+            "is compared with the next available cutoff on the dates both forecast.",
+            UserWarning,
+            stacklevel=4,
+        )
 
 
 def _with_all_cutoffs(
@@ -1374,12 +1402,11 @@ def excess_volatility(
     averaged over `quantiles`. Values above 0 mean the revisions cost more than the
     accuracy they bought.
 
-    Each row sums the EV of the pairs revised at one cutoff and divides it by a
-    scale shared by all cutoffs of the serie: the sum of $|y|$ over all of its pairs
-    divided by the number of cutoffs that have pairs. Averaging a serie's rows over
-    cutoffs therefore gives its sEV over the whole cross-validation,
-    $\\sum EV / \\sum |y|$. Because the scale uses every window, adding or removing a
-    cutoff changes the values of the other cutoffs of that serie.
+    Each row sums the EV of the revisions made at one cutoff and divides it by a
+    per-serie scale, $\\sum |y|$ over the serie's pairs over its number of scored
+    cutoffs, so a serie's rows average to its sEV, $\\sum EV / \\sum |y|$. Averaging
+    across series weights them equally, unlike the pooled sEV of [1]. A missing
+    cutoff is skipped, comparing with the next one on the same dates, with a warning.
 
     Args:
         df (pandas or polars DataFrame): Cross-validation output with id, times, cutoffs, actuals and predictions.
@@ -1455,7 +1482,8 @@ def forecast_percentage_change(
     cutoff, sFPC averages $200 |\\hat{y}_2 - \\hat{y}_1| / (|\\hat{y}_1| + |\\hat{y}_2|)$
     over the pairs revised at each cutoff. Unlike `excess_volatility`, every revision
     is penalized, even the ones that improve accuracy, so the two are best read
-    together.
+    together. A missing cutoff is skipped, comparing with the next one on the same
+    dates, with a warning.
 
     To evaluate a probabilistic forecast pass the median column, since the outer
     quantiles are expected to shift inward as the uncertainty shrinks.

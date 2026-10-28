@@ -960,8 +960,11 @@ def test_volatility_pairs_across_a_missing_cutoff(engine):
         import polars as pl
 
         df = pl.from_pandas(df)
-    fpc = volatility_to_pandas(ufl.forecast_percentage_change(df, ["model"]), engine)
-    ev = ufl.excess_volatility(df, {"model": ["model"]}, quantiles=np.array([0.5]))
+    with pytest.warns(UserWarning, match=r"not evenly spaced for 1 series .*'id0'"):
+        fpc = ufl.forecast_percentage_change(df, ["model"])
+    with pytest.warns(UserWarning, match="not evenly spaced"):
+        ev = ufl.excess_volatility(df, {"model": ["model"]}, quantiles=np.array([0.5]))
+    fpc = volatility_to_pandas(fpc, engine)
     ev = volatility_to_pandas(ev, engine)
     assert fpc["cutoff"].tolist() == ev["cutoff"].tolist() == [0, 1, 3]
     np.testing.assert_allclose(fpc["model"], [np.nan, 0.0, 200 * 20 / 60])
@@ -981,8 +984,11 @@ def test_volatility_series_with_fewer_cutoffs(engine):
         import polars as pl
 
         df = pl.from_pandas(df)
-    fpc = volatility_to_pandas(ufl.forecast_percentage_change(df, ["model"]), engine)
-    fpc = fpc.set_index(["unique_id", "cutoff"])["model"]
+    # starting later is not a gap, so there is nothing to warn about
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        fpc = ufl.forecast_percentage_change(df, ["model"])
+    fpc = volatility_to_pandas(fpc, engine).set_index(["unique_id", "cutoff"])["model"]
     np.testing.assert_allclose(fpc["id0"], [np.nan, 200 / 3, 0.0, 200 / 3])
     np.testing.assert_allclose(fpc["id1"], [np.nan, 200 / 3])
 
