@@ -454,3 +454,43 @@ y\,\ln\!\frac{y}{\mu}\;-\;(y-\mu),
       heading_level: 4
       show_root_heading: true
       show_source: true
+
+## 5. Forecast Volatility
+
+Volatility metrics compare the forecasts that consecutive
+cross-validation cutoffs make for the same target date, so they need
+overlapping windows (`step_size` smaller than the horizon). Below,
+$\hat{y}_{i,1}$ is a forecast and $\hat{y}_{i,2}$ its revision from the
+next cutoff, over the $N$ pairs of a series.
+
+### Symmetric Forecast Percentage Change
+
+```math
+\mathrm{sFPC} = \frac{200}{N} \sum_{i} \frac{|\hat{y}_{i,2}-\hat{y}_{i,1}|}{|\hat{y}_{i,2}| + |\hat{y}_{i,1}|}
+```
+
+::: utilsforecast.losses.forecast_percentage_change
+    handler: python
+    options:
+      docstring_style: google
+      heading_level: 4
+      show_root_heading: true
+      show_source: true
+
+### Scaled Excess Volatility
+
+```math
+\mathrm{sEV} = \frac{\sum_{i} \mathrm{QL}(\hat{y}_{i,2},\hat{y}_{i,1}) - \big(\mathrm{QL}(y_i,\hat{y}_{i,1})-\mathrm{QL}(y_i,\hat{y}_{i,2})\big)}{\sum_{i} |y_i|}
+```
+
+Where $\mathrm{QL}$ is the quantile loss averaged over the forecast
+quantiles. A revision is penalized only by the part of its cost that it
+does not buy back in accuracy.
+
+::: utilsforecast.losses.excess_volatility
+    handler: python
+    options:
+      docstring_style: google
+      heading_level: 4
+      show_root_heading: true
+      show_source: true

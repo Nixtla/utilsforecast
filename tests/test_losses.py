@@ -926,6 +926,24 @@ def test_excess_volatility_cutoffs_average_to_pooled(engine):
     np.testing.assert_allclose(res.groupby("unique_id")["model"].mean(), pooled)
 
 
+@pytest.mark.parametrize("missing", ["pandas", "polars-null", "polars-nan"])
+def test_volatility_skips_missing_forecasts(missing):
+    # the NaN forecast of d3 drops one pair at each revision cutoff
+    forecasts = [[10.0, 10.0, 10.0], [20.0, np.nan, 10.0], [10.0, 10.0, 10.0]]
+    df = volatility_df("pandas", forecasts, h=3, y=10.0)
+    if missing != "pandas":
+        import polars as pl
+
+        df = pl.from_pandas(df, nan_to_null=missing == "polars-null")
+    ev = ufl.excess_volatility(df, {"model": ["model"]}, quantiles=np.array([0.5]))
+    fpc = ufl.forecast_percentage_change(df, ["model"])
+    engine = "pandas" if missing == "pandas" else "polars"
+    ev = volatility_to_pandas(ev, engine)
+    fpc = volatility_to_pandas(fpc, engine)
+    np.testing.assert_allclose(ev["model"], [np.nan, 1.0, 0.0])
+    np.testing.assert_allclose(fpc["model"], [np.nan, 200 / 3, 0.0])
+
+
 @pytest.mark.parametrize(
     "forecasts, step_size, match",
     [

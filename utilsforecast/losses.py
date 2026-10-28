@@ -1342,6 +1342,11 @@ def _with_all_cutoffs(
     )
 
 
+def _valid(expr: nw.Expr) -> nw.Expr:
+    """True where `expr` is neither null nor NaN, since polars keeps NaN as a value."""
+    return ~(expr.is_null() | expr.is_nan())
+
+
 def _pinball_expr(target: nw.Expr, pred: nw.Expr, q: float) -> nw.Expr:
     error = target - pred
     return nw.max_horizontal(q * error, (q - 1) * error)
@@ -1373,7 +1378,7 @@ def excess_volatility(
     scale shared by all cutoffs of the serie: the sum of $|y|$ over all of its pairs
     divided by the number of cutoffs that have pairs. Averaging a serie's rows over
     cutoffs therefore gives its sEV over the whole cross-validation,
-    $\sum EV / \sum |y|$. Because the scale uses every window, adding or removing a
+    $\\sum EV / \\sum |y|$. Because the scale uses every window, adding or removing a
     cutoff changes the values of the other cutoffs of that serie.
 
     Args:
@@ -1411,10 +1416,11 @@ def excess_volatility(
             + _pinball_expr(y, nw.col(f"{c}_update"), q)
             for c, q in zip(forecasts, quantiles)
         ) / len(quantiles)
-        exprs.append(ev.alias(model))
-        # only scale by the dates where this model's pair is complete
-        exprs.append(nw.when(~ev.is_null()).then(y.abs()).alias(f"_{model}_norm"))
-        exprs.append(nw.when(~ev.is_null()).then(1).alias(f"_{model}_pairs"))
+        # only score and scale by the dates where this model's pair is complete
+        valid = _valid(ev)
+        exprs.append(nw.when(valid).then(ev).alias(model))
+        exprs.append(nw.when(valid).then(y.abs()).alias(f"_{model}_norm"))
+        exprs.append(nw.when(valid).then(1).alias(f"_{model}_pairs"))
     eps = np.finfo(np.float64).eps
     res = (
         pairs.select(cutoff_col, id_col, *exprs)
@@ -1447,8 +1453,9 @@ def forecast_percentage_change(
     forecast windows overlap, the same target date is forecasted from several
     cutoffs. For a forecast $\\hat{y}_1$ and its revision $\\hat{y}_2$ from the next
     cutoff, sFPC averages $200 |\\hat{y}_2 - \\hat{y}_1| / (|\\hat{y}_1| + |\\hat{y}_2|)$
-    over the pairs revised at each cutoff. Unlike `excess_volatility`, every revision is penalized,
-    even the ones that improve accuracy, so the two are best read together.
+    over the pairs revised at each cutoff. Unlike `excess_volatility`, every revision
+    is penalized, even the ones that improve accuracy, so the two are best read
+    together.
 
     To evaluate a probabilistic forecast pass the median column, since the outer
     quantiles are expected to shift inward as the uncertainty shrinks.
@@ -1481,12 +1488,12 @@ def forecast_percentage_change(
         before = nw.col(model)
         update = nw.col(f"{model}_update")
         denominator = update.abs() + before.abs()
-        return (
+        change = (
             nw.when(denominator == 0)
             .then(0.0)
             .otherwise(200 * (update - before).abs() / denominator)
-            .alias(model)
         )
+        return nw.when(_valid(change)).then(change).alias(model)
 
     res = _nw_agg_expr(
         df=pairs,
