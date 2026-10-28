@@ -944,6 +944,49 @@ def test_volatility_skips_missing_forecasts(missing):
     np.testing.assert_allclose(fpc["model"], [np.nan, 200 / 3, 0.0])
 
 
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_volatility_pairs_across_a_missing_cutoff(engine):
+    # cutoff 2 is missing, so cutoff 3 revises cutoff 1, on the one date they share:
+    # d4 goes from 20 to 40, while position-based pairing would compare 10s
+    forecasts = [
+        [10.0, 10.0, 10.0],
+        [10.0, 10.0, 20.0],
+        [0.0, 0.0, 0.0],
+        [40.0, 10.0, 10.0],
+    ]
+    df = volatility_df("pandas", forecasts, h=3, y=10.0)
+    df = df[df["cutoff"] != 2]
+    if engine == "polars":
+        import polars as pl
+
+        df = pl.from_pandas(df)
+    fpc = volatility_to_pandas(ufl.forecast_percentage_change(df, ["model"]), engine)
+    ev = ufl.excess_volatility(df, {"model": ["model"]}, quantiles=np.array([0.5]))
+    ev = volatility_to_pandas(ev, engine)
+    assert fpc["cutoff"].tolist() == ev["cutoff"].tolist() == [0, 1, 3]
+    np.testing.assert_allclose(fpc["model"], [np.nan, 0.0, 200 * 20 / 60])
+    # EV of the d4 revision is 10 - (5 - 15) = 20, scale is 3 pairs * |10| / 2 cutoffs
+    np.testing.assert_allclose(ev["model"], [np.nan, 0.0, 20 / 15])
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_volatility_series_with_fewer_cutoffs(engine):
+    # id1 only has the last two cutoffs of id0, and neither changes the other
+    # revisions: d2 10 -> 20 at cutoff 1, d3 10 -> 10 at 2, d4 30 -> 15 at 3
+    forecasts = [[10.0, 10.0], [20.0, 10.0], [10.0, 30.0], [15.0, 10.0]]
+    full = volatility_df("pandas", forecasts, h=2, y=10.0)
+    short = full[full["cutoff"] >= 2].assign(unique_id="id1")
+    df = pd.concat([full, short], ignore_index=True)
+    if engine == "polars":
+        import polars as pl
+
+        df = pl.from_pandas(df)
+    fpc = volatility_to_pandas(ufl.forecast_percentage_change(df, ["model"]), engine)
+    fpc = fpc.set_index(["unique_id", "cutoff"])["model"]
+    np.testing.assert_allclose(fpc["id0"], [np.nan, 200 / 3, 0.0, 200 / 3])
+    np.testing.assert_allclose(fpc["id1"], [np.nan, 200 / 3])
+
+
 @pytest.mark.parametrize(
     "forecasts, step_size, match",
     [
