@@ -813,28 +813,28 @@ def test_excess_volatility_is_never_negative():
     # the pinball loss is subadditive, so a revision never buys more than it costs
     rng = np.random.default_rng(0)
     quantiles = np.array([0.1, 0.5, 0.9])
-    for _ in range(20):
-        rows = []
-        for uid in range(2):
-            for t in range(4):
-                for k in range(3):
-                    fcst = np.sort(rng.normal(0, 5, 3))
-                    rows.append(
-                        {
-                            "unique_id": uid,
-                            "ds": t + k + 1,
-                            "cutoff": t,
-                            "y": rng.normal(0, 5),
-                            "q10": fcst[0],
-                            "q50": fcst[1],
-                            "q90": fcst[2],
-                        }
-                    )
-        df = pd.DataFrame(rows)
-        # y must be the same across cutoffs for a given date
-        df["y"] = df.groupby(["unique_id", "ds"])["y"].transform("first")
-        res = ufl.excess_volatility(df, {"model": ["q10", "q50", "q90"]}, quantiles)
-        assert (revised(res, "pandas") >= 0).all()
+    n_series, n_cutoffs, h = 40, 4, 3
+    uid, cutoff, k = np.meshgrid(
+        np.arange(n_series), np.arange(n_cutoffs), np.arange(h), indexing="ij"
+    )
+    ds = (cutoff + k + 1).ravel()
+    # y must be the same across cutoffs for a given date
+    y = rng.normal(0, 5, (n_series, n_cutoffs + h + 1))
+    fcst = np.sort(rng.normal(0, 5, (ds.size, 3)), axis=1)
+    df = pd.DataFrame(
+        {
+            "unique_id": uid.ravel(),
+            "ds": ds,
+            "cutoff": cutoff.ravel(),
+            "y": y[uid.ravel(), ds],
+            "q10": fcst[:, 0],
+            "q50": fcst[:, 1],
+            "q90": fcst[:, 2],
+        }
+    )
+    res = ufl.excess_volatility(df, {"model": ["q10", "q50", "q90"]}, quantiles)
+    # allow rounding error where EV is exactly zero
+    assert (revised(res, "pandas") >= -1e-12).all()
 
 
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
