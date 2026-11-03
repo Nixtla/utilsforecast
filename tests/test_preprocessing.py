@@ -235,12 +235,10 @@ class TestFillGapsWarning:
 N_PERIODS = 100
 
 
-def generate_test_dates(freq, n_periods):
+def generate_test_dates(freq, n_periods, tz=None):
     """Generate test dates for a given frequency."""
     if isinstance(freq, (pd.offsets.BaseOffset, str)):
-        dates = pd.date_range(
-            "1950-01-01", periods=n_periods, freq=freq, tz="Europe/Berlin"
-        )
+        dates = pd.date_range("1950-01-01", periods=n_periods, freq=freq, tz=tz)
     else:
         dates = np.arange(0, freq * n_periods, freq, dtype=np.int64)
     return dates
@@ -329,9 +327,10 @@ class TestFillGapsComprehensive:
     @pytest.mark.parametrize("end_type", ["global", "per_serie", "specific"])
     @pytest.mark.parametrize("include_start", [True, False])
     @pytest.mark.parametrize("include_end", [True, False])
-    def test_fill_gaps_comprehensive(self, freq, start_type, end_type, include_start, include_end):
+    @pytest.mark.parametrize("tz", [None, "Europe/Berlin"])
+    def test_fill_gaps_comprehensive(self, freq, start_type, end_type, include_start, include_end, tz):
         """Test fill_gaps with various frequency, start, and end combinations."""
-        dates = generate_test_dates(freq, N_PERIODS)
+        dates = generate_test_dates(freq, N_PERIODS, tz)
 
         if isinstance(freq, (pd.offsets.BaseOffset, str)):
             offset = pd.tseries.frequencies.to_offset(freq)
