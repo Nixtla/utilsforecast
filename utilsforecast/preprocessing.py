@@ -33,7 +33,9 @@ def _determine_bound(bound, freq, times_by_id, agg, tz, grid_tz) -> np.ndarray:
                     )
                 bound = pd.Timestamp(bound)
                 if tz is not None and bound.tz is None:
-                    bound = bound.tz_localize(tz)
+                    bound = bound.tz_localize(
+                        tz, ambiguous=True, nonexistent="shift_forward"
+                    )
                 if bound.tz is not None:
                     bound = bound.tz_convert(grid_tz).tz_localize(None)
                 val = bound.to_datetime64()
@@ -210,10 +212,11 @@ def id_time_grid(
         delta: Union[np.timedelta64, int] = np.timedelta64(n, freq)
         tz = df[time_col].dt.tz
         if tz is not None:
-            first_time = df[time_col].iloc[0]
-            # local midnights don't align with UTC ones
-            if freq in ("D", "W", "M", "Y") and first_time == first_time.normalize():
-                grid_tz = tz
+            if freq in ("D", "W", "M", "Y"):
+                utc_times = df[time_col].dt.tz_convert("UTC")
+                # local midnights don't align with UTC ones
+                if (utc_times != utc_times.dt.normalize()).any():
+                    grid_tz = tz
             df = df.copy(deep=False)
             df[time_col] = df[time_col].dt.tz_convert(grid_tz).dt.tz_localize(None)
     else:

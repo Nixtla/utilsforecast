@@ -714,12 +714,13 @@ def test_fill_gaps_pandas_dst_at_midnight(tz, start):
     assert res["y"].isna().sum() == 1
 
 
+@pytest.mark.parametrize("tz", ["America/New_York", "Europe/London"])
 @pytest.mark.parametrize("freq", ["D", "MS"])
-def test_fill_gaps_pandas_utc_midnights_in_other_tz(freq):
-    dates = pd.date_range("2024-01-01", periods=12, freq=freq, tz="UTC").tz_convert(
-        "America/New_York"
+def test_fill_gaps_pandas_utc_midnights_in_other_tz(tz, freq):
+    dates = pd.date_range("2024-01-01", periods=300, freq=freq, tz="UTC").tz_convert(
+        tz
     )
-    df = pd.DataFrame({"unique_id": "a", "ds": dates, "y": np.arange(12.0)})
+    df = pd.DataFrame({"unique_id": "a", "ds": dates, "y": np.arange(300.0)})
     res = fill_gaps(df.drop(index=3), freq=freq)
     pd.testing.assert_index_equal(
         pd.Index(res["ds"]).as_unit(dates.unit), dates, check_names=False
@@ -733,3 +734,26 @@ def test_fill_gaps_pandas_int_bound_datetime_column(tz):
     df = pd.DataFrame({"unique_id": "a", "ds": dates, "y": 1.0})
     with pytest.raises(ValueError, match="datetime type"):
         fill_gaps(df, freq="D", start=5)
+
+
+@pytest.mark.parametrize(
+    "tz, day",
+    [("America/Havana", "2024-11-03"), ("America/Santiago", "2024-09-08")],
+)
+def test_fill_gaps_pandas_starts_on_dst_at_midnight(tz, day):
+    dates = pd.date_range(day, periods=12, freq="D").tz_localize(
+        tz, ambiguous=True, nonexistent="shift_forward"
+    )
+    df = pd.DataFrame({"unique_id": "a", "ds": dates, "y": 1.0})
+    res = fill_gaps(df.drop(index=4), freq="D")
+    assert set(dates[1:]) <= set(res["ds"])
+
+
+def test_fill_gaps_pandas_naive_bound_on_dst_at_midnight():
+    dates = pd.date_range("2024-09-01", periods=12, freq="D").tz_localize(
+        "America/Santiago", nonexistent="shift_forward"
+    )
+    df = pd.DataFrame({"unique_id": "a", "ds": dates, "y": 1.0})
+    res = fill_gaps(df, freq="D", start="2024-09-08")
+    assert res["ds"].iloc[0] == dates[7]
+    assert res["y"].count() == 5
