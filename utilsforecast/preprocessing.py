@@ -27,10 +27,12 @@ def _determine_bound(bound, freq, times_by_id, agg, tz, grid_tz) -> np.ndarray:
                 val = np.datetime64(val)
         else:
             if isinstance(freq, str):
-                # this raises a nice error message if it isn't a valid datetime
+                if isinstance(bound, (int, np.integer)):
+                    raise ValueError(
+                        f"Time column has a datetime type but the bound is {bound!r}."
+                    )
                 bound = pd.Timestamp(bound)
                 if tz is not None and bound.tz is None:
-                    # naive bounds are wall times in the column's timezone
                     bound = bound.tz_localize(tz)
                 if bound.tz is not None:
                     bound = bound.tz_convert(grid_tz).tz_localize(None)
@@ -208,9 +210,10 @@ def id_time_grid(
         delta: Union[np.timedelta64, int] = np.timedelta64(n, freq)
         tz = df[time_col].dt.tz
         if tz is not None:
-            # local midnights don't align with UTC ones, so calendar frequencies
-            # are built on wall times
-            grid_tz = tz if freq in ("D", "W", "M", "Y") else "UTC"
+            first_time = df[time_col].iloc[0]
+            # local midnights don't align with UTC ones
+            if freq in ("D", "W", "M", "Y") and first_time == first_time.normalize():
+                grid_tz = tz
             df = df.copy(deep=False)
             df[time_col] = df[time_col].dt.tz_convert(grid_tz).dt.tz_localize(None)
     else:

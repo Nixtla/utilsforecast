@@ -622,14 +622,15 @@ def test_fill_gaps_polars_mismatched_bound(ds, start):
 @pytest.mark.parametrize("tz", ["America/New_York", "Asia/Tokyo"])
 @pytest.mark.parametrize("freq", ["D", "B", "W-SUN", "MS", "ME", "QE", "YS", "h"])
 def test_fill_gaps_pandas_tz_aware(tz, freq):
-    # enough periods to cross a DST change for every freq
     n_periods = 8 if freq in ("QE", "YS") else 400
     dates = pd.date_range("2024-01-01", periods=n_periods, freq=freq, tz=tz)
     df = pd.DataFrame(
         {"unique_id": "a", "ds": dates, "y": np.arange(n_periods, dtype=float)}
     )
     res = fill_gaps(df.drop(index=2), freq=freq)
-    pd.testing.assert_index_equal(pd.Index(res["ds"]), dates, check_names=False)
+    pd.testing.assert_index_equal(
+        pd.Index(res["ds"]).as_unit(dates.unit), dates, check_names=False
+    )
     assert res["y"].isna().sum() == 1
 
 
@@ -650,7 +651,9 @@ def test_id_time_grid_pandas_tz_aware(freq):
     dates = pd.date_range("2024-01-01", periods=5, freq=freq, tz="Asia/Tokyo")
     df = pd.DataFrame({"unique_id": "a", "ds": dates})
     grid = id_time_grid(df, freq=freq)
-    pd.testing.assert_index_equal(pd.Index(grid["ds"]), dates, check_names=False)
+    pd.testing.assert_index_equal(
+        pd.Index(grid["ds"]).as_unit(dates.unit), dates, check_names=False
+    )
 
 
 @pytest.mark.parametrize(
@@ -670,7 +673,9 @@ def test_fill_gaps_pandas_tz_aware_daily_bounds(start):
     df = pd.DataFrame({"unique_id": "a", "ds": dates, "y": [1.0, 2.0, 3.0]})
     res = fill_gaps(df, freq="D", start=start)
     expected = pd.date_range("2023-12-30", periods=5, freq="D", tz="America/New_York")
-    pd.testing.assert_index_equal(pd.Index(res["ds"]), expected, check_names=False)
+    pd.testing.assert_index_equal(
+        pd.Index(res["ds"]).as_unit(expected.unit), expected, check_names=False
+    )
     assert res["y"].count() == 3
 
 
@@ -681,7 +686,9 @@ def test_fill_gaps_pandas_tz_aware_naive_bound_is_wall_time():
     expected = pd.date_range(
         "2023-12-31 22:00", periods=5, freq="h", tz="America/New_York"
     )
-    pd.testing.assert_index_equal(pd.Index(res["ds"]), expected, check_names=False)
+    pd.testing.assert_index_equal(
+        pd.Index(res["ds"]).as_unit(expected.unit), expected, check_names=False
+    )
 
 
 @pytest.mark.parametrize(
@@ -700,6 +707,29 @@ def test_fill_gaps_pandas_dst_at_midnight(tz, start):
     df.insert(0, "unique_id", "a")
     res = fill_gaps(df.drop(index=2), freq="D")
     pd.testing.assert_index_equal(
-        pd.Index(res["ds"]), pd.Index(df["ds"]), check_names=False
+        pd.Index(res["ds"]).as_unit(df["ds"].dt.unit),
+        pd.Index(df["ds"]),
+        check_names=False,
     )
     assert res["y"].isna().sum() == 1
+
+
+@pytest.mark.parametrize("freq", ["D", "MS"])
+def test_fill_gaps_pandas_utc_midnights_in_other_tz(freq):
+    dates = pd.date_range("2024-01-01", periods=12, freq=freq, tz="UTC").tz_convert(
+        "America/New_York"
+    )
+    df = pd.DataFrame({"unique_id": "a", "ds": dates, "y": np.arange(12.0)})
+    res = fill_gaps(df.drop(index=3), freq=freq)
+    pd.testing.assert_index_equal(
+        pd.Index(res["ds"]).as_unit(dates.unit), dates, check_names=False
+    )
+    assert res["y"].isna().sum() == 1
+
+
+@pytest.mark.parametrize("tz", [None, "America/New_York"])
+def test_fill_gaps_pandas_int_bound_datetime_column(tz):
+    dates = pd.date_range("2024-01-01", periods=3, freq="D", tz=tz)
+    df = pd.DataFrame({"unique_id": "a", "ds": dates, "y": 1.0})
+    with pytest.raises(ValueError, match="datetime type"):
+        fill_gaps(df, freq="D", start=5)
