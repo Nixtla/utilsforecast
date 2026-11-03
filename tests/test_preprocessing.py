@@ -1,5 +1,5 @@
 import warnings
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from itertools import product
 
 import numpy as np
@@ -7,7 +7,7 @@ import pandas as pd
 import polars as pl
 import pytest
 
-from utilsforecast.preprocessing import fill_gaps
+from utilsforecast.preprocessing import fill_gaps, id_time_grid
 
 
 @pytest.fixture
@@ -238,18 +238,9 @@ N_PERIODS = 100
 def generate_test_dates(freq, n_periods):
     """Generate test dates for a given frequency."""
     if isinstance(freq, (pd.offsets.BaseOffset, str)):
-        if isinstance(freq, str):
-            try:
-                delta = pd.Timedelta(freq)
-                if delta.days > 0:
-                    tz = None
-                else:
-                    tz = "Europe/Berlin"
-            except ValueError:
-                tz = None
-        else:
-            tz = None
-        dates = pd.date_range("1950-01-01", periods=n_periods, freq=freq, tz=tz)
+        dates = pd.date_range(
+            "1950-01-01", periods=n_periods, freq=freq, tz="Europe/Berlin"
+        )
     else:
         dates = np.arange(0, freq * n_periods, freq, dtype=np.int64)
     return dates
@@ -295,9 +286,6 @@ def verify_fill_results(data, filled, freq, start, end):
     # Inferred frequency is the expected
     first_serie = filled[filled["unique_id"] == 1]
     if isinstance(freq, str):
-        if first_serie["ds"].dt.tz is not None:
-            first_serie = first_serie.copy()
-            first_serie["ds"] = first_serie["ds"].dt.tz_convert("UTC")
         inferred_freq = pd.infer_freq(first_serie["ds"].dt.tz_localize(None))
         assert inferred_freq == pd.tseries.frequencies.to_offset(freq)
     else:
@@ -629,3 +617,89 @@ def test_fill_gaps_polars_mismatched_bound(ds, start):
     freq = 1 if isinstance(ds[0], int) else "1d"
     with pytest.raises(ValueError):
         fill_gaps(df, freq=freq, start=start)
+
+
+@pytest.mark.parametrize("tz", ["America/New_York", "Asia/Tokyo"])
+@pytest.mark.parametrize("freq", ["D", "B", "W-SUN", "MS", "ME", "QE", "YS", "h"])
+def test_fill_gaps_pandas_tz_aware(tz, freq):
+    # enough periods to cross a DST change for every freq
+    n_periods = 8 if freq in ("QE", "YS") else 400
+    dates = pd.date_range("2024-01-01", periods=n_periods, freq=freq, tz=tz)
+    df = pd.DataFrame(
+        {"unique_id": "a", "ds": dates, "y": np.arange(n_periods, dtype=float)}
+    )
+    res = fill_gaps(df.drop(index=2), freq=freq)
+    pd.testing.assert_index_equal(pd.Index(res["ds"]), dates, check_names=False)
+    assert res["y"].isna().sum() == 1
+
+
+@pytest.mark.parametrize(
+    "pd_freq, pl_freq", [("D", "1d"), ("W-SUN", "1w"), ("MS", "1mo"), ("h", "1h")]
+)
+def test_fill_gaps_pandas_tz_aware_matches_polars(pd_freq, pl_freq):
+    dates = pd.date_range("2024-03-01", periods=50, freq=pd_freq, tz="America/New_York")
+    df = pd.DataFrame({"unique_id": "a", "ds": dates, "y": np.arange(50, dtype=float)})
+    df = df.drop(index=[2, 3])
+    res = fill_gaps(df, freq=pd_freq)
+    res_pl = fill_gaps(pl.from_pandas(df), freq=pl_freq).to_pandas()
+    pd.testing.assert_frame_equal(res, res_pl, check_dtype=False)
+
+
+@pytest.mark.parametrize("freq", ["D", "h"])
+def test_id_time_grid_pandas_tz_aware(freq):
+    dates = pd.date_range("2024-01-01", periods=5, freq=freq, tz="Asia/Tokyo")
+    df = pd.DataFrame({"unique_id": "a", "ds": dates})
+    grid = id_time_grid(df, freq=freq)
+    pd.testing.assert_index_equal(pd.Index(grid["ds"]), dates, check_names=False)
+
+
+@pytest.mark.parametrize(
+    "start",
+    [
+        "2023-12-30",
+        datetime(2023, 12, 30),
+        pd.Timestamp("2023-12-30", tz="America/New_York"),
+        pd.Timestamp("2023-12-30 14:00", tz="Asia/Tokyo"),
+        pd.Timestamp("2023-12-30 05:00", tz="UTC"),
+        datetime(2023, 12, 30, 5, tzinfo=timezone.utc),
+        "2023-12-30T05:00Z",
+    ],
+)
+def test_fill_gaps_pandas_tz_aware_daily_bounds(start):
+    dates = pd.date_range("2024-01-01", periods=3, freq="D", tz="America/New_York")
+    df = pd.DataFrame({"unique_id": "a", "ds": dates, "y": [1.0, 2.0, 3.0]})
+    res = fill_gaps(df, freq="D", start=start)
+    expected = pd.date_range("2023-12-30", periods=5, freq="D", tz="America/New_York")
+    pd.testing.assert_index_equal(pd.Index(res["ds"]), expected, check_names=False)
+    assert res["y"].count() == 3
+
+
+def test_fill_gaps_pandas_tz_aware_naive_bound_is_wall_time():
+    dates = pd.date_range("2024-01-01", periods=3, freq="h", tz="America/New_York")
+    df = pd.DataFrame({"unique_id": "a", "ds": dates, "y": [1.0, 2.0, 3.0]})
+    res = fill_gaps(df, freq="h", start="2023-12-31 22:00")
+    expected = pd.date_range(
+        "2023-12-31 22:00", periods=5, freq="h", tz="America/New_York"
+    )
+    pd.testing.assert_index_equal(pd.Index(res["ds"]), expected, check_names=False)
+
+
+@pytest.mark.parametrize(
+    "tz, start",
+    [
+        # midnight is ambiguous on 2024-11-03
+        ("America/Havana", "2024-10-30"),
+        # midnight doesn't exist on 2024-09-08
+        ("America/Santiago", "2024-09-05"),
+    ],
+)
+def test_fill_gaps_pandas_dst_at_midnight(tz, start):
+    times = pd.date_range(start, periods=10 * 24, freq="h", tz=tz)
+    df = pd.DataFrame({"unique_id": "a", "ds": times, "y": 1.0})
+    df = df.set_index("ds").resample("D")["y"].sum().reset_index()
+    df.insert(0, "unique_id", "a")
+    res = fill_gaps(df.drop(index=2), freq="D")
+    pd.testing.assert_index_equal(
+        pd.Index(res["ds"]), pd.Index(df["ds"]), check_names=False
+    )
+    assert res["y"].isna().sum() == 1
