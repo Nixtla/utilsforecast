@@ -152,6 +152,51 @@ def get_integer_freqs():
 # --- Basic fill_gaps tests ---
 
 
+class TestFillGapsTimezoneBounds:
+    """A timezone-aware bound is only usable when the time column has a timezone.
+
+    The pandas path used to convert such a bound to UTC and drop the offset, so a
+    bound written as local midnight silently landed on the previous day: the grid
+    started one period early and the original values were then reported lost. The
+    polars path already raised, so this keeps the two backends in agreement.
+    """
+
+    @pytest.fixture
+    def naive_df(self):
+        return pd.DataFrame(
+            {
+                "unique_id": "a",
+                "ds": pd.date_range("2024-01-02", periods=5, freq="D"),
+                "y": np.arange(5.0),
+            }
+        )
+
+    @pytest.mark.parametrize("bound_name", ["start", "end"])
+    def test_tz_aware_bound_on_naive_column_raises(self, naive_df, bound_name):
+        bound = pd.Timestamp("2024-01-01", tz="Asia/Tokyo")
+        with pytest.raises(ValueError, match="is timezone-aware but the time column"):
+            fill_gaps(naive_df, freq="D", **{bound_name: bound})
+
+    def test_message_names_the_column_dtype(self, naive_df):
+        bound = pd.Timestamp("2024-01-01", tz="Asia/Tokyo")
+        with pytest.raises(ValueError) as excinfo:
+            fill_gaps(naive_df, freq="D", start=bound)
+        assert str(naive_df["ds"].dtype) in str(excinfo.value)
+
+    def test_naive_bounds_on_naive_column_still_work(self, naive_df):
+        result = fill_gaps(naive_df, freq="D", start=pd.Timestamp("2024-01-01"))
+        assert len(result) == 6
+        assert result["ds"].iloc[0] == pd.Timestamp("2024-01-01")
+        assert result["y"].isna().sum() == 1
+
+    def test_tz_aware_column_keeps_working(self, naive_df):
+        tz_df = naive_df.assign(ds=naive_df["ds"].dt.tz_localize("Asia/Tokyo"))
+        result = fill_gaps(
+            tz_df, freq="D", start=pd.Timestamp("2024-01-01", tz="Asia/Tokyo")
+        )
+        assert len(result) == 6
+
+
 class TestFillGapsBasic:
     """Basic tests for fill_gaps function."""
 
