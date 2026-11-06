@@ -39,6 +39,28 @@ def _determine_bound(bound, freq, times_by_id, agg) -> np.ndarray:
     return out
 
 
+def _validate_bound_pd(
+    bound: Union[str, int, date, datetime],
+    name: str,
+    times: pd.Series,
+) -> None:
+    """Reject a timezone-aware bound for a timezone-naive column.
+
+    The polars path already refuses this, because there is no way to know which zone the naive
+    column is in. The pandas path instead converted the bound to UTC and dropped the offset, so
+    a bound written as local midnight landed on the previous day and the grid started off by
+    one period -- the values were then reported as lost rather than the bound as unusable.
+    """
+    if not isinstance(bound, pd.Timestamp) or bound.tz is None:
+        return
+    if times.dt.tz is not None:
+        return
+    raise ValueError(
+        f"Bound {name}={bound!r} is timezone-aware but the time column "
+        f"has dtype {times.dtype}, which has no timezone."
+    )
+
+
 def _validate_bound_pl(
     bound: Union[str, int, date, datetime],
     name: str,
@@ -198,6 +220,8 @@ def id_time_grid(
             # such as MS = 'Month Start' -> 'M', YS = 'Year Start' -> 'Y'
             freq = freq[0]
         delta: Union[np.timedelta64, int] = np.timedelta64(n, freq)
+        _validate_bound_pd(start, "start", df[time_col])
+        _validate_bound_pd(end, "end", df[time_col])
         if df[time_col].dt.tz is not None:
             df = df.copy(deep=False)
             df[time_col] = df[time_col].dt.tz_convert("UTC").dt.tz_localize(None)
