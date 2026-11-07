@@ -1254,7 +1254,7 @@ def linex(
     cutoff_col: str = "cutoff",
     a: float = 1.0,
 ) -> IntoDataFrameT:
-    """Linex Loss (Linear Exponential)
+    r"""Linex Loss (Linear Exponential)
 
     The Linex loss penalizes over- and under-forecasting
     asymmetrically depending on the parameter a.
