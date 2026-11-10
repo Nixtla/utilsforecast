@@ -401,7 +401,6 @@ def plot_series(
             loc="upper left",
             bbox_to_anchor=(1.01, 0.97),
         )
-        plt.close(fig)
         if len(ax.flat) > n_series:
             for axi in ax.flat[n_series:]:
                 axi.set_axis_off()
