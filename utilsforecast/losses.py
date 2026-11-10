@@ -985,9 +985,13 @@ def coverage(
     """
 
     def gen_expr(model):
+        lo = nw.col(f"{model}-lo-{level}")
+        hi = nw.col(f"{model}-hi-{level}")
+        # a missing target or interval is excluded instead of counted as a miss
+        missing = nw.col(target_col).is_null() | lo.is_null() | hi.is_null()
         return (
-            nw.col(target_col)
-            .is_between(nw.col(f"{model}-lo-{level}"), nw.col(f"{model}-hi-{level}"))
+            nw.when(~missing)
+            .then(nw.col(target_col).is_between(lo, hi).cast(nw.Float64))
             .alias(model)
         )
 
@@ -1089,7 +1093,13 @@ def calibration(
 
     def gen_expr(model):
         model_name, q_preds = model
-        return (nw.col(target_col) <= nw.col(q_preds)).alias(model_name)
+        # a missing target or prediction is excluded instead of counted as above
+        missing = nw.col(target_col).is_null() | nw.col(q_preds).is_null()
+        return (
+            nw.when(~missing)
+            .then((nw.col(target_col) <= nw.col(q_preds)).cast(nw.Float64))
+            .alias(model_name)
+        )
 
     return _nw_agg_expr(
         df=df,

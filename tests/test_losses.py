@@ -326,6 +326,31 @@ def test_smape_handles_zero_and_missing_forecasts(engine):
 
 
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_coverage_and_calibration_exclude_missing_forecasts(engine):
+    """Coverage and calibration exclude missing forecasts instead of counting them."""
+    data = {
+        "unique_id": ["partial"] * 4 + ["missing"] * 2,
+        "y": [1.0, 2.0, 3.0, 4.0, 1.0, 2.0],
+        "model": [1.0, None, 2.0, 5.0, None, None],
+        "model-lo-80": [0.0, None, 3.5, 3.0, None, None],
+        "model-hi-80": [2.0, None, 4.5, 5.0, None, None],
+    }
+    if engine == "pandas":
+        df = pd.DataFrame(data)
+    else:
+        import polars as pl
+
+        df = pl.DataFrame(data)
+
+    coverage = nw.from_native(ufl.coverage(df, ["model"], level=80))
+    calibration = nw.from_native(ufl.calibration(df, {"model": "model"}))
+    for result in (coverage, calibration):
+        values = dict(zip(result["unique_id"].to_list(), result["model"].to_list()))
+        np.testing.assert_allclose(values["partial"], 2 / 3)
+        assert values["missing"] is None or np.isnan(values["missing"])
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
 def test_linex_loss_numerical(engine):
     """Test linex loss with known numerical values."""
     a = 0.2
