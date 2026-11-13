@@ -16,7 +16,7 @@ from .processing import group_by, repeat
 from .validation import _is_int_dtype, validate_format, validate_freq
 
 
-def _determine_bound(bound, freq, times_by_id, agg) -> np.ndarray:
+def _determine_bound(bound, freq, times_by_id, agg, tz, grid_tz) -> np.ndarray:
     if bound == "per_serie":
         out = times_by_id[agg].to_numpy()
     else:
@@ -27,10 +27,18 @@ def _determine_bound(bound, freq, times_by_id, agg) -> np.ndarray:
                 val = np.datetime64(val)
         else:
             if isinstance(freq, str):
-                # this raises a nice error message if it isn't a valid datetime
-                if isinstance(bound, pd.Timestamp) and bound.tz is not None:
-                    bound = bound.tz_convert("UTC").tz_localize(None)
-                val = np.datetime64(bound)
+                if isinstance(bound, (int, np.integer)):
+                    raise ValueError(
+                        f"Time column has a datetime type but the bound is {bound!r}."
+                    )
+                bound = pd.Timestamp(bound)
+                if tz is not None and bound.tz is None:
+                    bound = bound.tz_localize(
+                        tz, ambiguous=True, nonexistent="shift_forward"
+                    )
+                if bound.tz is not None:
+                    bound = bound.tz_convert(grid_tz).tz_localize(None)
+                val = bound.to_datetime64()
             else:
                 val = bound
         out = np.full(times_by_id.shape[0], val)
@@ -110,11 +118,13 @@ def id_time_grid(
             * 'per_serie' uses each serie's first timestamp
             * 'global' uses the first timestamp seen in the data
             * Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)
+              Timezone-naive timestamps are taken as wall times in the time column's timezone.
             Defaults to "per_serie".
         end (str, int, date or datetime, optional): Initial timestamp for the series.
             * 'per_serie' uses each serie's last timestamp
             * 'global' uses the last timestamp seen in the data
             * Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)
+              Timezone-naive timestamps are taken as wall times in the time column's timezone.
             Defaults to "global".
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         time_col (str, optional): Column that identifies each timestamp. Defaults to 'ds'.
@@ -159,6 +169,8 @@ def id_time_grid(
                 ).alias(time_col)
             )
         return grid.explode(time_col)
+    tz = None
+    grid_tz = "UTC"
     if isinstance(freq, str):
         offset = pd.tseries.frequencies.to_offset(freq)
         n = offset.n
@@ -198,14 +210,20 @@ def id_time_grid(
             # such as MS = 'Month Start' -> 'M', YS = 'Year Start' -> 'Y'
             freq = freq[0]
         delta: Union[np.timedelta64, int] = np.timedelta64(n, freq)
-        if df[time_col].dt.tz is not None:
+        tz = df[time_col].dt.tz
+        if tz is not None:
+            if freq in ("D", "W", "M", "Y"):
+                utc_times = df[time_col].dt.tz_convert("UTC")
+                # local midnights don't align with UTC ones
+                if (utc_times != utc_times.dt.normalize()).any():
+                    grid_tz = tz
             df = df.copy(deep=False)
-            df[time_col] = df[time_col].dt.tz_convert("UTC").dt.tz_localize(None)
+            df[time_col] = df[time_col].dt.tz_convert(grid_tz).dt.tz_localize(None)
     else:
         delta = freq
     times_by_id = df.groupby(id_col, observed=True)[time_col].agg(["min", "max"])
-    starts = _determine_bound(start, freq, times_by_id, "min")
-    ends = _determine_bound(end, freq, times_by_id, "max") + delta
+    starts = _determine_bound(start, freq, times_by_id, "min", tz, grid_tz)
+    ends = _determine_bound(end, freq, times_by_id, "max", tz, grid_tz) + delta
     sizes = ((ends - starts) / delta).astype(np.int64)
     times = np.hstack(
         [np.arange(start, end, delta) for start, end in zip(starts, ends)]
@@ -222,6 +240,13 @@ def id_time_grid(
         was_truncated = first_time != first_time.astype(f"datetime64[{freq}]")
         if was_truncated:
             times += offset.base
+        if tz is not None:
+            # match the times produced by resample on DST transitions at midnight
+            times = times.tz_localize(
+                grid_tz,
+                ambiguous=np.ones(times.size, dtype=bool),
+                nonexistent="shift_forward",
+            ).tz_convert(tz)
     return pd.DataFrame(
         {
             id_col: uids,
@@ -247,11 +272,13 @@ def fill_gaps(
             * 'per_serie' uses each serie's first timestamp
             * 'global' uses the first timestamp seen in the data
             * Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)
+              Timezone-naive timestamps are taken as wall times in the time column's timezone.
             Defaults to "per_serie".
         end (str, int, date or datetime, optional): Initial timestamp for the series.
             * 'per_serie' uses each serie's last timestamp
             * 'global' uses the last timestamp seen in the data
             * Can also be a specific timestamp or integer, e.g. '2000-01-01', 2000 or datetime(2000, 1, 1)
+              Timezone-naive timestamps are taken as wall times in the time column's timezone.
             Defaults to "global".
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         time_col (str, optional): Column that identifies each timestamp. Defaults to 'ds'.
@@ -273,15 +300,7 @@ def fill_gaps(
     if isinstance(df, pl_DataFrame):
         return grid.join(df, on=[id_col, time_col], how="left")
     idx = pd.MultiIndex.from_frame(grid)
-    if isinstance(freq, str):
-        tz = df[time_col].dt.tz
-        if tz is not None:
-            df = df.copy(deep=False)
-            df[time_col] = df[time_col].dt.tz_convert("UTC").dt.tz_localize(None)
     res = df.set_index([id_col, time_col]).reindex(idx).reset_index()
-    if isinstance(freq, str):
-        if tz is not None:
-            res[time_col] = res[time_col].dt.tz_localize("UTC").dt.tz_convert(tz)
     extra_cols = df.columns.drop([id_col, time_col]).tolist()
     if extra_cols:
         check_col = extra_cols[0]
