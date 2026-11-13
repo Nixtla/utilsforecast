@@ -16,7 +16,7 @@ from .processing import group_by, repeat
 from .validation import _is_int_dtype, validate_format, validate_freq
 
 
-def _determine_bound(bound, freq, times_by_id, agg) -> np.ndarray:
+def _determine_bound(bound, freq, times_by_id, agg, truncate=True) -> np.ndarray:
     if bound == "per_serie":
         out = times_by_id[agg].to_numpy()
     else:
@@ -34,7 +34,7 @@ def _determine_bound(bound, freq, times_by_id, agg) -> np.ndarray:
             else:
                 val = bound
         out = np.full(times_by_id.shape[0], val)
-    if isinstance(freq, str):
+    if isinstance(freq, str) and truncate:
         out = out.astype(f"datetime64[{freq}]")
     return out
 
@@ -219,9 +219,25 @@ def id_time_grid(
             times = times[bdays]
         times = pd.Index(times.astype("datetime64[ns]", copy=False))
         first_time = np.datetime64(df.iloc[0][time_col])
-        was_truncated = first_time != first_time.astype(f"datetime64[{freq}]")
-        if was_truncated:
-            times += offset.base
+        if isinstance(offset.base, (pd.offsets.Tick, pd.offsets.Day)):
+            # fixed-length freqs: keep each serie's original phase
+            # (e.g. 09:00 for daily data), since the grid was built truncated
+            raw_starts = _determine_bound(
+                start, freq, times_by_id, "min", truncate=False
+            ).astype("datetime64[ns]")
+            phases = raw_starts - raw_starts.astype(f"datetime64[{freq}]")
+            times += np.repeat(phases, sizes)
+            # the phase can push the last point past the requested end
+            raw_ends = _determine_bound(
+                end, freq, times_by_id, "max", truncate=False
+            ).astype("datetime64[ns]")
+            keep = times.to_numpy() <= np.repeat(raw_ends, sizes)
+            uids = uids[keep]
+            times = times[keep]
+        else:
+            was_truncated = first_time != first_time.astype(f"datetime64[{freq}]")
+            if was_truncated:
+                times += offset.base
     return pd.DataFrame(
         {
             id_col: uids,

@@ -629,3 +629,94 @@ def test_fill_gaps_polars_mismatched_bound(ds, start):
     freq = 1 if isinstance(ds[0], int) else "1d"
     with pytest.raises(ValueError):
         fill_gaps(df, freq=freq, start=start)
+
+
+@pytest.mark.parametrize(
+    "freq, ds, expected",
+    [
+        (
+            "D",
+            ["2024-01-01 09:00", "2024-01-02 09:00", "2024-01-04 09:00"],
+            [
+                "2024-01-01 09:00",
+                "2024-01-02 09:00",
+                "2024-01-03 09:00",
+                "2024-01-04 09:00",
+            ],
+        ),
+        (
+            "h",
+            ["2024-01-01 00:30", "2024-01-01 01:30", "2024-01-01 03:30"],
+            [
+                "2024-01-01 00:30",
+                "2024-01-01 01:30",
+                "2024-01-01 02:30",
+                "2024-01-01 03:30",
+            ],
+        ),
+    ],
+)
+def test_fill_gaps_preserves_time_of_day(freq, ds, expected):
+    df = pd.DataFrame({"unique_id": 1, "ds": pd.to_datetime(ds), "y": [1.0, 2.0, 4.0]})
+    res = fill_gaps(df, freq=freq)
+    assert res["ds"].to_list() == pd.to_datetime(expected).to_list()
+    assert res["y"].notna().sum() == 3
+
+
+def test_fill_gaps_preserves_time_of_day_per_serie():
+    a = pd.date_range("2024-01-01 09:00", periods=5, freq="D").delete(2)
+    b = pd.date_range("2024-01-01", periods=5, freq="D").delete(2)
+    for order in (("a", "b"), ("b", "a")):
+        idx = {"a": a, "b": b}
+        df = pd.DataFrame(
+            {
+                "unique_id": np.repeat(order, 4),
+                "ds": idx[order[0]].append(idx[order[1]]),
+                "y": 1.0,
+            }
+        )
+        res = fill_gaps(df, freq="D")
+        assert res["y"].notna().sum() == 8
+        assert len(res) == 10
+        for uid, g in res.groupby("unique_id"):
+            expected = pd.date_range(idx[uid].min(), periods=5, freq="D")
+            assert g["ds"].to_list() == expected.to_list()
+
+
+def test_fill_gaps_preserves_phase_does_not_exceed_global_end():
+    df = pd.DataFrame(
+        {
+            "unique_id": ["a", "a", "b", "b", "b"],
+            "ds": pd.to_datetime(
+                [
+                    "2024-01-01 09:00",
+                    "2024-01-02 09:00",
+                    "2024-01-01 00:00",
+                    "2024-01-02 00:00",
+                    "2024-01-03 00:00",
+                ]
+            ),
+            "y": 1.0,
+        }
+    )
+    res = fill_gaps(df, freq="D")
+    assert res["ds"].max() == df["ds"].max()
+    assert res["y"].notna().sum() == 5
+    assert len(res) == 5
+
+
+@pytest.mark.parametrize(
+    "tz, freq, start",
+    [
+        ("America/New_York", "D", "2024-01-01 09:00"),
+        ("America/New_York", "D", "2024-01-01"),
+        ("Asia/Kolkata", "h", "2024-01-01"),
+        ("Asia/Kathmandu", "h", "2024-01-01"),
+    ],
+)
+def test_fill_gaps_tz_aware_preserves_phase(tz, freq, start):
+    full = pd.date_range(start, periods=10, freq=freq, tz=tz)
+    df = pd.DataFrame({"unique_id": "a", "ds": full.delete(2), "y": 1.0})
+    res = fill_gaps(df, freq=freq)
+    assert res["ds"].to_list() == full.to_list()
+    assert res["y"].notna().sum() == 9
