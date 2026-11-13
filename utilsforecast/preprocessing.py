@@ -227,6 +227,13 @@ def id_time_grid(
             ).astype("datetime64[ns]")
             phases = raw_starts - raw_starts.astype(f"datetime64[{freq}]")
             times += np.repeat(phases, sizes)
+            # the phase can push the last point past the requested end
+            raw_ends = _determine_bound(
+                end, freq, times_by_id, "max", truncate=False
+            ).astype("datetime64[ns]")
+            keep = times.to_numpy() <= np.repeat(raw_ends, sizes)
+            uids = uids[keep]
+            times = times[keep]
         else:
             was_truncated = first_time != first_time.astype(f"datetime64[{freq}]")
             if was_truncated:

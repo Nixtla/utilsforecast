@@ -683,6 +683,28 @@ def test_fill_gaps_preserves_time_of_day_per_serie():
             assert g["ds"].to_list() == expected.to_list()
 
 
+def test_fill_gaps_preserves_phase_does_not_exceed_global_end():
+    df = pd.DataFrame(
+        {
+            "unique_id": ["a", "a", "b", "b", "b"],
+            "ds": pd.to_datetime(
+                [
+                    "2024-01-01 09:00",
+                    "2024-01-02 09:00",
+                    "2024-01-01 00:00",
+                    "2024-01-02 00:00",
+                    "2024-01-03 00:00",
+                ]
+            ),
+            "y": 1.0,
+        }
+    )
+    res = fill_gaps(df, freq="D")
+    assert res["ds"].max() == df["ds"].max()
+    assert res["y"].notna().sum() == 5
+    assert len(res) == 5
+
+
 @pytest.mark.parametrize(
     "tz, freq, start",
     [
