@@ -455,6 +455,37 @@ def test_evaluate_weights_validation(setup_series):
         )
 
 
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+@pytest.mark.parametrize("agg_fn", [None, "weighted_mean"])
+def test_evaluate_preserves_custom_cutoff_for_mae(engine, agg_fn):
+    forecasts = {
+        "unique_id": ["a", "a", "b", "b"],
+        "ds": [2, 3, 2, 3],
+        "origin": [1, 2, 1, 2],
+        "y": [10.0, 20.0, 11.0, 22.0],
+        "model": [10.0, 30.0, 13.0, 26.0],
+    }
+    df = pd.DataFrame(forecasts) if engine == "pandas" else pl.DataFrame(forecasts)
+    result = evaluate(
+        df=df,
+        metrics=[mae],
+        models=["model"],
+        cutoff_col="origin",
+        agg_fn=agg_fn,
+        weights="auto" if agg_fn else None,
+    )
+
+    result_nw = nw.from_native(result)
+    if agg_fn == "weighted_mean":
+        result_nw = result_nw.sort("origin")
+        assert result_nw["origin"].to_list() == [1, 2]
+        np.testing.assert_allclose(result_nw["model"].to_numpy(), [22 / 21, 288 / 42])
+    else:
+        result_nw = result_nw.sort("unique_id", "origin")
+        assert result_nw["origin"].to_list() == [1, 2, 1, 2]
+        np.testing.assert_allclose(result_nw["model"].to_numpy(), [0.0, 10.0, 2.0, 4.0])
+
+
 def test_evaluate_positional_api_compatibility():
     df = pd.DataFrame(
         {
@@ -696,6 +727,43 @@ def test_distributed_evaluate(setup_series):
             distr_res.sort_values(["unique_id", "metric"]).reset_index(drop=True),
             check_dtype=False,
         )
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Distributed tests are not supported on Windows"
+)
+@pytest.mark.skipif(
+    Version(pd.__version__) >= Version("3.0"),
+    reason="does not work on pandas >= 3.0",
+)
+@pytest.mark.parametrize("cutoff_col", ["cutoff", "origin"])
+def test_distributed_evaluate_preserves_fold_keys(cutoff_col):
+    df = pd.DataFrame(
+        {
+            "unique_id": ["a", "a", "b", "b"],
+            "ds": [2, 3, 2, 3],
+            cutoff_col: [1, 2, 1, 2],
+            "y": [10.0, 20.0, 11.0, 22.0],
+            "model": [10.0, 30.0, 13.0, 26.0],
+        }
+    )
+    with Client(n_workers=1, threads_per_worker=2, processes=False):
+        distributed = evaluate(
+            dd.from_pandas(df, npartitions=2),
+            metrics=[mae],
+            models=["model"],
+            cutoff_col=cutoff_col,
+        )
+        result = fa.as_fugue_df(distributed).as_pandas()
+
+    keys = ["unique_id", cutoff_col]
+    expected = df[keys].assign(metric="mae", model=[0.0, 10.0, 2.0, 4.0])
+    pd.testing.assert_frame_equal(
+        result.sort_values(keys).reset_index(drop=True),
+        expected,
+        check_dtype=False,
+        check_like=True,
+    )
 
 
 # ========================================

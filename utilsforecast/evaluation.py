@@ -313,9 +313,7 @@ def _distributed_evaluate(
     else:
         model_cols = models
     models_schema = ",".join(f"{m}:double" for m in model_cols)
-    result_schema = (
-        fa.get_schema(df).extract(*group_cols) + "metric:str" + models_schema
-    )
+    result_schema = fa.get_schema(df).extract(group_cols) + "metric:str" + models_schema
     return fa.transform(
         df,
         using=_evaluate_wrapper,
@@ -459,12 +457,19 @@ def evaluate(
     results_per_metric = []
     for metric in metrics:
         metric_name = _function_name(metric)
-        kwargs = dict(df=df, models=model_cols, id_col=id_col, target_col=target_col)
-        if metric_requires_y_train[metric_name]:
-            kwargs["train_df"] = train_df
-            kwargs["cutoff_col"] = cutoff_col
-            kwargs["time_col"] = time_col
         metric_params = inspect.signature(metric).parameters
+        requires_train = metric_requires_y_train[metric_name]
+        kwargs = dict(df=df, models=model_cols, id_col=id_col, target_col=target_col)
+        if requires_train:
+            kwargs["train_df"] = train_df
+            kwargs["time_col"] = time_col
+        cutoff_param = metric_params.get("cutoff_col")
+        if requires_train or (
+            cutoff_param is not None
+            and cutoff_param.kind
+            in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
+        ):
+            kwargs["cutoff_col"] = cutoff_col
         if "baseline" in metric_params:
             metric_name = f"{metric_name}_{metric_params['baseline'].default}"
         if "q" in metric_params or metric_params["models"].annotation is Dict[str, str]:
