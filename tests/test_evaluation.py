@@ -455,6 +455,37 @@ def test_evaluate_weights_validation(setup_series):
         )
 
 
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+@pytest.mark.parametrize("agg_fn", [None, "weighted_mean"])
+def test_evaluate_preserves_custom_cutoff_for_mae(engine, agg_fn):
+    forecasts = {
+        "unique_id": ["a", "a", "b", "b"],
+        "ds": [2, 3, 2, 3],
+        "origin": [1, 2, 1, 2],
+        "y": [10.0, 20.0, 11.0, 22.0],
+        "model": [10.0, 30.0, 13.0, 26.0],
+    }
+    df = pd.DataFrame(forecasts) if engine == "pandas" else pl.DataFrame(forecasts)
+    result = evaluate(
+        df=df,
+        metrics=[mae],
+        models=["model"],
+        cutoff_col="origin",
+        agg_fn=agg_fn,
+        weights="auto" if agg_fn else None,
+    )
+
+    result_nw = nw.from_native(result)
+    if agg_fn == "weighted_mean":
+        result_nw = result_nw.sort("origin")
+        assert result_nw["origin"].to_list() == [1, 2]
+        np.testing.assert_allclose(result_nw["model"].to_numpy(), [22 / 21, 288 / 42])
+    else:
+        result_nw = result_nw.sort("unique_id", "origin")
+        assert result_nw["origin"].to_list() == [1, 2, 1, 2]
+        np.testing.assert_allclose(result_nw["model"].to_numpy(), [0.0, 10.0, 2.0, 4.0])
+
+
 def test_evaluate_positional_api_compatibility():
     df = pd.DataFrame(
         {
