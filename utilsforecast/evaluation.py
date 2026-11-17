@@ -313,9 +313,7 @@ def _distributed_evaluate(
     else:
         model_cols = models
     models_schema = ",".join(f"{m}:double" for m in model_cols)
-    result_schema = (
-        fa.get_schema(df).extract(*group_cols) + "metric:str" + models_schema
-    )
+    result_schema = fa.get_schema(df).extract(group_cols) + "metric:str" + models_schema
     return fa.transform(
         df,
         using=_evaluate_wrapper,

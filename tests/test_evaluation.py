@@ -729,6 +729,43 @@ def test_distributed_evaluate(setup_series):
         )
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Distributed tests are not supported on Windows"
+)
+@pytest.mark.skipif(
+    Version(pd.__version__) >= Version("3.0"),
+    reason="does not work on pandas >= 3.0",
+)
+@pytest.mark.parametrize("cutoff_col", ["cutoff", "origin"])
+def test_distributed_evaluate_preserves_fold_keys(cutoff_col):
+    df = pd.DataFrame(
+        {
+            "unique_id": ["a", "a", "b", "b"],
+            "ds": [2, 3, 2, 3],
+            cutoff_col: [1, 2, 1, 2],
+            "y": [10.0, 20.0, 11.0, 22.0],
+            "model": [10.0, 30.0, 13.0, 26.0],
+        }
+    )
+    with Client(n_workers=1, threads_per_worker=2, processes=False):
+        distributed = evaluate(
+            dd.from_pandas(df, npartitions=2),
+            metrics=[mae],
+            models=["model"],
+            cutoff_col=cutoff_col,
+        )
+        result = fa.as_fugue_df(distributed).as_pandas()
+
+    keys = ["unique_id", cutoff_col]
+    expected = df[keys].assign(metric="mae", model=[0.0, 10.0, 2.0, 4.0])
+    pd.testing.assert_frame_equal(
+        result.sort_values(keys).reset_index(drop=True),
+        expected,
+        check_dtype=False,
+        check_like=True,
+    )
+
+
 # ========================================
 # Cross-Validation Tests with Cutoff Column
 # ========================================
