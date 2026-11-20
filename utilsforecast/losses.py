@@ -165,7 +165,9 @@ def mse(
         models=models,
         id_col=id_col,
         cutoff_col=cutoff_col,
-        gen_expr=lambda m: ((nw.col(target_col) - nw.col(m)) ** 2).alias(m),
+        gen_expr=lambda m: (
+            (nw.col(target_col).cast(nw.Float64) - nw.col(m).cast(nw.Float64)) ** 2
+        ).alias(m),
     )
 
 
