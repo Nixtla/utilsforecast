@@ -421,7 +421,7 @@ def mase(
         models (list of str): Columns that identify the models predictions.
         seasonality (int): Main frequency of the time series;
             Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
-        train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
+        train_df (pandas or polars DataFrame): Training dataframe with id, times and actual values.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'.
@@ -435,7 +435,9 @@ def mase(
     group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
 
     def scale_expr(_m):
-        lagged = nw.col(target_col).shift(seasonality).over(group_cols)
+        lagged = (
+            nw.col(target_col).shift(seasonality).over(*group_cols, order_by=time_col)
+        )
         return (nw.col(target_col) - lagged).abs().alias("scale")
 
     mae_df = mae(
@@ -602,7 +604,7 @@ def msse(
         models (list of str): Columns that identify the models predictions.
         seasonality (int): Main frequency of the time series;
             Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
-        train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
+        train_df (pandas or polars DataFrame): Training dataframe with id, times and actual values.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'.
@@ -631,7 +633,9 @@ def msse(
         df=train_df, id_col=id_col, cutoff_col=cutoff_col
     )
     baseline = train_df.with_columns(
-        scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
+        scale=nw.col(target_col)
+        .shift(seasonality)
+        .over(*train_group_cols, order_by=time_col)
     )
     scales = mse(
         df=baseline,
@@ -750,7 +754,7 @@ def scaled_quantile_loss(
         models (dict from str to str): Mapping from model name to the model predictions for the specified quantile.
         seasonality (int): Main frequency of the time series;
             Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
-        train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
+        train_df (pandas or polars DataFrame): Training dataframe with id, times and actual values.
         q (float, optional): Quantile for the predictions' comparison. Defaults to 0.5.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
@@ -781,7 +785,9 @@ def scaled_quantile_loss(
         df=train_df, id_col=id_col, cutoff_col=cutoff_col
     )
     baseline = train_df.with_columns(
-        scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
+        scale=nw.col(target_col)
+        .shift(seasonality)
+        .over(*train_group_cols, order_by=time_col)
     )
     scales = mae(
         df=baseline,
@@ -911,7 +917,7 @@ def scaled_mqloss(
         quantiles (numpy array): Quantiles to compare against.
         seasonality (int): Main frequency of the time series;
             Hourly 24, Daily 7, Weekly 52, Monthly 12, Quarterly 4, Yearly 1.
-        train_df (pandas or polars DataFrame): Training dataframe with id and actual values. Must be sorted by time.
+        train_df (pandas or polars DataFrame): Training dataframe with id, times and actual values.
         id_col (str, optional): Column that identifies each serie. Defaults to 'unique_id'.
         target_col (str, optional): Column that contains the target. Defaults to 'y'.
         cutoff_col (str, optional): Column that identifies the cutoff point for each forecast cross-validation fold. Defaults to 'cutoff'.
@@ -941,7 +947,9 @@ def scaled_mqloss(
         df=train_df, id_col=id_col, cutoff_col=cutoff_col
     )
     baseline = train_df.with_columns(
-        scale=nw.col(target_col).shift(seasonality).over(*train_group_cols)
+        scale=nw.col(target_col)
+        .shift(seasonality)
+        .over(*train_group_cols, order_by=time_col)
     )
     scales = mae(
         df=baseline,

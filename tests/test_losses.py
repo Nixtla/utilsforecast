@@ -690,6 +690,66 @@ def test_scaled_metric_with_cutoffs_respects_id_col(engine):
     np.testing.assert_allclose(actual["model"].to_numpy(), expected["model"].to_numpy())
 
 
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+@pytest.mark.parametrize("with_cutoffs", [False, True])
+@pytest.mark.parametrize(
+    "loss",
+    [
+        partial(ufl.mase, models=["model"]),
+        partial(ufl.msse, models=["model"]),
+        partial(ufl.rmsse, models=["model"]),
+        partial(ufl.scaled_quantile_loss, models={"model": "model-q"}, q=0.9),
+        partial(
+            ufl.scaled_mqloss,
+            models={"model": ["model-q", "model-q"]},
+            quantiles=np.array([0.1, 0.9]),
+        ),
+    ],
+    ids=["mase", "msse", "rmsse", "scaled_quantile_loss", "scaled_mqloss"],
+)
+def test_scaled_losses_do_not_depend_on_train_row_order(engine, with_cutoffs, loss):
+    # The naive scale pairs each value with the one `seasonality` steps
+    # earlier, so it has to follow time order, not the order of the rows.
+    rng = np.random.default_rng(0)
+    n_train, h = 30, 4
+    ds = pd.date_range("2024-01-01", periods=n_train + h, freq="D")
+    train_parts, test_parts = [], []
+    for uid in ["a", "b", "c"]:
+        y = 50 + 10 * np.sin(np.arange(n_train + h) / 3) + rng.normal(size=n_train + h)
+        train_parts.append(pd.DataFrame({"unique_id": uid, "ds": ds, "y": y}))
+        test_parts.append(
+            pd.DataFrame(
+                {
+                    "unique_id": uid,
+                    "ds": ds[n_train:],
+                    "y": y[n_train:],
+                    "model": y[n_train:] + 2,
+                    "model-q": y[n_train:] + 3,
+                }
+            )
+        )
+    train_df = pd.concat(train_parts, ignore_index=True)
+    df = pd.concat(test_parts, ignore_index=True)
+    if with_cutoffs:
+        # two folds, each scaled on the training rows up to its cutoff
+        df = pd.concat(
+            [df.assign(cutoff=ds[n_train - 3]), df.assign(cutoff=ds[n_train - 1])],
+            ignore_index=True,
+        )
+    else:
+        train_df = train_df[train_df["ds"] < ds[n_train]]
+    shuffled = train_df.sample(frac=1, random_state=0)
+    if engine == "polars":
+        import polars as pl
+
+        df, train_df, shuffled = (pl.from_pandas(x) for x in (df, train_df, shuffled))
+
+    keys = ["unique_id", "cutoff"] if with_cutoffs else ["unique_id"]
+    expected = nw.from_native(loss(df, seasonality=7, train_df=train_df)).sort(keys)
+    actual = nw.from_native(loss(df, seasonality=7, train_df=shuffled)).sort(keys)
+    np.testing.assert_allclose(actual["model"].to_numpy(), expected["model"].to_numpy())
+
+
 TWEEDIE_POWERS = [0.0, 1.0, 1.2, 1.5, 1.8, 2.0, 2.5, 3.0]
 
 
