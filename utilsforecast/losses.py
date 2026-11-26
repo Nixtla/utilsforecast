@@ -121,6 +121,10 @@ def _scale_loss(
     )
 
 
+def _float_col(name: str) -> nw.Expr:
+    return nw.col(name).cast(nw.Float64)
+
+
 @_base_docstring
 def mae(
     df: IntoDataFrameT,
@@ -141,7 +145,7 @@ def mae(
         models=models,
         id_col=id_col,
         cutoff_col=cutoff_col,
-        gen_expr=lambda m: (nw.col(target_col) - nw.col(m)).abs().alias(m),
+        gen_expr=lambda m: (_float_col(target_col) - _float_col(m)).abs().alias(m),
     )
 
 
@@ -165,9 +169,7 @@ def mse(
         models=models,
         id_col=id_col,
         cutoff_col=cutoff_col,
-        gen_expr=lambda m: (
-            (nw.col(target_col).cast(nw.Float64) - nw.col(m).cast(nw.Float64)) ** 2
-        ).alias(m),
+        gen_expr=lambda m: ((_float_col(target_col) - _float_col(m)) ** 2).alias(m),
     )
 
 
@@ -218,7 +220,7 @@ def bias(
         models=models,
         id_col=id_col,
         cutoff_col=cutoff_col,
-        gen_expr=lambda m: (nw.col(m) - nw.col(target_col)).alias(m),
+        gen_expr=lambda m: (_float_col(m) - _float_col(target_col)).alias(m),
     )
 
 
@@ -348,8 +350,8 @@ def mape(
     assigns to the corresponding error."""
 
     def gen_expr(model):
-        abs_err = (nw.col(target_col) - nw.col(model)).abs()
-        abs_target = _zero_to_nan(nw.col(target_col)).abs()
+        abs_err = (_float_col(target_col) - _float_col(model)).abs()
+        abs_target = _zero_to_nan(_float_col(target_col)).abs()
         return (abs_err / abs_target).alias(model)
 
     return _nw_agg_expr(
@@ -381,8 +383,8 @@ def smape(
     may be undetermined when the target is zero."""
 
     def gen_expr(model):
-        abs_err = (nw.col(model) - nw.col(target_col)).abs()
-        denominator = nw.col(model).abs() + nw.col(target_col).abs()
+        abs_err = (_float_col(model) - _float_col(target_col)).abs()
+        denominator = _float_col(model).abs() + _float_col(target_col).abs()
         return (
             nw.when(denominator == 0)
             .then(0.0)
@@ -531,7 +533,7 @@ def nd(
     value of the ground truth."""
 
     def gen_expr(model):
-        return ((nw.col(target_col) - nw.col(model)).abs()).alias(model)
+        return ((_float_col(target_col) - _float_col(model)).abs()).alias(model)
 
     group_cols = _get_group_cols(df=df, id_col=id_col, cutoff_col=cutoff_col)
 
@@ -539,7 +541,7 @@ def nd(
         nw.from_native(df)
         .select(
             *group_cols,
-            nw.col(target_col).abs().alias("scale"),
+            _float_col(target_col).abs().alias("scale"),
             *[gen_expr(m) for m in models],
         )
         .group_by(*group_cols)

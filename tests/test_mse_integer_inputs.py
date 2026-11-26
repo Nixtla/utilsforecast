@@ -31,3 +31,26 @@ def test_squared_losses_promote_integer_operands(engine, dtype, target, forecast
     error = abs(float(target) - float(forecast))
     expected = error**2 if loss is mse else error
     np.testing.assert_allclose(result["model"], [expected, 0.0])
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+@pytest.mark.parametrize("dtype,y,pred", [("int8", -128, 100), ("uint8", 1, 200)])
+def test_absolute_and_percentage_losses_match_float_inputs(engine, dtype, y, pred):
+    from utilsforecast import losses
+
+    data = pd.DataFrame(
+        {
+            "unique_id": ["a"],
+            "y": np.array([y], dtype=dtype),
+            "model": np.array([pred], dtype=dtype),
+        }
+    )
+    reference = data.astype({"y": "float64", "model": "float64"})
+    if engine == "polars":
+        data, reference = pl.from_pandas(data), pl.from_pandas(reference)
+    for loss in (losses.mae, losses.bias, losses.nd, losses.mape, losses.smape):
+        np.testing.assert_allclose(
+            loss(data, ["model"])["model"].to_numpy(),
+            loss(reference, ["model"])["model"].to_numpy(),
+            err_msg=loss.__name__,
+        )
