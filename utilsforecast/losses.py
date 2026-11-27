@@ -96,10 +96,10 @@ def _create_train_with_cutoffs(
     train_df = nw.from_native(train_df)
 
     if cutoff_col in group_cols:
-        cutoffs_df = nw.from_native(df).select(*group_cols).unique()
-        train_df = train_df.join(cutoffs_df, on=id_col, how="inner").filter(
-            nw.col(time_col) <= nw.col(cutoff_col)
-        )
+        if cutoff_col not in train_df.columns:
+            cutoffs_df = nw.from_native(df).select(*group_cols).unique()
+            train_df = train_df.join(cutoffs_df, on=id_col, how="inner")
+        train_df = train_df.filter(nw.col(time_col) <= nw.col(cutoff_col))
 
     return train_df
 
