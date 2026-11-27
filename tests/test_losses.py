@@ -690,6 +690,36 @@ def test_scaled_metric_with_cutoffs_respects_id_col(engine):
     np.testing.assert_allclose(actual["model"].to_numpy(), expected["model"].to_numpy())
 
 
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_mase_with_cutoffs_in_training_data(engine):
+    df = pd.DataFrame(
+        {
+            "unique_id": ["a", "a"],
+            "cutoff": [2, 3],
+            "ds": [3, 4],
+            "y": [6.0, 8.0],
+            "model": [8.0, 10.0],
+        }
+    )
+    train = pd.DataFrame(
+        {
+            "unique_id": ["a"] * 5,
+            "ds": [1, 1, 2, 2, 3],
+            "cutoff": [2, 3, 2, 3, 3],
+            "y": [1.0, 1.0, 3.0, 3.0, 6.0],
+        }
+    )
+    if engine == "polars":
+        import polars as pl
+
+        df, train = pl.from_pandas(df), pl.from_pandas(train)
+
+    result = ufl.mase(df, ["model"], seasonality=1, train_df=train)
+    result = nw.from_native(result).sort("cutoff")
+    # Both forecasts miss by 2. The training scales are 2 and (2 + 3) / 2.
+    np.testing.assert_allclose(result["model"].to_numpy(), [1.0, 0.8])
+
+
 TWEEDIE_POWERS = [0.0, 1.0, 1.2, 1.5, 1.8, 2.0, 2.5, 3.0]
 
 
