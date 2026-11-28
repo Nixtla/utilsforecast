@@ -326,6 +326,29 @@ def test_smape_handles_zero_and_missing_forecasts(engine):
 
 
 @pytest.mark.parametrize("engine", ["pandas", "polars"])
+def test_mape_excludes_zero_actuals_consistently(engine):
+    """MAPE excludes zero actuals from the average on both backends."""
+    data = {
+        "unique_id": ["mixed"] * 2 + ["plain"] * 2,
+        "y": [0.0, 2.0, 4.0, 2.0],
+        "model": [1.0, 1.0, 1.0, 1.0],
+    }
+    if engine == "pandas":
+        df = pd.DataFrame(data)
+    else:
+        import polars as pl
+
+        df = pl.DataFrame(data)
+
+    result = nw.from_native(ufl.mape(df, ["model"]))
+    values = dict(zip(result["unique_id"].to_list(), result["model"].to_list()))
+
+    # only the non-zero actual contributes to the average
+    np.testing.assert_allclose(values["mixed"], 0.5)
+    np.testing.assert_allclose(values["plain"], 0.625)
+
+
+@pytest.mark.parametrize("engine", ["pandas", "polars"])
 def test_linex_loss_numerical(engine):
     """Test linex loss with known numerical values."""
     a = 0.2
