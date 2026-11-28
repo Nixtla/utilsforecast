@@ -347,8 +347,16 @@ def mape(
 
     def gen_expr(model):
         abs_err = (nw.col(target_col) - nw.col(model)).abs()
-        abs_target = _zero_to_nan(nw.col(target_col)).abs()
-        return (abs_err / abs_target).alias(model)
+        ratio = abs_err / nw.col(target_col).abs()
+        # exclude zero actuals from the average with a null (instead of a
+        # NaN) so that the result is consistent across the pandas and
+        # polars backends (pandas skips NaNs but polars propagates them)
+        return (
+            nw.when(nw.col(target_col) == 0)
+            .then(None)
+            .otherwise(ratio)
+            .alias(model)
+        )
 
     return _nw_agg_expr(
         df=df,
